@@ -1,6 +1,7 @@
 package br.com.fiap.VetSync.service;
 
 import br.com.fiap.VetSync.entity.*;
+import br.com.fiap.VetSync.repository.ProfissionalEsteticaRepository;
 import br.com.fiap.VetSync.repository.EventoSaudeRepository;
 import br.com.fiap.VetSync.repository.PlanoItemRepository;
 import br.com.fiap.VetSync.repository.PlanoTratamentoRepository;
@@ -22,6 +23,8 @@ import java.util.stream.Collectors;
 public class EventoService {
 
     private final EventoSaudeRepository eventoSaudeRepository;
+    private final ProfissionalEsteticaRepository profissionalEsteticaRepository;
+    private final AgendaEsteticaService agendaEsteticaService;
     private final PetService petService;
     private final TipoEventoRepository tipoEventoRepository;
     private final VeterinarioRepository veterinarioRepository;
@@ -29,6 +32,7 @@ public class EventoService {
     private final PlanoItemRepository planoItemRepository;
     private final PlanoTratamentoRepository planoTratamentoRepository;
     private final AgendaService agendaService;
+
 
     private static final long MESES_LIMITE_ATRASO = 12;
 
@@ -55,6 +59,54 @@ public class EventoService {
         evento.setVeterinario(vet);
         evento.setDsStatus(StatusEvento.AGENDADO);
         return eventoSaudeRepository.save(evento);
+    }
+    private static final String SERVICO_ESTETICA_PALAVRA_CHAVE = "banho";
+
+    public boolean isServicoEstetica(TipoEvento tipoEvento) {
+        return tipoEvento != null && tipoEvento.getNmTipoEvento() != null
+                && tipoEvento.getNmTipoEvento().toLowerCase().contains(SERVICO_ESTETICA_PALAVRA_CHAVE);
+    }
+
+    public EventoSaude agendarEstetica(EventoSaude evento, Long idPet, Long idTipoEvento, Long idProfissionalEstetica) {
+        Pet pet = petService.buscarPorId(idPet);
+        TipoEvento tipoEvento = tipoEventoRepository.findById(idTipoEvento).orElseThrow(
+                () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Tipo de evento não encontrado: " + idTipoEvento));
+        if (!isServicoEstetica(tipoEvento)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Esse tipo de evento não é um serviço de banho/tosa atendido pela estética");
+        }
+        ProfissionalEstetica profissional = profissionalEsteticaRepository.findById(idProfissionalEstetica).orElseThrow(
+                () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Profissional de estética não encontrado: " + idProfissionalEstetica));
+
+        validarHorarioLivreEstetica(idProfissionalEstetica, evento.getDtEvento(), evento.getHrEvento(), null);
+
+        evento.setPet(pet);
+        evento.setTipoEvento(tipoEvento);
+        evento.setProfissionalEstetica(profissional);
+        evento.setDsStatus(StatusEvento.AGENDADO);
+        return eventoSaudeRepository.save(evento);
+    }
+
+    private void validarHorarioLivreEstetica(Long idProfissionalEstetica, LocalDate dtEvento, String hrEvento, Long idEventoIgnorar) {
+        if (hrEvento == null || hrEvento.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "hrEvento é obrigatório");
+        }
+        if (agendaEsteticaService.estaBloqueado(idProfissionalEstetica, dtEvento)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "A agenda do profissional de estética está bloqueada nessa data");
+        }
+        boolean ocupado = eventoSaudeRepository.findByProfissionalEstetica_IdProfissionalEsteticaAndDtEvento(idProfissionalEstetica, dtEvento).stream()
+                .filter(e -> e.getDsStatus() == StatusEvento.AGENDADO)
+                .filter(e -> idEventoIgnorar == null || !e.getIdEvento().equals(idEventoIgnorar))
+                .anyMatch(e -> hrEvento.equals(e.getHrEvento()));
+        if (ocupado) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Esse profissional já tem um atendimento agendado nesse horário");
+        }
+    }
+
+    public List<EventoSaude> listarParaProfissionalEstetica(String email) {
+        return eventoSaudeRepository.findByProfissionalEstetica_DsEmailOrderByDtEventoDesc(email);
     }
 
 

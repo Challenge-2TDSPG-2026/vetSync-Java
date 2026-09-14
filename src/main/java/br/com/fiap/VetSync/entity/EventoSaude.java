@@ -53,4 +53,8 @@ public class EventoSaude {
 
     @Column(name = "ds_motivo_cancelamento", length = 300)
     private String dsMotivoCancelamento;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_profissional_estetica")
+    private ProfissionalEstetica profissionalEstetica;
 }

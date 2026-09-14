@@ -1,8 +1,10 @@
 package br.com.fiap.VetSync.controller;
 
 import br.com.fiap.VetSync.entity.Admin;
+import br.com.fiap.VetSync.repository.ProfissionalEsteticaRepository;
 import br.com.fiap.VetSync.entity.Tutor;
 import br.com.fiap.VetSync.repository.AdminRepository;
+import br.com.fiap.VetSync.repository.ProfissionalEsteticaRepository;
 import br.com.fiap.VetSync.repository.TutorRepository;
 import br.com.fiap.VetSync.repository.VeterinarioRepository;
 import br.com.fiap.VetSync.security.TokenBlacklist;
@@ -36,6 +38,7 @@ public class AuthController {
     private final AdminRepository adminRepository;
     private final PasswordEncoder passwordEncoder;
     private final TokenBlacklist tokenBlacklist;
+    private final ProfissionalEsteticaRepository profissionalEsteticaRepository;
 
     private static final int SENHA_MIN_LENGTH = 6;
 

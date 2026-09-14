@@ -2,7 +2,6 @@ package br.com.fiap.VetSync.service;
 
 import br.com.fiap.VetSync.entity.BloqueioAgenda;
 import br.com.fiap.VetSync.entity.Disponibilidade;
-import br.com.fiap.VetSync.entity.Veterinario;
 import br.com.fiap.VetSync.repository.BloqueioAgendaRepository;
 import br.com.fiap.VetSync.repository.DisponibilidadeRepository;
 import org.junit.jupiter.api.DisplayName;

@@ -2,10 +2,10 @@ package br.com.fiap.VetSync.service;
 
 import br.com.fiap.VetSync.entity.BloqueioAgenda;
 import br.com.fiap.VetSync.entity.Disponibilidade;
-import br.com.fiap.VetSync.entity.Veterinario;
 import br.com.fiap.VetSync.repository.BloqueioAgendaRepository;
 import br.com.fiap.VetSync.repository.DisponibilidadeRepository;
 import lombok.RequiredArgsConstructor;
+import br.com.fiap.VetSync.entity.Veterinario;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;

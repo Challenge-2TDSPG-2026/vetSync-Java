@@ -2,7 +2,6 @@ package br.com.fiap.VetSync.controller;
 
 import br.com.fiap.VetSync.entity.BloqueioAgenda;
 import br.com.fiap.VetSync.entity.Disponibilidade;
-import br.com.fiap.VetSync.entity.Veterinario;
 import br.com.fiap.VetSync.security.VeterinarioSecurity;
 import br.com.fiap.VetSync.service.AgendaService;
 import br.com.fiap.VetSync.service.VeterinarioService;

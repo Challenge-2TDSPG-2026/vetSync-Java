@@ -1,6 +1,7 @@
 package br.com.fiap.VetSync.security;
 
 import br.com.fiap.VetSync.repository.AdminRepository;
+import br.com.fiap.VetSync.repository.ProfissionalEsteticaRepository;
 import br.com.fiap.VetSync.repository.TutorRepository;
 import br.com.fiap.VetSync.repository.VeterinarioRepository;
 import lombok.RequiredArgsConstructor;
@@ -14,6 +15,7 @@ public class AppUserDetailsService implements UserDetailsService {
 
     private final TutorRepository tutorRepository;
     private final VeterinarioRepository veterinarioRepository;
+    private final ProfissionalEsteticaRepository profissionalEsteticaRepository;
     private final AdminRepository adminRepository;
 
     @Override
@@ -29,6 +31,12 @@ public class AppUserDetailsService implements UserDetailsService {
                                 .username(vet.getDsEmail())
                                 .password(vet.getDsSenha() != null ? vet.getDsSenha() : "")
                                 .roles("VETERINARIO")
+                                .build()))
+                .or(() -> profissionalEsteticaRepository.findByDsEmail(email)
+                        .map(prof -> User.builder()
+                                .username(prof.getDsEmail())
+                                .password(prof.getDsSenha() != null ? prof.getDsSenha() : "")
+                                .roles("PROFISSIONAL_ESTETICA")
                                 .build()))
                 .or(() -> adminRepository.findByDsEmail(email)
                         .map(admin -> User.builder()

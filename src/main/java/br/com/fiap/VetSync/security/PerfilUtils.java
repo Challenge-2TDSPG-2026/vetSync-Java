@@ -16,6 +16,10 @@ public final class PerfilUtils {
         return temRole(authentication, "ROLE_VETERINARIO");
     }
 
+    public static boolean isProfissionalEstetica(Authentication authentication) {
+        return temRole(authentication, "ROLE_PROFISSIONAL_ESTETICA");
+    }
+
     public static boolean isAdmin(Authentication authentication) {
         return temRole(authentication, "ROLE_ADMIN");
     }

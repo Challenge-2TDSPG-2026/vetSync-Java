@@ -20,6 +20,14 @@ public class EventoSecurity {
                 .orElse(false);
     }
 
+    public boolean isProfissionalEsteticaResponsavel(Long idEvento, Authentication authentication) {
+        if (authentication == null || idEvento == null) return false;
+        return eventoSaudeRepository.findById(idEvento)
+                .map(e -> e.getProfissionalEstetica() != null
+                        && e.getProfissionalEstetica().getDsEmail().equalsIgnoreCase(authentication.getName()))
+                .orElse(false);
+    }
+
     public boolean isTutorDoPet(Long idEvento, Authentication authentication) {
         if (authentication == null || idEvento == null) return false;
         return eventoSaudeRepository.findById(idEvento)
@@ -30,7 +38,9 @@ public class EventoSecurity {
 
 
     public boolean isRelacionado(Long idEvento, Authentication authentication) {
-        return isVeterinarioResponsavel(idEvento, authentication) || isTutorDoPet(idEvento, authentication);
+        return isVeterinarioResponsavel(idEvento, authentication)
+                || isProfissionalEsteticaResponsavel(idEvento, authentication)
+                || isTutorDoPet(idEvento, authentication);
     }
 
 
@@ -39,10 +49,12 @@ public class EventoSecurity {
         return eventoSaudeRepository.findById(idEvento).map(e -> {
             boolean isVet = e.getVeterinario() != null
                     && e.getVeterinario().getDsEmail().equalsIgnoreCase(authentication.getName());
+            boolean isProfEstetica = e.getProfissionalEstetica() != null
+                    && e.getProfissionalEstetica().getDsEmail().equalsIgnoreCase(authentication.getName());
             boolean isTutorPendente = e.getPet() != null && e.getPet().getTutor() != null
                     && e.getPet().getTutor().getDsEmail().equalsIgnoreCase(authentication.getName())
                     && e.getDsStatus() == StatusEvento.AGENDADO;
-            return isVet || isTutorPendente;
+            return isVet || isProfEstetica || isTutorPendente;
         }).orElse(false);
     }
 }
