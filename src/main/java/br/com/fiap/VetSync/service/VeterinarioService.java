@@ -1,6 +1,7 @@
 package br.com.fiap.VetSync.service;
 
 import br.com.fiap.VetSync.entity.Clinica;
+import br.com.fiap.VetSync.entity.Veterinario;
 import br.com.fiap.VetSync.repository.ClinicaRepository;
 import br.com.fiap.VetSync.repository.VeterinarioRepository;
 import lombok.RequiredArgsConstructor;

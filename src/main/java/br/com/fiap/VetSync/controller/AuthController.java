@@ -1,7 +1,6 @@
 package br.com.fiap.VetSync.controller;
 
 import br.com.fiap.VetSync.entity.Admin;
-import br.com.fiap.VetSync.repository.ProfissionalEsteticaRepository;
 import br.com.fiap.VetSync.entity.Tutor;
 import br.com.fiap.VetSync.repository.AdminRepository;
 import br.com.fiap.VetSync.repository.ProfissionalEsteticaRepository;
@@ -68,7 +67,7 @@ public class AuthController {
     public record MeResponse(Long idUsuario, String email, String nome, String perfil) {}
 
     @PostMapping("/login")
-    @Operation(summary = "Login — e-mail e senha. Funciona para tutor, veterinário ou admin.")
+    @Operation(summary = "Login — e-mail e senha. Funciona para tutor, veterinário, profissional de estética ou admin.")
     public AuthResponse login(@RequestBody LoginRequest req) {
         try {
             authManager.authenticate(
@@ -83,7 +82,7 @@ public class AuthController {
     @PostMapping("/registrar")
     @ResponseStatus(HttpStatus.CREATED)
     @Operation(summary = "Cadastrar novo tutor",
-            description = "Registro público é só para TUTOR. Contas de veterinário são criadas pelo ADMIN em POST /veterinarios.")
+            description = "Registro público é só para TUTOR. Contas de veterinário e de profissional de estética são criadas pelo ADMIN.")
     public AuthResponse registrar(@Valid @RequestBody RegistrarRequest req) {
         if (req.senha() == null || req.senha().length() < SENHA_MIN_LENGTH) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
@@ -126,6 +125,11 @@ public class AuthController {
         if (vet.isPresent()) {
             return new MeResponse(vet.get().getIdVeterinario(), email, vet.get().getNmVeterinario(), "VETERINARIO");
         }
+        var profissional = profissionalEsteticaRepository.findByDsEmail(email);
+        if (profissional.isPresent()) {
+            return new MeResponse(profissional.get().getIdProfissionalEstetica(), email,
+                    profissional.get().getNmProfissionalEstetica(), "PROFISSIONAL_ESTETICA");
+        }
         var admin = adminRepository.findByDsEmail(email);
         if (admin.isPresent()) {
             return new MeResponse(admin.get().getIdAdmin(), email, admin.get().getNmAdmin(), "ADMIN");
@@ -141,6 +145,11 @@ public class AuthController {
         var vet = veterinarioRepository.findByDsEmail(email);
         if (vet.isPresent()) {
             return new AuthResponse(token, vet.get().getIdVeterinario(), email, vet.get().getNmVeterinario(), "VETERINARIO");
+        }
+        var profissional = profissionalEsteticaRepository.findByDsEmail(email);
+        if (profissional.isPresent()) {
+            return new AuthResponse(token, profissional.get().getIdProfissionalEstetica(), email,
+                    profissional.get().getNmProfissionalEstetica(), "PROFISSIONAL_ESTETICA");
         }
         var admin = adminRepository.findByDsEmail(email);
         if (admin.isPresent()) {

@@ -96,7 +96,7 @@ public class RelatorioEsteticaService {
                 .build();
         link = linkAgendamentoVetRepository.save(link);
 
-        String url = linkBaseUrl + "/agendamento-retorno/" + link.getDsToken();
+        String url = linkBaseUrl + "/agendamentos-retorno/" + link.getDsToken();
 
         emailService.enviar(
                 tutor.getDsEmail(),

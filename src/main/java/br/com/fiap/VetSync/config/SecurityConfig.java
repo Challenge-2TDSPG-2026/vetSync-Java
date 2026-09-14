@@ -47,6 +47,7 @@ public class SecurityConfig {
                                 "/", "/index.html", "/*.html", "/*.js", "/*.css",
                                 "/auth/login", "/auth/registrar",
                                 "/admins/bootstrap",
+                                "/agendamentos-retorno/**",
                                 "/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**"
                         ).permitAll()
                         .requestMatchers("/pets/**").authenticated()
