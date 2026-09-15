@@ -12,6 +12,7 @@ import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import lombok.RequiredArgsConstructor;
@@ -25,7 +26,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/profissionais-estetica")
 @RequiredArgsConstructor
-@Tag(name = "Profissionais de Estética", description = "Cadastro (só ADMIN), perfil e agenda")
+@Tag(name = "Profissionais de Estética", description = "Cadastro (só ADMIN), perfil, agenda e serviços realizados")
 public class ProfissionalEsteticaController {
 
     private final ProfissionalEsteticaService profissionalEsteticaService;
@@ -70,6 +71,13 @@ public class ProfissionalEsteticaController {
         return profissionalEsteticaService.listarTodos().stream().map(this::toResponse).toList();
     }
 
+    @GetMapping("/disponiveis")
+    @Operation(summary = "Listar profissionais que atendem TODOS os serviços informados",
+            description = "Passe os ids dos serviços escolhidos (base + extras). Sem parâmetro, retorna todos os profissionais.")
+    public List<ProfissionalEsteticaResponse> listarDisponiveis(@RequestParam(required = false) List<Long> idsServico) {
+        return profissionalEsteticaService.listarPorServicos(idsServico).stream().map(this::toResponse).toList();
+    }
+
     @GetMapping("/{id}")
     @Operation(summary = "Buscar profissional de estética por ID")
     public ProfissionalEsteticaResponse buscarPorId(@PathVariable Long id) {
@@ -94,6 +102,20 @@ public class ProfissionalEsteticaController {
     @Operation(summary = "Atualizar dados do profissional de estética. Só o próprio.")
     public ProfissionalEsteticaResponse atualizar(@PathVariable Long id, @Valid @RequestBody ProfissionalEsteticaAtualizarRequest request) {
         return toResponse(profissionalEsteticaService.atualizar(id, request.nome(), request.idClinica()));
+    }
+
+
+
+    public record ServicosRequest(
+            @NotEmpty(message = "Selecione ao menos um serviço")
+            List<Long> idsServico
+    ) {}
+
+    @PutMapping("/{id}/servicos")
+    @PreAuthorize("@profissionalEsteticaSecurity.isSelf(#id, authentication) or hasRole('ADMIN')")
+    @Operation(summary = "Definir quais serviços esse profissional realiza")
+    public ProfissionalEsteticaResponse definirServicos(@PathVariable Long id, @Valid @RequestBody ServicosRequest request) {
+        return toResponse(profissionalEsteticaService.definirServicos(id, request.idsServico()));
     }
 
 

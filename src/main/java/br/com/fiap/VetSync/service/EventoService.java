@@ -32,6 +32,7 @@ public class EventoService {
     private final PlanoItemRepository planoItemRepository;
     private final PlanoTratamentoRepository planoTratamentoRepository;
     private final AgendaService agendaService;
+    private final ServicoEsteticaService servicoEsteticaService;
 
 
     private static final long MESES_LIMITE_ATRASO = 12;
@@ -67,7 +68,7 @@ public class EventoService {
                 && tipoEvento.getNmTipoEvento().toLowerCase().contains(SERVICO_ESTETICA_PALAVRA_CHAVE);
     }
 
-    public EventoSaude agendarEstetica(EventoSaude evento, Long idPet, Long idTipoEvento, Long idProfissionalEstetica) {
+    public EventoSaude agendarEstetica(EventoSaude evento, Long idPet, Long idTipoEvento, Long idProfissionalEstetica, List<Long> idsServico) {
         Pet pet = petService.buscarPorId(idPet);
         TipoEvento tipoEvento = tipoEventoRepository.findById(idTipoEvento).orElseThrow(
                 () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Tipo de evento não encontrado: " + idTipoEvento));
@@ -78,11 +79,22 @@ public class EventoService {
         ProfissionalEstetica profissional = profissionalEsteticaRepository.findById(idProfissionalEstetica).orElseThrow(
                 () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Profissional de estética não encontrado: " + idProfissionalEstetica));
 
+        Set<ServicoEstetica> servicos = servicoEsteticaService.buscarVarios(idsServico);
+        if (servicos.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Selecione ao menos o serviço base (banho)");
+        }
+        boolean profissionalAtendeTodos = profissional.getServicos().containsAll(servicos);
+        if (!profissionalAtendeTodos) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Esse profissional não atende um ou mais dos serviços selecionados");
+        }
+
         validarHorarioLivreEstetica(idProfissionalEstetica, evento.getDtEvento(), evento.getHrEvento(), null);
 
         evento.setPet(pet);
         evento.setTipoEvento(tipoEvento);
         evento.setProfissionalEstetica(profissional);
+        evento.setServicos(servicos);
         evento.setDsStatus(StatusEvento.AGENDADO);
         return eventoSaudeRepository.save(evento);
     }

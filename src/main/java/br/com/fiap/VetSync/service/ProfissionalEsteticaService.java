@@ -22,6 +22,7 @@ public class ProfissionalEsteticaService {
     private final ClinicaRepository clinicaRepository;
     private final PasswordEncoder passwordEncoder;
     private final EmailService emailService;
+    private final ServicoEsteticaService servicoEsteticaService;
 
     private static final SecureRandom RANDOM = new SecureRandom();
     private static final String CARACTERES_SENHA = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";
@@ -105,5 +106,19 @@ public class ProfissionalEsteticaService {
             profissional.setClinica(clinica);
         }
         return profissionalEsteticaRepository.save(profissional);
+    }
+
+    public ProfissionalEstetica definirServicos(Long id, List<Long> idsServico) {
+        ProfissionalEstetica profissional = buscarPorId(id);
+        profissional.setServicos(servicoEsteticaService.buscarVarios(idsServico));
+        return profissionalEsteticaRepository.save(profissional);
+    }
+
+    public List<ProfissionalEstetica> listarPorServicos(List<Long> idsServico) {
+        if (idsServico == null || idsServico.isEmpty()) {
+            return listarTodos();
+        }
+        List<Long> unicos = idsServico.stream().distinct().toList();
+        return profissionalEsteticaRepository.findQueAtendemTodosOsServicos(unicos, unicos.size());
     }
 }

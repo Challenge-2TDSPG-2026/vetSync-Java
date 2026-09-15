@@ -5,6 +5,9 @@ import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import lombok.*;
 
+import java.util.HashSet;
+import java.util.Set;
+
 @Entity
 @Table(name = "TB_PROFISSIONAL_ESTETICA")
 @Data
@@ -37,4 +40,13 @@ public class ProfissionalEstetica {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_clinica", nullable = false)
     private Clinica clinica;
+
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+            name = "TB_PROFISSIONAL_SERVICO",
+            joinColumns = @JoinColumn(name = "id_profissional_estetica"),
+            inverseJoinColumns = @JoinColumn(name = "id_servico")
+    )
+    @Builder.Default
+    private Set<ServicoEstetica> servicos = new HashSet<>();
 }

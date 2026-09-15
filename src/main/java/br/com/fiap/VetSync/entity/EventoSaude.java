@@ -6,6 +6,8 @@ import lombok.*;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.HashSet;
+import java.util.Set;
 
 @Entity
 @Table(name = "TB_EVENTO_SAUDE")
@@ -57,4 +59,13 @@ public class EventoSaude {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_profissional_estetica")
     private ProfissionalEstetica profissionalEstetica;
+
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+            name = "TB_EVENTO_SERVICO",
+            joinColumns = @JoinColumn(name = "id_evento"),
+            inverseJoinColumns = @JoinColumn(name = "id_servico")
+    )
+    @Builder.Default
+    private Set<ServicoEstetica> servicos = new HashSet<>();
 }

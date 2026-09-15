@@ -10,6 +10,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.FutureOrPresent;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.PositiveOrZero;
@@ -52,6 +53,8 @@ public class EventoController {
             @NotBlank(message = "hrEvento é obrigatória")
             @Pattern(regexp = "^([01]\\d|2[0-3]):[0-5]\\d$", message = "hrEvento deve estar no formato HH:mm, ex: 14:30")
             String hrEvento,
+            @NotEmpty(message = "idsServico é obrigatório — informe ao menos o serviço base (banho)")
+            List<Long> idsServico,
             String dsObservacao
     ) {}
 
@@ -69,6 +72,8 @@ public class EventoController {
 
     public record EventoCancelarResponse(EventoResponse eventoCancelado, EventoResponse novoEvento) {}
 
+    public record ServicoResumoResponse(Long idServico, String nmServico) {}
+
     public record EventoResponse(
             Long idEvento,
             String status,
@@ -81,10 +86,15 @@ public class EventoController {
             String dsObservacao,
             String motivoCancelamento,
             BigDecimal vlCusto,
-            Long idPet
+            Long idPet,
+            List<ServicoResumoResponse> servicos
     ) {}
 
     private EventoResponse toResponse(EventoSaude evento) {
+        List<ServicoResumoResponse> servicos = evento.getServicos() == null ? List.of()
+                : evento.getServicos().stream()
+                .map(s -> new ServicoResumoResponse(s.getIdServico(), s.getNmServico()))
+                .toList();
         return new EventoResponse(
                 evento.getIdEvento(),
                 evento.getDsStatus().name(),
@@ -97,7 +107,8 @@ public class EventoController {
                 evento.getDsObservacao(),
                 evento.getDsMotivoCancelamento(),
                 evento.getVlCusto(),
-                evento.getPet() != null ? evento.getPet().getIdPet() : null
+                evento.getPet() != null ? evento.getPet().getIdPet() : null,
+                servicos
         );
     }
 
@@ -122,8 +133,8 @@ public class EventoController {
     @PostMapping("/estetica")
     @ResponseStatus(HttpStatus.CREATED)
     @PreAuthorize("hasRole('TUTOR')")
-    @Operation(summary = "Tutor agenda um banho/tosa, escolhendo o profissional de estética e horário livre na agenda dele",
-            description = "Só aceita tipos de evento de estética (nome contendo \"banho\"). Para consultas com veterinário use POST /eventos.")
+    @Operation(summary = "Tutor agenda um banho/tosa, escolhendo o profissional de estética, os serviços e horário livre na agenda dele",
+            description = "Só aceita tipos de evento de estética (nome contendo \"banho\"). idsServico deve conter pelo menos o serviço base escolhido (banho, banho e tosa na tesoura ou banho e tosa na máquina); serviços extras são opcionais. Para consultas com veterinário use POST /eventos.")
     public EventoResponse agendarEstetica(Authentication authentication, @Valid @RequestBody EventoAgendarEsteticaRequest request) {
         boolean donoDoPet = petService.buscarPorId(request.idPet()).getTutor().getDsEmail()
                 .equalsIgnoreCase(authentication.getName());
@@ -135,7 +146,9 @@ public class EventoController {
                 .hrEvento(request.hrEvento())
                 .dsObservacao(request.dsObservacao())
                 .build();
-        return toResponse(eventoService.agendarEstetica(evento, request.idPet(), request.idTipoEvento(), request.idProfissionalEstetica()));
+        return toResponse(eventoService.agendarEstetica(
+                evento, request.idPet(), request.idTipoEvento(), request.idProfissionalEstetica(), request.idsServico()
+        ));
     }
 
     @GetMapping
