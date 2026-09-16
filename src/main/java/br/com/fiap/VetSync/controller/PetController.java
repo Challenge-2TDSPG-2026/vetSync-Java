@@ -118,7 +118,7 @@ public class PetController {
                 .toList();
     }
 
-    @GetMapping("/{id}")
+    @GetMapping("/{id:\\d+}")
     @PreAuthorize("hasRole('VETERINARIO') or @petSecurity.isOwner(#id, authentication)")
     @Operation(summary = "Buscar pet por ID", description = "Veterinário vê qualquer pet; tutor só vê o próprio.")
     public PetResponse buscarPorId(@PathVariable Long id) {
@@ -134,7 +134,7 @@ public class PetController {
                 .toList();
     }
 
-    @PutMapping("/{id}")
+    @PutMapping("/{id:\\d+}")
     @PreAuthorize("hasRole('TUTOR') and @petSecurity.isOwner(#id, authentication)")
     @Operation(summary = "Atualizar pet (nome, peso, data de nascimento, sexo, raça/espécie). Só o tutor dono do pet.")
     public PetResponse atualizar(@PathVariable Long id, @RequestBody @Valid PetRequest request) {
@@ -147,7 +147,7 @@ public class PetController {
         return toResponse(petService.atualizar(id, petAtualizado, request.especie(), request.especieOutro(), request.raca()));
     }
 
-    @DeleteMapping("/{id}")
+    @DeleteMapping("/{id:\\d+}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @PreAuthorize("hasRole('TUTOR') and @petSecurity.isOwner(#id, authentication)")
     @Operation(summary = "Deletar pet. Só o tutor dono do pet.", description = "Retorna 409 se o pet tiver eventos de saúde vinculados.")
