@@ -14,9 +14,12 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
@@ -32,6 +35,7 @@ public class RecompensaController {
     private final TutorService tutorService;
     private final VeterinarioRepository veterinarioRepository;
 
+    // Usado com multipart/form-data: os campos chegam como @RequestParam, não como JSON no corpo.
     public record RecompensaRequest(
             @NotBlank(message = "Nome é obrigatório")
             String nome,
@@ -47,7 +51,8 @@ public class RecompensaController {
     ) {}
 
     public record RecompensaResponse(
-            Long idRecompensa, String nome, String descricao, Integer custoPontos, String tipo, boolean ativa
+            Long idRecompensa, String nome, String descricao, Integer custoPontos, String tipo, boolean ativa,
+            String imagemUrl
     ) {}
 
     public record ResgateResponse(
@@ -61,8 +66,9 @@ public class RecompensaController {
     ) {}
 
     private RecompensaResponse toResponse(Recompensa r) {
+        String imagemUrl = r.getDsImagem() != null ? "/recompensas/" + r.getIdRecompensa() + "/imagem" : null;
         return new RecompensaResponse(r.getIdRecompensa(), r.getNmRecompensa(), r.getDsDescricao(),
-                r.getNrCustoPontos(), r.getDsTipo().name(), Boolean.TRUE.equals(r.getFlAtivo()));
+                r.getNrCustoPontos(), r.getDsTipo().name(), Boolean.TRUE.equals(r.getFlAtivo()), imagemUrl);
     }
 
     private ResgateResponse toResponse(Resgate r) {
@@ -91,12 +97,32 @@ public class RecompensaController {
         return recompensaService.listarAtivas().stream().map(this::toResponse).toList();
     }
 
-    @PostMapping
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @ResponseStatus(HttpStatus.CREATED)
     @PreAuthorize("hasRole('VETERINARIO')")
-    @Operation(summary = "Cadastrar recompensa no catálogo. Somente VETERINARIO (equipe da clínica).")
-    public RecompensaResponse criar(@Valid @RequestBody RecompensaRequest request) {
-        return toResponse(recompensaService.criar(request.nome(), request.descricao(), request.custoPontos(), request.tipo()));
+    @Operation(
+            summary = "Cadastrar recompensa/produto no catálogo (com upload de imagem opcional). Somente VETERINARIO (equipe da clínica).",
+            description = "Requisição multipart/form-data. Campos: nome, descricao, custoPontos, tipo (PRODUTO ou CUPOM_DESCONTO) e, opcionalmente, o arquivo 'imagem' (JPEG, PNG ou WEBP, até 5MB)."
+    )
+    public RecompensaResponse criar(@Valid RecompensaRequest request,
+                                    @RequestParam(value = "imagem", required = false) MultipartFile imagem) {
+        Recompensa recompensa = recompensaService.criar(
+                request.nome(), request.descricao(), request.custoPontos(), request.tipo(), imagem
+        );
+        return toResponse(recompensa);
+    }
+
+    @GetMapping("/{id}/imagem")
+    @Operation(summary = "Obter a imagem cadastrada de uma recompensa/produto do catálogo")
+    public ResponseEntity<byte[]> obterImagem(@PathVariable Long id) {
+        Recompensa recompensa = recompensaService.buscarPorId(id);
+        if (recompensa.getDsImagem() == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Essa recompensa não possui imagem cadastrada");
+        }
+        MediaType mediaType = recompensa.getDsImagemTipo() != null
+                ? MediaType.parseMediaType(recompensa.getDsImagemTipo())
+                : MediaType.APPLICATION_OCTET_STREAM;
+        return ResponseEntity.ok().contentType(mediaType).body(recompensa.getDsImagem());
     }
 
     @GetMapping("/saldo")

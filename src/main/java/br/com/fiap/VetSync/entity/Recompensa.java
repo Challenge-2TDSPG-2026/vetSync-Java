@@ -36,4 +36,11 @@ public class Recompensa {
     @Builder.Default
     @Column(name = "fl_ativo", nullable = false)
     private Boolean flAtivo = true;
+
+    @Lob
+    @Column(name = "ds_imagem")
+    private byte[] dsImagem;
+
+    @Column(name = "ds_imagem_tipo", length = 100)
+    private String dsImagemTipo;
 }

@@ -7,9 +7,12 @@ import br.com.fiap.VetSync.repository.VeterinarioRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.io.IOException;
 import java.util.List;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -21,17 +24,45 @@ public class RecompensaService {
     private final TutorService tutorService;
     private final PontosService pontosService;
 
-
+    private static final long TAMANHO_MAXIMO_IMAGEM_BYTES = 5L * 1024 * 1024; // 5MB
+    private static final Set<String> TIPOS_IMAGEM_PERMITIDOS = Set.of(
+            "image/jpeg", "image/png", "image/webp"
+    );
 
     public Recompensa criar(String nome, String descricao, Integer custoPontos, TipoRecompensa tipo) {
-        Recompensa recompensa = Recompensa.builder()
+        return criar(nome, descricao, custoPontos, tipo, null);
+    }
+
+    public Recompensa criar(String nome, String descricao, Integer custoPontos, TipoRecompensa tipo, MultipartFile imagem) {
+        Recompensa.RecompensaBuilder builder = Recompensa.builder()
                 .nmRecompensa(nome)
                 .dsDescricao(descricao)
                 .nrCustoPontos(custoPontos)
                 .dsTipo(tipo)
-                .flAtivo(true)
-                .build();
-        return recompensaRepository.save(recompensa);
+                .flAtivo(true);
+
+        if (imagem != null && !imagem.isEmpty()) {
+            validarImagem(imagem);
+            try {
+                builder.dsImagem(imagem.getBytes())
+                        .dsImagemTipo(imagem.getContentType());
+            } catch (IOException e) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Não foi possível ler o arquivo de imagem enviado");
+            }
+        }
+
+        return recompensaRepository.save(builder.build());
+    }
+
+    private void validarImagem(MultipartFile imagem) {
+        if (imagem.getSize() > TAMANHO_MAXIMO_IMAGEM_BYTES) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "A imagem deve ter no máximo 5MB");
+        }
+        String contentType = imagem.getContentType();
+        if (contentType == null || !TIPOS_IMAGEM_PERMITIDOS.contains(contentType.toLowerCase())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Formato de imagem inválido. Envie um arquivo JPEG, PNG ou WEBP");
+        }
     }
 
     public List<Recompensa> listarAtivas() {
