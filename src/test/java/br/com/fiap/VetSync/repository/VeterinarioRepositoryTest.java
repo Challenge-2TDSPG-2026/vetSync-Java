@@ -1,6 +1,7 @@
 package br.com.fiap.VetSync.repository;
 
 import br.com.fiap.VetSync.entity.Clinica;
+import br.com.fiap.VetSync.entity.Veterinario;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
