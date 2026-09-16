@@ -2,6 +2,7 @@ package br.com.fiap.VetSync.controller;
 
 import br.com.fiap.VetSync.entity.EspecieCategoria;
 import br.com.fiap.VetSync.entity.Pet;
+import br.com.fiap.VetSync.entity.RacaCatalogo;
 import br.com.fiap.VetSync.entity.Tutor;
 import br.com.fiap.VetSync.service.PetService;
 import br.com.fiap.VetSync.service.TutorService;
@@ -83,6 +84,13 @@ public class PetController {
         Tutor tutor = tutorService.buscarPorEmail(authentication.getName())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Tutor autenticado não encontrado"));
         return tutor.getIdTutor();
+    }
+
+    @GetMapping("/racas")
+    @PreAuthorize("hasRole('TUTOR') or hasRole('VETERINARIO')")
+    @Operation(summary = "Sugerir raças", description = "Retorna raças do catálogo para a espécie informada, filtradas pelo texto digitado (q). Usado para autocomplete no cadastro/atualização de pet.")
+    public List<String> sugerirRacas(@RequestParam EspecieCategoria especie, @RequestParam(required = false) String q) {
+        return RacaCatalogo.sugerir(especie, q);
     }
 
     @PostMapping
