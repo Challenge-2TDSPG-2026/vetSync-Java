@@ -13,8 +13,6 @@ public enum EspecieCategoria {
     SUINO("Suíno"),
     OVINO("Ovino"),
     CAPRINO("Caprino"),
-
-
     AVE("Ave"),
     REPTIL("Réptil"),
     ANFIBIO("Anfíbio"),
@@ -22,15 +20,11 @@ public enum EspecieCategoria {
     ROEDOR("Roedor"),
     COELHO("Coelho"),
     FURAO("Furão"),
-
-
     PRIMATA("Primata"),
     FELINO_SILVESTRE("Felino Silvestre"),
     CANIDEO_SILVESTRE("Canídeo Silvestre"),
     MARSUPIAL("Marsupial"),
     SILVESTRE("Animal Silvestre"),
-
-
     OUTRO(null);
 
     private final String nomeOficial;
@@ -60,7 +54,6 @@ public enum EspecieCategoria {
             case "suino", "porco", "porca", "leitao" -> SUINO;
             case "ovino", "ovelha", "carneiro" -> OVINO;
             case "caprino", "cabra", "bode" -> CAPRINO;
-
             case "ave", "passaro", "papagaio", "calopsita", "canario", "periquito" -> AVE;
             case "reptil", "lagarto", "cobra", "serpente", "tartaruga", "jabuti", "iguana" -> REPTIL;
             case "anfibio", "sapo", "ra", "salamandra" -> ANFIBIO;
@@ -68,13 +61,11 @@ public enum EspecieCategoria {
             case "roedor", "hamster", "rato", "ratinho", "porquinho-da-india", "porquinho da india" -> ROEDOR;
             case "coelho", "coelha" -> COELHO;
             case "furao" -> FURAO;
-
             case "primata", "macaco", "sagui" -> PRIMATA;
             case "felino silvestre", "gato-do-mato", "onca", "jaguatirica" -> FELINO_SILVESTRE;
             case "canideo silvestre", "lobo-guara", "lobo guara", "raposa" -> CANIDEO_SILVESTRE;
             case "marsupial", "gamba", "sarue" -> MARSUPIAL;
             case "silvestre", "animal silvestre", "fauna silvestre" -> SILVESTRE;
-
             default -> OUTRO;
         };
     }
