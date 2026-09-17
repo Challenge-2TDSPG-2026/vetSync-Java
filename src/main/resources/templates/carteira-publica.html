@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title th:text="'Carteira de vacinação de ' + ${nomePet}">Carteira de vacinação</title>
+    <style>
+        :root { color-scheme: light; }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            padding: 24px 16px 48px;
+            background: #f2f5f3;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            color: #1f2a24;
+        }
+        .card {
+            max-width: 480px;
+            margin: 0 auto;
+            background: #ffffff;
+            border-radius: 16px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+            overflow: hidden;
+        }
+        .card__header {
+            background: #1f7a4d;
+            color: #ffffff;
+            padding: 24px 20px;
+        }
+        .card__header .selo {
+            font-size: 12px;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            opacity: 0.85;
+            margin: 0 0 6px;
+        }
+        .card__header h1 {
+            margin: 0;
+            font-size: 24px;
+        }
+        .card__header p {
+            margin: 6px 0 0;
+            font-size: 14px;
+            opacity: 0.9;
+        }
+        .card__body { padding: 20px; }
+        .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+        .info-grid div { font-size: 14px; }
+        .info-grid span.label {
+            display: block;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #6b756f;
+            margin-bottom: 2px;
+        }
+        h2.secao {
+            font-size: 15px;
+            margin: 0 0 10px;
+            color: #1f2a24;
+        }
+        table.vacinas {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+        table.vacinas th {
+            text-align: left;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            color: #6b756f;
+            padding: 6px 8px;
+            border-bottom: 1px solid #e3e8e5;
+        }
+        table.vacinas td {
+            padding: 10px 8px;
+            border-bottom: 1px solid #eef1ef;
+        }
+        .status {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .status--realizada { background: #e3f5ea; color: #1f7a4d; }
+        .status--agendada { background: #e8f0fe; color: #1a56db; }
+        .status--atrasada { background: #fdecea; color: #b3261e; }
+        .vazio {
+            font-size: 14px;
+            color: #6b756f;
+            padding: 12px 0;
+        }
+        .rodape {
+            max-width: 480px;
+            margin: 16px auto 0;
+            font-size: 12px;
+            color: #8a938d;
+            text-align: center;
+            line-height: 1.5;
+        }
+    </style>
+</head>
+<body>
+<div class="card">
+    <div class="card__header">
+        <p class="selo">Carteira de vacinação</p>
+        <h1 th:text="${nomePet}">Nome do pet</h1>
+        <p th:if="${especie != null or raca != null}">
+            <span th:text="${especie}">Espécie</span>
+            <span th:if="${especie != null and raca != null}"> · </span>
+            <span th:text="${raca}">Raça</span>
+        </p>
+    </div>
+    <div class="card__body">
+        <div class="info-grid">
+            <div>
+                <span class="label">Atualizado em</span>
+                <span th:text="${#temporals.format(atualizadaEm, 'dd/MM/yyyy HH:mm')}">--/--/----</span>
+            </div>
+        </div>
+
+        <h2 class="secao">Vacinas</h2>
+        <table class="vacinas" th:if="${not #lists.isEmpty(vacinas)}">
+            <thead>
+            <tr>
+                <th>Nome</th>
+                <th>Data</th>
+                <th>Status</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="vacina : ${vacinas}">
+                <td th:text="${vacina.nome}">Vacina</td>
+                <td th:text="${#temporals.format(vacina.data, 'dd/MM/yyyy')}">--/--/----</td>
+                <td>
+                        <span class="status"
+                              th:classappend="${vacina.status == 'Realizada'} ? 'status--realizada' : (${vacina.status == 'Agendada'} ? 'status--agendada' : 'status--atrasada')"
+                              th:text="${vacina.status}">Status</span>
+                </td>
+            </tr>
+            </tbody>
+        </table>
+        <p class="vazio" th:if="${#lists.isEmpty(vacinas)}">Nenhuma vacina registrada até o momento.</p>
+    </div>
+</div>
+<p class="rodape">
+    Esta é uma página pública e temporária gerada pelo VetSync.<br />
+    Nenhum dado do tutor ou informação clínica é exibido aqui.
+</p>
+</body>
+</html>
