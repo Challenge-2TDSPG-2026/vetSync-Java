@@ -1,7 +1,6 @@
 package br.com.fiap.VetSync.service;
 
 import br.com.fiap.VetSync.entity.CarteiraCompartilhada;
-import br.com.fiap.VetSync.entity.EventoSaude;
 import br.com.fiap.VetSync.entity.Pet;
 import br.com.fiap.VetSync.entity.StatusEvento;
 import br.com.fiap.VetSync.repository.CarteiraCompartilhadaRepository;
@@ -119,10 +118,9 @@ public class CarteiraCompartilhadaService {
         carteiraCompartilhadaRepository.save(carteira);
 
         Pet pet = carteira.getPet();
-        List<VacinaPublica> vacinas = eventoSaudeRepository.findByPet_IdPet(pet.getIdPet()).stream()
-                .filter(this::isVacina)
-                .filter(e -> e.getDsStatus() != StatusEvento.CANCELADO)
-                .sorted(Comparator.comparing(EventoSaude::getDtEvento).reversed())
+        List<VacinaPublica> vacinas = eventoSaudeRepository
+                .buscarVacinasPublicasPorPet(pet.getIdPet(), NOME_TIPO_EVENTO_VACINA, StatusEvento.CANCELADO)
+                .stream()
                 .map(this::toVacinaPublica)
                 .toList();
 
@@ -135,19 +133,14 @@ public class CarteiraCompartilhadaService {
         return new CarteiraPublica(pet.getNmPet(), especie, raca, LocalDateTime.now(), vacinas);
     }
 
-    private boolean isVacina(EventoSaude evento) {
-        return evento.getTipoEvento() != null
-                && NOME_TIPO_EVENTO_VACINA.equalsIgnoreCase(evento.getTipoEvento().getNmTipoEvento());
-    }
-
-    private VacinaPublica toVacinaPublica(EventoSaude evento) {
-        String status = switch (evento.getDsStatus()) {
+    private VacinaPublica toVacinaPublica(EventoSaudeRepository.VacinaPublicaProjection vacina) {
+        String status = switch (vacina.getStatus()) {
             case CONCLUIDO -> "Realizada";
-            case AGENDADO -> evento.getDtEvento() != null && evento.getDtEvento().isBefore(LocalDate.now())
+            case AGENDADO -> vacina.getData() != null && vacina.getData().isBefore(LocalDate.now())
                     ? "Atrasada" : "Agendada";
             case CANCELADO -> "Cancelada";
         };
-        return new VacinaPublica(evento.getTipoEvento().getNmTipoEvento(), evento.getDtEvento(), status);
+        return new VacinaPublica(vacina.getNome(), vacina.getData(), status);
     }
 
     private String gerarTokenAleatorio() {
