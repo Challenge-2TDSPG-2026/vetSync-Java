@@ -10,7 +10,10 @@ import java.time.LocalDate;
 import java.util.List;
 
 public interface EventoSaudeRepository extends JpaRepository<EventoSaude, Long> {
-
+    /**
+     * Projeção usada na carteira pública. Ela consulta apenas os dados que podem
+     * ser exibidos no link compartilhável e não instancia EventoSaude.
+     */
     interface VacinaPublicaProjection {
         String getNome();
         LocalDate getData();
@@ -34,7 +37,10 @@ public interface EventoSaudeRepository extends JpaRepository<EventoSaude, Long> 
     List<EventoSaude> findByPet_IdPet(Long idPet);
     List<EventoSaude> findByPet_Tutor_DsEmailOrderByDtEventoDesc(String email);
 
-
+    /**
+     * Eventos visíveis para um tutor: dos pets de que ele é proprietário, OU dos pets em que ele
+     * tem acesso ativo (cuidador/cônjuge, LEITURA ou EDICAO) via TB_PET_ACESSO.
+     */
     @Query("""
             select e from EventoSaude e
             where e.pet.tutor.dsEmail = :email
