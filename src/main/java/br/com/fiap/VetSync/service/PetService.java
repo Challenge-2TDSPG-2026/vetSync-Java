@@ -3,9 +3,12 @@ package br.com.fiap.VetSync.service;
 import br.com.fiap.VetSync.entity.Especie;
 import br.com.fiap.VetSync.entity.EspecieCategoria;
 import br.com.fiap.VetSync.entity.Pet;
+import br.com.fiap.VetSync.entity.PetAcesso;
 import br.com.fiap.VetSync.entity.Raca;
+import br.com.fiap.VetSync.entity.StatusAcessoPet;
 import br.com.fiap.VetSync.entity.Tutor;
 import br.com.fiap.VetSync.repository.EspecieRepository;
+import br.com.fiap.VetSync.repository.PetAcessoRepository;
 import br.com.fiap.VetSync.repository.PetRepository;
 import br.com.fiap.VetSync.repository.RacaRepository;
 import lombok.RequiredArgsConstructor;
@@ -16,6 +19,8 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDate;
 import java.time.Period;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 
 @Service
@@ -26,6 +31,7 @@ public class PetService {
     private final TutorService tutorService;
     private final EspecieRepository especieRepository;
     private final RacaRepository racaRepository;
+    private final PetAcessoRepository petAcessoRepository;
 
     public Pet cadastrar(Pet pet, Long idTutor, EspecieCategoria categoria, String especieOutro, String nmRaca) {
         Tutor tutor = tutorService.buscarPorId(idTutor);
@@ -78,6 +84,24 @@ public class PetService {
 
     public List<Pet> listarPorTutor(Long idTutor) {
         return petRepository.findByTutor_IdTutor(idTutor);
+    }
+
+    /**
+     * Pets próprios + pets com acesso ativo (cuidador/cônjuge) para o tutor autenticado.
+     * Usado na listagem principal do app — {@link #listarPorTutor} continua existindo para
+     * quem precisa só dos pets de que o tutor é proprietário (ex.: veterinário consultando um tutor).
+     */
+    public List<Pet> listarAcessiveis(Long idTutor) {
+        List<Pet> proprios = petRepository.findByTutor_IdTutor(idTutor);
+        List<Pet> compartilhados = petAcessoRepository.findByTutor_IdTutorAndDsStatus(idTutor, StatusAcessoPet.ATIVO)
+                .stream()
+                .map(PetAcesso::getPet)
+                .toList();
+
+        LinkedHashMap<Long, Pet> mesclados = new LinkedHashMap<>();
+        proprios.forEach(pet -> mesclados.put(pet.getIdPet(), pet));
+        compartilhados.forEach(pet -> mesclados.putIfAbsent(pet.getIdPet(), pet));
+        return new ArrayList<>(mesclados.values());
     }
 
     public Pet atualizar(Long id, Pet petAtualizado, EspecieCategoria categoria, String especieOutro, String nmRaca) {

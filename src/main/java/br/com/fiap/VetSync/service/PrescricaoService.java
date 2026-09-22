@@ -54,7 +54,7 @@ public class PrescricaoService {
     }
 
     public List<Prescricao> listarPorTutor(String email) {
-        return prescricaoRepository.findByEvento_Pet_Tutor_DsEmailOrderByIdPrescricaoDesc(email);
+        return prescricaoRepository.findVisiveisParaTutor(email);
     }
 
     public List<Prescricao> listarPorVeterinario(String email) {

@@ -110,17 +110,19 @@ public class PetController {
 
     @GetMapping
     @PreAuthorize("hasRole('TUTOR')")
-    @Operation(summary = "Listar pets do tutor autenticado")
+    @Operation(summary = "Listar pets do tutor autenticado",
+            description = "Inclui os pets próprios e os pets de terceiros nos quais o tutor tem acesso ativo como cuidador/cônjuge.")
     public List<PetResponse> listarMeusPets(Authentication authentication) {
         Long idTutor = idTutorAutenticado(authentication);
-        return petService.listarPorTutor(idTutor).stream()
+        return petService.listarAcessiveis(idTutor).stream()
                 .map(this::toResponse)
                 .toList();
     }
 
     @GetMapping("/{id:\\d+}")
-    @PreAuthorize("hasRole('VETERINARIO') or @petSecurity.isOwner(#id, authentication)")
-    @Operation(summary = "Buscar pet por ID", description = "Veterinário vê qualquer pet; tutor só vê o próprio.")
+    @PreAuthorize("hasRole('VETERINARIO') or @petAccessSecurity.canView(#id, authentication)")
+    @Operation(summary = "Buscar pet por ID",
+            description = "Veterinário vê qualquer pet; tutor vê se for o proprietário ou tiver acesso ativo (LEITURA ou EDICAO).")
     public PetResponse buscarPorId(@PathVariable Long id) {
         return toResponse(petService.buscarPorId(id));
     }

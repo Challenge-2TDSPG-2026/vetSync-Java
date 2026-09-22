@@ -1,8 +1,8 @@
 package br.com.fiap.VetSync.controller;
 
 import br.com.fiap.VetSync.entity.*;
+import br.com.fiap.VetSync.security.PetAccessSecurity;
 import br.com.fiap.VetSync.service.EventoService;
-import br.com.fiap.VetSync.service.PetService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -37,8 +37,10 @@ class EventoControllerTest {
     @MockBean
     private EventoService eventoService;
 
+    // Substitui o bean real (que consultaria o banco de verdade) para os testes
+    // conseguirem simular proprietário/cuidador sem persistir Pet/PetAcesso.
     @MockBean
-    private PetService petService;
+    private PetAccessSecurity petAccessSecurity;
 
     @Test
     @DisplayName("POST /eventos - Agendar com sucesso por TUTOR proprietário")
@@ -49,7 +51,7 @@ class EventoControllerTest {
         TipoEvento tipo = TipoEvento.builder().idTipoEvento(2L).nmTipoEvento("Vacina").build();
         Veterinario vet = Veterinario.builder().idVeterinario(3L).nmVeterinario("Dr. V").build();
 
-        when(petService.buscarPorId(1L)).thenReturn(pet);
+        when(petAccessSecurity.canEdit(eq(1L), any())).thenReturn(true);
 
         EventoSaude eventoCriado = EventoSaude.builder()
                 .idEvento(100L)
@@ -75,13 +77,42 @@ class EventoControllerTest {
     }
 
     @Test
-    @DisplayName("POST /eventos - Falha com 403 se tutor tentar agendar para pet que não é dele")
-    @WithMockUser(username = "outro_tutor@teste.com", roles = "TUTOR")
-    void agendar_PetNaoPertenceAoTutor() throws Exception {
+    @DisplayName("POST /eventos - Agendar com sucesso por cuidador com permissão EDICAO")
+    @WithMockUser(username = "cuidador@teste.com", roles = "TUTOR")
+    void agendar_SucessoComoCuidadorEdicao() throws Exception {
         Tutor dono = Tutor.builder().dsEmail("dono@teste.com").build();
         Pet pet = Pet.builder().idPet(1L).tutor(dono).build();
+        TipoEvento tipo = TipoEvento.builder().idTipoEvento(2L).nmTipoEvento("Vacina").build();
+        Veterinario vet = Veterinario.builder().idVeterinario(3L).nmVeterinario("Dr. V").build();
 
-        when(petService.buscarPorId(1L)).thenReturn(pet);
+        when(petAccessSecurity.canEdit(eq(1L), any())).thenReturn(true);
+
+        EventoSaude eventoCriado = EventoSaude.builder()
+                .idEvento(101L)
+                .pet(pet)
+                .tipoEvento(tipo)
+                .veterinario(vet)
+                .dtEvento(LocalDate.now().plusDays(2))
+                .hrEvento("14:30")
+                .dsStatus(StatusEvento.AGENDADO)
+                .build();
+
+        when(eventoService.agendar(any(), eq(1L), eq(2L), eq(3L))).thenReturn(eventoCriado);
+
+        var req = new EventoController.EventoAgendarRequest(1L, 2L, 3L, LocalDate.now().plusDays(2), "14:30", "Obs");
+
+        mockMvc.perform(post("/eventos")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(req)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.idEvento").value(101));
+    }
+
+    @Test
+    @DisplayName("POST /eventos - Falha com 403 se tutor não é dono nem tem acesso EDICAO ao pet")
+    @WithMockUser(username = "outro_tutor@teste.com", roles = "TUTOR")
+    void agendar_SemPermissaoNoPet() throws Exception {
+        when(petAccessSecurity.canEdit(eq(1L), any())).thenReturn(false);
 
         var req = new EventoController.EventoAgendarRequest(1L, 2L, 3L, LocalDate.now().plusDays(2), "14:30", "Obs");
 
@@ -89,7 +120,7 @@ class EventoControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(req)))
                 .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.mensagem").value("Esse pet não pertence a você"));
+                .andExpect(jsonPath("$.mensagem").value("Você não tem permissão para agendar eventos para esse pet"));
     }
 
     @Test
@@ -107,9 +138,10 @@ class EventoControllerTest {
     }
 
     @Test
-    @DisplayName("GET /eventos/pet/{idPet}/gasto-total - Retorna total gasto")
+    @DisplayName("GET /eventos/pet/{idPet}/gasto-total - Retorna total gasto para quem pode ver o pet")
     @WithMockUser(roles = "TUTOR")
     void gastoTotal_Sucesso() throws Exception {
+        when(petAccessSecurity.canView(eq(1L), any())).thenReturn(true);
         when(eventoService.calcularGastoTotal(1L)).thenReturn(new BigDecimal("250.00"));
 
         mockMvc.perform(get("/eventos/pet/1/gasto-total"))
@@ -118,9 +150,20 @@ class EventoControllerTest {
     }
 
     @Test
-    @DisplayName("GET /eventos/pet/{idPet}/alertas - Retorna lista de alertas")
+    @DisplayName("GET /eventos/pet/{idPet}/gasto-total - 403 para quem não tem acesso ao pet")
+    @WithMockUser(roles = "TUTOR")
+    void gastoTotal_SemAcesso() throws Exception {
+        when(petAccessSecurity.canView(eq(1L), any())).thenReturn(false);
+
+        mockMvc.perform(get("/eventos/pet/1/gasto-total"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @DisplayName("GET /eventos/pet/{idPet}/alertas - Retorna lista de alertas para quem pode ver o pet")
     @WithMockUser(roles = "TUTOR")
     void alertas_Sucesso() throws Exception {
+        when(petAccessSecurity.canView(eq(1L), any())).thenReturn(true);
         var alerta = new EventoService.AlertaEvento("Vacina", LocalDate.now().minusMonths(13), 13, true, "Atrasado");
         when(eventoService.gerarAlertas(1L)).thenReturn(List.of(alerta));
 

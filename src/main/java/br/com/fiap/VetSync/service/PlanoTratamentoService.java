@@ -71,7 +71,7 @@ public class PlanoTratamentoService {
     }
 
     public List<PlanoTratamento> listarParaTutor(String email) {
-        return planoTratamentoRepository.findByPet_Tutor_DsEmailOrderByDtCriacaoDesc(email);
+        return planoTratamentoRepository.findVisiveisParaTutor(email);
     }
 
     public List<PlanoTratamento> listarParaVeterinario(String email) {

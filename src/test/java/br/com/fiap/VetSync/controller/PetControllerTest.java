@@ -80,7 +80,7 @@ class PetControllerTest {
         when(tutorService.buscarPorEmail("tutor@teste.com")).thenReturn(Optional.of(tutor));
 
         Pet pet = Pet.builder().idPet(1L).nmPet("Totó").dtNascimento(LocalDate.now().minusYears(1)).build();
-        when(petService.listarPorTutor(1L)).thenReturn(List.of(pet));
+        when(petService.listarAcessiveis(1L)).thenReturn(List.of(pet));
 
         mockMvc.perform(get("/pets"))
                 .andExpect(status().isOk())

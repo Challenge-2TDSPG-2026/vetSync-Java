@@ -150,7 +150,7 @@ public class EventoService {
     }
 
     public List<EventoSaude> listarParaTutor(String email) {
-        return eventoSaudeRepository.findByPet_Tutor_DsEmailOrderByDtEventoDesc(email);
+        return eventoSaudeRepository.findVisiveisParaTutor(email);
     }
 
     public List<EventoSaude> listarParaVeterinario(String email) {

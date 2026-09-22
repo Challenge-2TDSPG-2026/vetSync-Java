@@ -4,6 +4,7 @@ import br.com.fiap.VetSync.entity.Admin;
 import br.com.fiap.VetSync.entity.Prescricao;
 import br.com.fiap.VetSync.repository.AdminRepository;
 import br.com.fiap.VetSync.security.PerfilUtils;
+import br.com.fiap.VetSync.security.PetAccessSecurity;
 import br.com.fiap.VetSync.service.PrescricaoService;
 import br.com.fiap.VetSync.service.VeterinarioService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -31,6 +32,7 @@ public class PrescricaoController {
     private final PrescricaoService prescricaoService;
     private final VeterinarioService veterinarioService;
     private final AdminRepository adminRepository;
+    private final PetAccessSecurity petAccessSecurity;
 
     public record PrescricaoRequest(
             @NotNull(message = "idEvento é obrigatório") Long idEvento,
@@ -116,9 +118,9 @@ public class PrescricaoController {
         var evento = prescricao.getEvento();
         boolean ehVet = evento != null && evento.getVeterinario() != null
                 && evento.getVeterinario().getDsEmail().equalsIgnoreCase(authentication.getName());
-        boolean ehTutor = evento != null && evento.getPet() != null && evento.getPet().getTutor() != null
-                && evento.getPet().getTutor().getDsEmail().equalsIgnoreCase(authentication.getName());
-        if (!PerfilUtils.isAdmin(authentication) && !ehVet && !ehTutor) {
+        boolean temAcessoAoPet = evento != null && evento.getPet() != null
+                && petAccessSecurity.canView(evento.getPet().getIdPet(), authentication);
+        if (!PerfilUtils.isAdmin(authentication) && !ehVet && !temAcessoAoPet) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Você não tem acesso a essa prescrição");
         }
         return toResponse(prescricao);

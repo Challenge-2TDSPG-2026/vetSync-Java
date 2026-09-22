@@ -36,6 +36,9 @@ class PetServiceTest {
     @Mock
     private RacaRepository racaRepository;
 
+    @Mock
+    private PetAcessoRepository petAcessoRepository;
+
     @InjectMocks
     private PetService petService;
 
@@ -108,6 +111,25 @@ class PetServiceTest {
 
         List<Pet> pets = petService.listarPorTutor(1L);
         assertThat(pets).hasSize(2);
+    }
+
+    @Test
+    @DisplayName("Deve listar pets próprios + pets com acesso ativo (cuidador/cônjuge) sem duplicar")
+    void listarAcessiveis_IncluiProprioseCompartilhados() {
+        Pet proprio = Pet.builder().idPet(1L).build();
+        Pet compartilhado = Pet.builder().idPet(2L).build();
+        Pet compartilhadoJaProprio = Pet.builder().idPet(1L).build(); // mesmo id do próprio: não deve duplicar
+
+        when(petRepository.findByTutor_IdTutor(9L)).thenReturn(List.of(proprio));
+        when(petAcessoRepository.findByTutor_IdTutorAndDsStatus(9L, StatusAcessoPet.ATIVO)).thenReturn(List.of(
+                PetAcesso.builder().pet(compartilhado).build(),
+                PetAcesso.builder().pet(compartilhadoJaProprio).build()
+        ));
+
+        List<Pet> pets = petService.listarAcessiveis(9L);
+
+        assertThat(pets).hasSize(2);
+        assertThat(pets).extracting(Pet::getIdPet).containsExactlyInAnyOrder(1L, 2L);
     }
 
     @Test

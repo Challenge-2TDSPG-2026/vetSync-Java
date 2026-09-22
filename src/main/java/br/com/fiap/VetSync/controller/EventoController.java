@@ -3,8 +3,8 @@ package br.com.fiap.VetSync.controller;
 import br.com.fiap.VetSync.entity.EventoSaude;
 import br.com.fiap.VetSync.entity.StatusEvento;
 import br.com.fiap.VetSync.security.PerfilUtils;
+import br.com.fiap.VetSync.security.PetAccessSecurity;
 import br.com.fiap.VetSync.service.EventoService;
-import br.com.fiap.VetSync.service.PetService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -32,7 +32,7 @@ import java.util.List;
 public class EventoController {
 
     private final EventoService eventoService;
-    private final PetService petService;
+    private final PetAccessSecurity petAccessSecurity;
 
     public record EventoAgendarRequest(
             @NotNull(message = "idPet é obrigatório") Long idPet,
@@ -117,10 +117,9 @@ public class EventoController {
     @PreAuthorize("hasRole('TUTOR')")
     @Operation(summary = "Tutor agenda um evento de saúde para um pet dele, escolhendo veterinário e horário livre na agenda dele")
     public EventoResponse agendar(Authentication authentication, @Valid @RequestBody EventoAgendarRequest request) {
-        boolean donoDoPet = petService.buscarPorId(request.idPet()).getTutor().getDsEmail()
-                .equalsIgnoreCase(authentication.getName());
-        if (!donoDoPet) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Esse pet não pertence a você");
+        if (!petAccessSecurity.canEdit(request.idPet(), authentication)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                    "Você não tem permissão para agendar eventos para esse pet");
         }
         EventoSaude evento = EventoSaude.builder()
                 .dtEvento(request.dtEvento())
@@ -136,10 +135,9 @@ public class EventoController {
     @Operation(summary = "Tutor agenda um banho/tosa, escolhendo o profissional de estética, os serviços e horário livre na agenda dele",
             description = "Só aceita tipos de evento de estética (nome contendo \"banho\"). idsServico deve conter pelo menos o serviço base escolhido (banho, banho e tosa na tesoura ou banho e tosa na máquina); serviços extras são opcionais. Para consultas com veterinário use POST /eventos.")
     public EventoResponse agendarEstetica(Authentication authentication, @Valid @RequestBody EventoAgendarEsteticaRequest request) {
-        boolean donoDoPet = petService.buscarPorId(request.idPet()).getTutor().getDsEmail()
-                .equalsIgnoreCase(authentication.getName());
-        if (!donoDoPet) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Esse pet não pertence a você");
+        if (!petAccessSecurity.canEdit(request.idPet(), authentication)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                    "Você não tem permissão para agendar eventos para esse pet");
         }
         EventoSaude evento = EventoSaude.builder()
                 .dtEvento(request.dtEvento())
@@ -181,7 +179,7 @@ public class EventoController {
     }
 
     @PatchMapping("/{id}/cancelar")
-    @PreAuthorize("hasRole('TUTOR') and @eventoSecurity.isTutorDoPet(#id, authentication)")
+    @PreAuthorize("hasRole('TUTOR') and @eventoSecurity.isTutorComEdicao(#id, authentication)")
     @Operation(summary = "Tutor cancela um evento AGENDADO", description = "Motivo é obrigatório. Se 'reagendarPara' vier preenchido, já cria um novo evento AGENDADO na nova data, no mesmo pet/tipo/profissional.")
     public EventoCancelarResponse cancelar(@PathVariable Long id, @Valid @RequestBody EventoCancelarRequest request) {
         EventoService.ResultadoCancelamento resultado = eventoService.cancelar(id, request.motivo(), request.reagendarPara(), request.horaReagendarPara());
@@ -200,12 +198,14 @@ public class EventoController {
     }
 
     @GetMapping("/pet/{idPet}/gasto-total")
+    @PreAuthorize("hasRole('VETERINARIO') or @petAccessSecurity.canView(#idPet, authentication)")
     @Operation(summary = "Somar o gasto total (só eventos CONCLUIDOS) de um pet")
     public BigDecimal gastoTotal(@PathVariable Long idPet) {
         return eventoService.calcularGastoTotal(idPet);
     }
 
     @GetMapping("/pet/{idPet}/alertas")
+    @PreAuthorize("hasRole('VETERINARIO') or @petAccessSecurity.canView(#idPet, authentication)")
     @Operation(summary = "Histórico + alerta de atraso por tipo de evento (só considera eventos CONCLUIDOS)")
     public List<EventoService.AlertaEvento> alertas(@PathVariable Long idPet) {
         return eventoService.gerarAlertas(idPet);
