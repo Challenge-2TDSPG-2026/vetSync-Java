@@ -45,6 +45,11 @@ public class Pet {
     @JoinColumn(name = "id_raca", nullable = false)
     private Raca raca;
 
+    /** Número do pet exibido na carteirinha e usado na busca do admin: o próprio id, com 4 dígitos (ex.: 0042). */
+    public String numeroFormatado() {
+        return idPet == null ? null : String.format("%04d", idPet);
+    }
+
     // NOVO: foto do pet (perfil e carteirinha). Fora de toString/equals/hashCode para não expor o BLOB.
     @ToString.Exclude
     @EqualsAndHashCode.Exclude

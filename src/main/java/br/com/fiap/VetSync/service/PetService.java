@@ -15,6 +15,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -39,13 +40,23 @@ public class PetService {
     private static final long TAMANHO_MAXIMO_FOTO_BYTES = 5L * 1024 * 1024; // 5MB
     private static final Set<String> TIPOS_FOTO_PERMITIDOS = Set.of("image/jpeg", "image/png", "image/webp");
 
+    /** O número do pet é o próprio id e aparece com 4 dígitos, então o limite é 9999. */
+    public static final long NUMERO_MAXIMO_PET = 9999L;
+
+    @Transactional
     public Pet cadastrar(Pet pet, Long idTutor, EspecieCategoria categoria, String especieOutro, String nmRaca) {
         Tutor tutor = tutorService.buscarPorId(idTutor);
         Raca raca = resolverRaca(categoria, especieOutro, nmRaca);
 
         pet.setTutor(tutor);
         pet.setRaca(raca);
-        return petRepository.save(pet);
+        Pet salvo = petRepository.save(pet);
+        if (salvo.getIdPet() != null && salvo.getIdPet() > NUMERO_MAXIMO_PET) {
+            // a exceção desfaz o INSERT (rollback) e nenhum pet com número de 5 dígitos é criado
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Limite de " + NUMERO_MAXIMO_PET + " pets cadastrados atingido (número do pet tem até 4 dígitos)");
+        }
+        return salvo;
     }
 
     private Raca resolverRaca(EspecieCategoria categoria, String especieOutro, String nmRaca) {

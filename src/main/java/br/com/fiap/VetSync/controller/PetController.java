@@ -57,6 +57,7 @@ public class PetController {
 
     public record PetResponse(
             Long idPet,
+            String numero,
             String nmPet,
             String especie,
             String raca,
@@ -72,6 +73,7 @@ public class PetController {
         int idade = petService.calcularIdade(pet);
         return new PetResponse(
                 pet.getIdPet(),
+                pet.numeroFormatado(),
                 pet.getNmPet(),
                 pet.getRaca() != null && pet.getRaca().getEspecie() != null
                         ? pet.getRaca().getEspecie().getNmEspecie() : null,
@@ -125,11 +127,24 @@ public class PetController {
     }
 
     @GetMapping("/{id:\\d+}")
-    @PreAuthorize("hasRole('VETERINARIO') or @petAccessSecurity.canView(#id, authentication)")
+    @PreAuthorize("hasAnyRole('ADMIN','VETERINARIO') or @petAccessSecurity.canView(#id, authentication)")
     @Operation(summary = "Buscar pet por ID",
-            description = "Veterinário vê qualquer pet; tutor vê se for o proprietário ou tiver acesso ativo (LEITURA ou EDICAO).")
+            description = "Admin e veterinário veem qualquer pet; tutor vê se for o proprietário ou tiver acesso ativo (LEITURA ou EDICAO).")
     public PetResponse buscarPorId(@PathVariable Long id) {
         return toResponse(petService.buscarPorId(id));
+    }
+
+    // NOVO
+    @GetMapping("/buscar")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Buscar pet pelo número (id). Somente ADMIN.",
+            description = "Aceita o número com ou sem zeros à esquerda (ex.: 42 ou 0042). Retorna 404 se não existir.")
+    public PetResponse buscarPorNumero(@RequestParam("numero") String numero) {
+        String limpo = numero == null ? "" : numero.trim();
+        if (!limpo.matches("\\d{1,4}")) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "O número do pet deve ter de 1 a 4 dígitos");
+        }
+        return toResponse(petService.buscarPorId(Long.parseLong(limpo)));
     }
 
     @GetMapping("/tutor/{idTutor}")

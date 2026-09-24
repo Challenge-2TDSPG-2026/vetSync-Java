@@ -47,6 +47,7 @@ public class CarteiraPublicaController {
 
         try {
             CarteiraCompartilhadaService.CarteiraPublica carteira = carteiraCompartilhadaService.resolverParaExibicaoPublica(token);
+            model.addAttribute("numeroPet", carteira.numeroPet());
             model.addAttribute("nomePet", carteira.nomePet());
             model.addAttribute("especie", carteira.especie());
             model.addAttribute("raca", carteira.raca());

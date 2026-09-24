@@ -28,6 +28,26 @@
             color: #ffffff;
             padding: 24px 20px;
         }
+        .card__header .foto {
+            width: 96px;
+            height: 96px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 3px solid rgba(255, 255, 255, 0.9);
+            display: block;
+            margin: 0 0 12px;
+            background: #ffffff;
+        }
+        .card__header .numero {
+            display: inline-block;
+            margin: 0 0 10px;
+            padding: 3px 10px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.2);
+            font-size: 13px;
+            font-weight: 600;
+            letter-spacing: 0.06em;
+        }
         .card__header .selo {
             font-size: 12px;
             letter-spacing: 0.08em;
@@ -111,7 +131,9 @@
 <body>
 <div class="card">
     <div class="card__header">
+        <img class="foto" th:if="${fotoUrl != null}" th:src="${fotoUrl}" th:alt="'Foto de ' + ${nomePet}" />
         <p class="selo">Carteira de vacinação</p>
+        <span class="numero" th:if="${numeroPet != null}" th:text="'Nº ' + ${numeroPet}">Nº 0001</span>
         <h1 th:text="${nomePet}">Nome do pet</h1>
         <p th:if="${especie != null or raca != null}">
             <span th:text="${especie}">Espécie</span>

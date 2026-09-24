@@ -41,7 +41,7 @@ public class CarteiraCompartilhadaService {
     public record VacinaPublica(String nome, LocalDate data, String status) {}
 
     public record CarteiraPublica(
-            String nomePet, String especie, String raca, LocalDateTime atualizadaEm, List<VacinaPublica> vacinas,
+            String numeroPet, String nomePet, String especie, String raca, LocalDateTime atualizadaEm, List<VacinaPublica> vacinas,
             boolean temFoto
     ) {}
 
@@ -134,7 +134,7 @@ public class CarteiraCompartilhadaService {
 
         // A página é montada na hora, a partir dos dados atuais do pet — "atualizada em"
         // reflete o momento deste acesso, não a data de criação do link.
-        return new CarteiraPublica(pet.getNmPet(), especie, raca, LocalDateTime.now(), vacinas, pet.getDsFoto() != null);
+        return new CarteiraPublica(pet.numeroFormatado(), pet.getNmPet(), especie, raca, LocalDateTime.now(), vacinas, pet.getDsFoto() != null);
     }
 
     /**
