@@ -9,10 +9,12 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.server.ResponseStatusException;
 
 /**
@@ -50,10 +52,36 @@ public class CarteiraPublicaController {
             model.addAttribute("raca", carteira.raca());
             model.addAttribute("atualizadaEm", carteira.atualizadaEm());
             model.addAttribute("vacinas", carteira.vacinas());
+            model.addAttribute("fotoUrl", carteira.temFoto() ? "/carteiras-publicas/" + token + "/foto" : null);
             return "carteira-publica";
         } catch (ResponseStatusException ex) {
             response.setStatus(ex.getStatusCode().value());
             return "carteira-publica-indisponivel";
+        }
+    }
+
+    // NOVO: foto do pet para a página pública. Só é servida com um token de carteira válido.
+    @GetMapping("/carteiras-publicas/{token}/foto")
+    @ResponseBody
+    @Operation(summary = "Foto do pet exibida na carteira pública",
+            description = "Não exige autenticação, mas exige token de carteira válido (não expirado nem revogado).")
+    public ResponseEntity<byte[]> foto(@PathVariable String token, HttpServletRequest request) {
+        if (!rateLimiter.permitir(chaveDoCliente(request))) {
+            return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).build();
+        }
+        try {
+            CarteiraCompartilhadaService.FotoPublica foto = carteiraCompartilhadaService.resolverFotoPublica(token);
+            MediaType mediaType = foto.tipo() != null
+                    ? MediaType.parseMediaType(foto.tipo())
+                    : MediaType.APPLICATION_OCTET_STREAM;
+            return ResponseEntity.ok()
+                    .contentType(mediaType)
+                    .header("Cache-Control", "no-store")
+                    .header("X-Robots-Tag", "noindex, nofollow")
+                    .header("X-Content-Type-Options", "nosniff")
+                    .body(foto.bytes());
+        } catch (ResponseStatusException ex) {
+            return ResponseEntity.status(ex.getStatusCode()).build();
         }
     }
 

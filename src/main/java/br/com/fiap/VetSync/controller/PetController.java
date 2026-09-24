@@ -14,9 +14,12 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
@@ -61,7 +64,8 @@ public class PetController {
             int idadeAnos,
             BigDecimal peso,
             String sexo,
-            Long idTutor
+            Long idTutor,
+            String fotoUrl
     ) {}
 
     private PetResponse toResponse(Pet pet) {
@@ -76,7 +80,8 @@ public class PetController {
                 idade,
                 pet.getNrPesoKg(),
                 pet.getDsSexo(),
-                pet.getTutor() != null ? pet.getTutor().getIdTutor() : null
+                pet.getTutor() != null ? pet.getTutor().getIdTutor() : null,
+                pet.getDsFoto() != null ? "/pets/" + pet.getIdPet() + "/foto" : null
         );
     }
 
@@ -147,6 +152,43 @@ public class PetController {
                 .dsSexo(request.sexo())
                 .build();
         return toResponse(petService.atualizar(id, petAtualizado, request.especie(), request.especieOutro(), request.raca()));
+    }
+
+    // NOVO
+    @PutMapping(value = "/{id:\\d+}/foto", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("@petAccessSecurity.canEdit(#id, authentication)")
+    @Operation(summary = "Enviar ou substituir a foto do pet (perfil e carteirinha)",
+            description = "Requisição multipart/form-data com o arquivo no campo 'foto' (JPEG, PNG ou WEBP, até 5MB). "
+                    + "Permitido ao tutor dono do pet e a cuidadores com permissão de EDICAO.")
+    public PetResponse atualizarFoto(@PathVariable Long id, @RequestParam("foto") MultipartFile foto) {
+        return toResponse(petService.atualizarFoto(id, foto));
+    }
+
+    // NOVO
+    @DeleteMapping("/{id:\\d+}/foto")
+    @PreAuthorize("@petAccessSecurity.canEdit(#id, authentication)")
+    @Operation(summary = "Remover a foto do pet")
+    public PetResponse removerFoto(@PathVariable Long id) {
+        return toResponse(petService.removerFoto(id));
+    }
+
+    // NOVO
+    @GetMapping("/{id:\\d+}/foto")
+    @PreAuthorize("hasRole('VETERINARIO') or @petAccessSecurity.canView(#id, authentication)")
+    @Operation(summary = "Obter a foto do pet (imagem)",
+            description = "Exige token JWT: quem tem acesso ao pet (tutor, cuidador com acesso ativo) ou veterinário.")
+    public ResponseEntity<byte[]> obterFoto(@PathVariable Long id) {
+        Pet pet = petService.buscarPorId(id);
+        if (pet.getDsFoto() == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Esse pet não possui foto cadastrada");
+        }
+        MediaType mediaType = pet.getDsFotoTipo() != null
+                ? MediaType.parseMediaType(pet.getDsFotoTipo())
+                : MediaType.APPLICATION_OCTET_STREAM;
+        return ResponseEntity.ok()
+                .contentType(mediaType)
+                .header("Cache-Control", "private, no-cache")
+                .body(pet.getDsFoto());
     }
 
     @DeleteMapping("/{id:\\d+}")

@@ -41,8 +41,12 @@ public class CarteiraCompartilhadaService {
     public record VacinaPublica(String nome, LocalDate data, String status) {}
 
     public record CarteiraPublica(
-            String nomePet, String especie, String raca, LocalDateTime atualizadaEm, List<VacinaPublica> vacinas
+            String nomePet, String especie, String raca, LocalDateTime atualizadaEm, List<VacinaPublica> vacinas,
+            boolean temFoto
     ) {}
+
+    /** NOVO: bytes da foto do pet exibida na carteirinha pública. */
+    public record FotoPublica(byte[] bytes, String tipo) {}
 
 
     public CarteiraCriada criarOuRenovar(Long idPet, Long idTutorCriador) {
@@ -130,7 +134,30 @@ public class CarteiraCompartilhadaService {
 
         // A página é montada na hora, a partir dos dados atuais do pet — "atualizada em"
         // reflete o momento deste acesso, não a data de criação do link.
-        return new CarteiraPublica(pet.getNmPet(), especie, raca, LocalDateTime.now(), vacinas);
+        return new CarteiraPublica(pet.getNmPet(), especie, raca, LocalDateTime.now(), vacinas, pet.getDsFoto() != null);
+    }
+
+    /**
+     * NOVO: resolve a foto do pet a partir do token público. Mesmas regras de validade do link
+     * (inexistente = 404; revogado/expirado = 410) e sem atualizar o "último acesso".
+     */
+    public FotoPublica resolverFotoPublica(String tokenPuro) {
+        if (tokenPuro == null || tokenPuro.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND);
+        }
+        CarteiraCompartilhada carteira = carteiraCompartilhadaRepository.findByTokenHash(calcularHash(tokenPuro)).orElse(null);
+        if (carteira == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND);
+        }
+        if (carteira.getRevogadaEm() != null
+                || carteira.getExpiraEm() == null || !carteira.getExpiraEm().isAfter(LocalDateTime.now())) {
+            throw new ResponseStatusException(HttpStatus.GONE);
+        }
+        Pet pet = carteira.getPet();
+        if (pet == null || pet.getDsFoto() == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND);
+        }
+        return new FotoPublica(pet.getDsFoto(), pet.getDsFotoTipo());
     }
 
     private VacinaPublica toVacinaPublica(EventoSaudeRepository.VacinaPublicaProjection vacina) {

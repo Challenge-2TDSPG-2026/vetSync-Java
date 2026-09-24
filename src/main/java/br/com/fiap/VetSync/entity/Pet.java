@@ -44,4 +44,14 @@ public class Pet {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_raca", nullable = false)
     private Raca raca;
+
+    // NOVO: foto do pet (perfil e carteirinha). Fora de toString/equals/hashCode para não expor o BLOB.
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    @Lob
+    @Column(name = "ds_foto")
+    private byte[] dsFoto;
+
+    @Column(name = "ds_foto_tipo", length = 100)
+    private String dsFotoTipo;
 }

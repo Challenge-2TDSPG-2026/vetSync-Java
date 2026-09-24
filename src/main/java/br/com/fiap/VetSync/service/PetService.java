@@ -15,13 +15,16 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.io.IOException;
 import java.time.LocalDate;
 import java.time.Period;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -32,6 +35,9 @@ public class PetService {
     private final EspecieRepository especieRepository;
     private final RacaRepository racaRepository;
     private final PetAcessoRepository petAcessoRepository;
+
+    private static final long TAMANHO_MAXIMO_FOTO_BYTES = 5L * 1024 * 1024; // 5MB
+    private static final Set<String> TIPOS_FOTO_PERMITIDOS = Set.of("image/jpeg", "image/png", "image/webp");
 
     public Pet cadastrar(Pet pet, Long idTutor, EspecieCategoria categoria, String especieOutro, String nmRaca) {
         Tutor tutor = tutorService.buscarPorId(idTutor);
@@ -119,6 +125,62 @@ public class PetService {
         }
 
         return petRepository.save(pet);
+    }
+
+    /** NOVO: define ou substitui a foto do pet (perfil e carteirinha). */
+    public Pet atualizarFoto(Long idPet, MultipartFile foto) {
+        if (foto == null || foto.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Envie o arquivo da foto no campo 'foto'");
+        }
+        if (foto.getSize() > TAMANHO_MAXIMO_FOTO_BYTES) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "A foto deve ter no máximo 5MB");
+        }
+        String contentType = foto.getContentType();
+        if (contentType == null || !TIPOS_FOTO_PERMITIDOS.contains(contentType.toLowerCase())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Formato de imagem inválido. Envie um arquivo JPEG, PNG ou WEBP");
+        }
+
+        byte[] bytes;
+        try {
+            bytes = foto.getBytes();
+        } catch (IOException e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Não foi possível ler o arquivo de imagem enviado");
+        }
+        // O Content-Type vem do cliente e pode ser falsificado: confere também a assinatura real do arquivo.
+        String tipoReal = detectarTipoImagem(bytes);
+        if (tipoReal == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "O arquivo enviado não é uma imagem JPEG, PNG ou WEBP válida");
+        }
+
+        Pet pet = buscarPorId(idPet);
+        pet.setDsFoto(bytes);
+        pet.setDsFotoTipo(tipoReal);
+        return petRepository.save(pet);
+    }
+
+    /** NOVO: remove a foto do pet. */
+    public Pet removerFoto(Long idPet) {
+        Pet pet = buscarPorId(idPet);
+        pet.setDsFoto(null);
+        pet.setDsFotoTipo(null);
+        return petRepository.save(pet);
+    }
+
+    private String detectarTipoImagem(byte[] b) {
+        if (b.length >= 3 && (b[0] & 0xFF) == 0xFF && (b[1] & 0xFF) == 0xD8 && (b[2] & 0xFF) == 0xFF) {
+            return "image/jpeg";
+        }
+        if (b.length >= 8 && (b[0] & 0xFF) == 0x89 && b[1] == 'P' && b[2] == 'N' && b[3] == 'G'
+                && b[4] == 0x0D && b[5] == 0x0A && b[6] == 0x1A && b[7] == 0x0A) {
+            return "image/png";
+        }
+        if (b.length >= 12 && b[0] == 'R' && b[1] == 'I' && b[2] == 'F' && b[3] == 'F'
+                && b[8] == 'W' && b[9] == 'E' && b[10] == 'B' && b[11] == 'P') {
+            return "image/webp";
+        }
+        return null;
     }
 
     public void deletar(Long id) {
