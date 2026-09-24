@@ -28,7 +28,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/recompensas")
 @RequiredArgsConstructor
-@Tag(name = "Recompensas", description = "Catálogo de prêmios, saldo de pontos e resgate")
+@Tag(name = "Recompensas", description = "Catálogo de prêmios/produtos, saldo de pontos e resgate")
 public class RecompensaController {
 
     private final RecompensaService recompensaService;
@@ -50,10 +50,31 @@ public class RecompensaController {
             TipoRecompensa tipo
     ) {}
 
+    // NOVO: edição (multipart). 'ativo' é opcional; 'removerImagem' só vale se nenhuma imagem nova for enviada.
+    public record RecompensaUpdateRequest(
+            @NotBlank(message = "Nome é obrigatório")
+            String nome,
+
+            String descricao,
+
+            @NotNull(message = "Custo em pontos é obrigatório")
+            @Positive(message = "Custo em pontos deve ser positivo")
+            Integer custoPontos,
+
+            @NotNull(message = "Tipo é obrigatório")
+            TipoRecompensa tipo,
+
+            Boolean ativo,
+
+            Boolean removerImagem
+    ) {}
+
     public record RecompensaResponse(
             Long idRecompensa, String nome, String descricao, Integer custoPontos, String tipo, boolean ativa,
             String imagemUrl
     ) {}
+
+    public record ExclusaoResponse(boolean excluidoDefinitivamente, String mensagem) {}
 
     public record ResgateResponse(
             Long idResgate, String status, LocalDateTime dtResgate,
@@ -92,16 +113,32 @@ public class RecompensaController {
     }
 
     @GetMapping
-    @Operation(summary = "Listar recompensas ativas do catálogo")
+    @Operation(summary = "Listar recompensas/produtos ativos do catálogo")
     public List<RecompensaResponse> listar() {
         return recompensaService.listarAtivas().stream().map(this::toResponse).toList();
     }
 
+    // NOVO
+    @GetMapping("/todas")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Listar todo o catálogo, inclusive inativos. Somente ADMIN.")
+    public List<RecompensaResponse> listarTodas() {
+        return recompensaService.listarTodas().stream().map(this::toResponse).toList();
+    }
+
+    // NOVO
+    @GetMapping("/{id}")
+    @Operation(summary = "Buscar recompensa/produto por ID")
+    public RecompensaResponse buscarPorId(@PathVariable Long id) {
+        return toResponse(recompensaService.buscarPorId(id));
+    }
+
+    // ALTERADO: cadastro restrito ao ADMIN
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @ResponseStatus(HttpStatus.CREATED)
-    @PreAuthorize("hasRole('VETERINARIO')")
+    @PreAuthorize("hasRole('ADMIN')")
     @Operation(
-            summary = "Cadastrar recompensa/produto no catálogo (com upload de imagem opcional). Somente VETERINARIO (equipe da clínica).",
+            summary = "Cadastrar recompensa/produto no catálogo (com upload de imagem opcional). Somente ADMIN.",
             description = "Requisição multipart/form-data. Campos: nome, descricao, custoPontos, tipo (PRODUTO ou CUPOM_DESCONTO) e, opcionalmente, o arquivo 'imagem' (JPEG, PNG ou WEBP, até 5MB)."
     )
     public RecompensaResponse criar(@Valid RecompensaRequest request,
@@ -110,6 +147,37 @@ public class RecompensaController {
                 request.nome(), request.descricao(), request.custoPontos(), request.tipo(), imagem
         );
         return toResponse(recompensa);
+    }
+
+    // NOVO
+    @PutMapping(value = "/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(
+            summary = "Editar recompensa/produto (dados e foto). Somente ADMIN.",
+            description = "Requisição multipart/form-data. Campos: nome, descricao, custoPontos, tipo, ativo (opcional), "
+                    + "removerImagem (opcional) e 'imagem' (opcional; se enviada, substitui a foto atual)."
+    )
+    public RecompensaResponse atualizar(@PathVariable Long id, @Valid RecompensaUpdateRequest request,
+                                        @RequestParam(value = "imagem", required = false) MultipartFile imagem) {
+        Recompensa recompensa = recompensaService.atualizar(
+                id, request.nome(), request.descricao(), request.custoPontos(), request.tipo(),
+                request.ativo(), imagem, Boolean.TRUE.equals(request.removerImagem())
+        );
+        return toResponse(recompensa);
+    }
+
+    // NOVO
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(
+            summary = "Excluir recompensa/produto. Somente ADMIN.",
+            description = "Se o produto já tiver resgates vinculados, ele é apenas inativado para preservar o histórico dos tutores."
+    )
+    public ExclusaoResponse excluir(@PathVariable Long id) {
+        var resultado = recompensaService.excluir(id);
+        return resultado.excluidoDefinitivamente()
+                ? new ExclusaoResponse(true, "Produto excluído")
+                : new ExclusaoResponse(false, "Produto possui resgates vinculados e foi apenas inativado");
     }
 
     @GetMapping("/{id}/imagem")

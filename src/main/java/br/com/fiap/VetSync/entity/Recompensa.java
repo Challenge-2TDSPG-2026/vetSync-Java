@@ -37,6 +37,9 @@ public class Recompensa {
     @Column(name = "fl_ativo", nullable = false)
     private Boolean flAtivo = true;
 
+    // ALTERADO: excluídos de toString/equals/hashCode para não imprimir/comparar o BLOB inteiro
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
     @Lob
     @Column(name = "ds_imagem")
     private byte[] dsImagem;

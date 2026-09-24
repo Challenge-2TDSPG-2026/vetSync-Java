@@ -7,6 +7,7 @@ import br.com.fiap.VetSync.repository.VeterinarioRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -28,6 +29,9 @@ public class RecompensaService {
     private static final Set<String> TIPOS_IMAGEM_PERMITIDOS = Set.of(
             "image/jpeg", "image/png", "image/webp"
     );
+
+    /** Resultado da exclusão: true = removido do banco; false = apenas inativado (há resgates vinculados). */
+    public record ResultadoExclusao(boolean excluidoDefinitivamente) {}
 
     public Recompensa criar(String nome, String descricao, Integer custoPontos, TipoRecompensa tipo) {
         return criar(nome, descricao, custoPontos, tipo, null);
@@ -54,6 +58,54 @@ public class RecompensaService {
         return recompensaRepository.save(builder.build());
     }
 
+    /**
+     * NOVO: edita os dados do produto. Se 'imagem' vier preenchida, substitui a foto atual;
+     * se 'removerImagem' for true (e nenhuma imagem nova vier), remove a foto; caso contrário, mantém a atual.
+     */
+    @Transactional
+    public Recompensa atualizar(Long id, String nome, String descricao, Integer custoPontos, TipoRecompensa tipo,
+                                Boolean ativo, MultipartFile imagem, boolean removerImagem) {
+        Recompensa recompensa = buscarPorId(id);
+        recompensa.setNmRecompensa(nome);
+        recompensa.setDsDescricao(descricao);
+        recompensa.setNrCustoPontos(custoPontos);
+        recompensa.setDsTipo(tipo);
+        if (ativo != null) {
+            recompensa.setFlAtivo(ativo);
+        }
+
+        if (imagem != null && !imagem.isEmpty()) {
+            validarImagem(imagem);
+            try {
+                recompensa.setDsImagem(imagem.getBytes());
+                recompensa.setDsImagemTipo(imagem.getContentType());
+            } catch (IOException e) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Não foi possível ler o arquivo de imagem enviado");
+            }
+        } else if (removerImagem) {
+            recompensa.setDsImagem(null);
+            recompensa.setDsImagemTipo(null);
+        }
+
+        return recompensaRepository.save(recompensa);
+    }
+
+    /**
+     * NOVO: exclui o produto. Se já existirem resgates vinculados (FK em TB_RESGATE), não é possível
+     * apagar sem perder o histórico dos tutores; nesse caso o produto é apenas inativado.
+     */
+    @Transactional
+    public ResultadoExclusao excluir(Long id) {
+        Recompensa recompensa = buscarPorId(id);
+        if (resgateRepository.existsByRecompensa_IdRecompensa(id)) {
+            recompensa.setFlAtivo(false);
+            recompensaRepository.save(recompensa);
+            return new ResultadoExclusao(false);
+        }
+        recompensaRepository.delete(recompensa);
+        return new ResultadoExclusao(true);
+    }
+
     private void validarImagem(MultipartFile imagem) {
         if (imagem.getSize() > TAMANHO_MAXIMO_IMAGEM_BYTES) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "A imagem deve ter no máximo 5MB");
@@ -69,14 +121,16 @@ public class RecompensaService {
         return recompensaRepository.findByFlAtivoTrue();
     }
 
+    /** NOVO: catálogo completo (ativos e inativos) para a tela administrativa. */
+    public List<Recompensa> listarTodas() {
+        return recompensaRepository.findAllByOrderByIdRecompensaAsc();
+    }
+
     public Recompensa buscarPorId(Long id) {
         return recompensaRepository.findById(id).orElseThrow(
                 () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Recompensa não encontrada com id: " + id)
         );
     }
-
-
-
 
     public int calcularSaldo(Long idTutor) {
         int ganhos = pontosService.calcularPontosLiberados(idTutor);
@@ -88,8 +142,6 @@ public class RecompensaService {
 
         return ganhos - gastos;
     }
-
-
 
     public Resgate solicitarResgate(Long idTutor, Long idRecompensa) {
         Recompensa recompensa = buscarPorId(idRecompensa);
