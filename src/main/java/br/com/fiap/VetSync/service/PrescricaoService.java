@@ -22,6 +22,14 @@ public class PrescricaoService {
     private final EventoService eventoService;
     private final EmailService emailService;
 
+    private static final String MENSAGEM_PADRAO_PRESCRICAO =
+            "\n\n---\n"
+                    + "Este é um aviso automático do VetSync. As informações apresentadas têm caráter "
+                    + "orientativo e não substituem a avaliação do veterinário responsável.\n"
+                    + "Não altere medicamentos, doses ou horários, nem interrompa o tratamento por conta "
+                    + "própria. Em caso de dúvidas, efeitos adversos ou alterações no estado de saúde do "
+                    + "pet, entre em contato com o veterinário responsável.";
+
     public Prescricao solicitar(Long idEvento, Long idMedicamento, String posologia,
                                 LocalDate dtInicio, LocalDate dtFim, Integer qtDosesDia,
                                 Long idVeterinarioAutenticado) {
@@ -100,6 +108,7 @@ public class PrescricaoService {
                         + "Início: " + prescricao.getDtInicio()
                         + (prescricao.getDtFim() != null ? " | Fim: " + prescricao.getDtFim() : "") + "\n\n"
                         + "Qualquer dúvida, procure a clínica."
+                        + MENSAGEM_PADRAO_PRESCRICAO
         );
     }
 }
