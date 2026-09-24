@@ -1,3 +1,4 @@
+// Prescricao.java (entity)
 package br.com.fiap.VetSync.entity;
 
 import jakarta.persistence.*;
@@ -50,4 +51,14 @@ public class Prescricao {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_admin_validador")
     private Admin adminValidador;
+
+    @Lob
+    @Column(name = "ds_anexo_pdf")
+    private byte[] dsAnexoPdf;
+
+    @Column(name = "ds_anexo_pdf_nome", length = 255)
+    private String dsAnexoPdfNome;
+
+    @Column(name = "ds_anexo_pdf_tipo", length = 100)
+    private String dsAnexoPdfTipo;
 }

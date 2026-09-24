@@ -1,3 +1,4 @@
+// PrescricaoController.java
 package br.com.fiap.VetSync.controller;
 
 import br.com.fiap.VetSync.entity.Admin;
@@ -15,9 +16,11 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDate;
@@ -83,16 +86,19 @@ public class PrescricaoController {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Admin autenticado não encontrado"));
     }
 
-    @PostMapping
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @ResponseStatus(HttpStatus.CREATED)
     @PreAuthorize("hasRole('VETERINARIO')")
     @Operation(summary = "Veterinário solicita um medicamento para o paciente de um evento sob sua responsabilidade",
-            description = "Cria a prescrição com status SOLICITADO, aguardando liberação do ADMIN.")
-    public PrescricaoResponse solicitar(Authentication authentication, @Valid @RequestBody PrescricaoRequest request) {
+            description = "Requisição multipart/form-data. Cria a prescrição com status SOLICITADO, aguardando liberação do "
+                    + "ADMIN. O campo opcional 'anexoPdf' recebe o PDF da prescrição (até 5MB); quando o ADMIN liberar, "
+                    + "esse PDF é enviado por e-mail ao tutor junto com a mensagem padrão.")
+    public PrescricaoResponse solicitar(Authentication authentication, @Valid PrescricaoRequest request,
+                                        @RequestParam(value = "anexoPdf", required = false) MultipartFile anexoPdf) {
         Long idVeterinario = veterinarioService.buscarAutenticado(authentication).getIdVeterinario();
         Prescricao prescricao = prescricaoService.solicitar(
                 request.idEvento(), request.idMedicamento(), request.dsPosologia(),
-                request.dtInicio(), request.dtFim(), request.qtDosesDia(), idVeterinario
+                request.dtInicio(), request.dtFim(), request.qtDosesDia(), idVeterinario, anexoPdf
         );
         return toResponse(prescricao);
     }
@@ -129,7 +135,7 @@ public class PrescricaoController {
     @PatchMapping("/{id}/liberar")
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Admin libera ou nega uma prescrição pendente",
-            description = "Se aprovado=true, dispara e-mail real avisando o tutor que o medicamento foi liberado.")
+            description = "Se aprovado=true, dispara e-mail real avisando o tutor que o medicamento foi liberado, com o PDF da prescrição anexado (quando enviado na solicitação).")
     public PrescricaoResponse liberar(@PathVariable Long id, Authentication authentication,
                                       @RequestBody PrescricaoLiberarRequest request) {
         Prescricao prescricao = prescricaoService.liberar(id, idAdminAutenticado(authentication), request.aprovado());
