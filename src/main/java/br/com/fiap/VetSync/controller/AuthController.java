@@ -8,6 +8,7 @@ import br.com.fiap.VetSync.repository.TutorRepository;
 import br.com.fiap.VetSync.repository.VeterinarioRepository;
 import br.com.fiap.VetSync.security.TokenBlacklist;
 import br.com.fiap.VetSync.service.JwtService;
+import br.com.fiap.VetSync.service.PasswordResetService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -24,6 +25,8 @@ import jakarta.validation.constraints.Size;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.Map;
+
 @RestController
 @RequestMapping("/auth")
 @RequiredArgsConstructor
@@ -38,6 +41,7 @@ public class AuthController {
     private final PasswordEncoder passwordEncoder;
     private final TokenBlacklist tokenBlacklist;
     private final ProfissionalEsteticaRepository profissionalEsteticaRepository;
+    private final PasswordResetService passwordResetService;
 
     private static final int SENHA_MIN_LENGTH = 6;
 
@@ -65,6 +69,36 @@ public class AuthController {
 
     public record AuthResponse(String token, Long idUsuario, String email, String nome, String perfil) {}
     public record MeResponse(Long idUsuario, String email, String nome, String perfil) {}
+
+    public record EsqueciSenhaRequest(
+            @NotBlank(message = "E-mail é obrigatório")
+            @Email(message = "E-mail deve ter formato válido")
+            String email
+    ) {}
+
+    public record ValidarCodigoRequest(
+            @NotBlank(message = "E-mail é obrigatório")
+            @Email(message = "E-mail deve ter formato válido")
+            String email,
+
+            @NotBlank(message = "Código é obrigatório")
+            String codigo
+    ) {}
+
+    public record RedefinirSenhaRequest(
+            @NotBlank(message = "E-mail é obrigatório")
+            @Email(message = "E-mail deve ter formato válido")
+            String email,
+
+            @NotBlank(message = "Código é obrigatório")
+            String codigo,
+
+            @NotBlank(message = "Nova senha é obrigatória")
+            String novaSenha,
+
+            @NotBlank(message = "Confirmação de senha é obrigatória")
+            String confirmarSenha
+    ) {}
 
     @PostMapping("/login")
     @Operation(summary = "Login — e-mail e senha. Funciona para tutor, veterinário, profissional de estética ou admin.")
@@ -101,6 +135,33 @@ public class AuthController {
         tutor = tutorRepository.save(tutor);
         return new AuthResponse(jwtService.gerarToken(req.email()), tutor.getIdTutor(),
                 req.email(), req.nome(), "TUTOR");
+    }
+
+    @PostMapping("/esqueci-senha")
+    @Operation(summary = "Passo 1 — solicitar código de redefinição de senha",
+            description = "Se o e-mail estiver cadastrado (tutor, veterinário, profissional de estética ou admin), " +
+                    "um código de 6 dígitos é enviado para ele, válido por 15 minutos.")
+    public ResponseEntity<Map<String, String>> esqueciSenha(@Valid @RequestBody EsqueciSenhaRequest req) {
+        passwordResetService.solicitarCodigo(req.email());
+        return ResponseEntity.ok(Map.of("mensagem",
+                "Se este e-mail estiver cadastrado, você receberá um código de verificação em instantes."));
+    }
+
+    @PostMapping("/validar-codigo")
+    @Operation(summary = "Passo 2 (opcional) — validar o código recebido por e-mail",
+            description = "Usado pelo front para liberar a tela de nova senha somente após um código correto, " +
+                    "sem ainda gastar a tentativa de redefinição.")
+    public ResponseEntity<Map<String, Object>> validarCodigo(@Valid @RequestBody ValidarCodigoRequest req) {
+        passwordResetService.validarCodigo(req.email(), req.codigo());
+        return ResponseEntity.ok(Map.of("valido", true));
+    }
+
+    @PostMapping("/redefinir-senha")
+    @Operation(summary = "Passo 3 — redefinir a senha com o código de verificação",
+            description = "Confere novamente o código e, se válido, troca a senha do usuário pela nova senha informada.")
+    public ResponseEntity<Map<String, String>> redefinirSenha(@Valid @RequestBody RedefinirSenhaRequest req) {
+        passwordResetService.redefinirSenha(req.email(), req.codigo(), req.novaSenha(), req.confirmarSenha());
+        return ResponseEntity.ok(Map.of("mensagem", "Senha redefinida com sucesso."));
     }
 
     @PostMapping("/logout")
