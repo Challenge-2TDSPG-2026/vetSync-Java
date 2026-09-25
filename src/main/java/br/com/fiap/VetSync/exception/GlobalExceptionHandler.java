@@ -12,6 +12,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.multipart.support.MissingServletRequestPartException;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
@@ -65,6 +66,14 @@ public class GlobalExceptionHandler {
         return ResponseEntity.badRequest().body(new ErroResponse(
                 LocalDateTime.now(), HttpStatus.BAD_REQUEST.value(), "Corpo da requisição inválido",
                 "O corpo da requisição é inválido, malformado ou contém valores de tipos incompatíveis."
+        ));
+    }
+
+    @ExceptionHandler(MissingServletRequestPartException.class)
+    public ResponseEntity<ErroResponse> handleMissingRequestPart(MissingServletRequestPartException ex) {
+        return ResponseEntity.badRequest().body(new ErroResponse(
+                LocalDateTime.now(), HttpStatus.BAD_REQUEST.value(), "Arquivo obrigatório ausente",
+                "Envie o arquivo no campo '" + ex.getRequestPartName() + "'."
         ));
     }
 

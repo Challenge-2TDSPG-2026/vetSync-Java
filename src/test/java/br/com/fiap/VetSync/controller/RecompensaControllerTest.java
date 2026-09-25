@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -46,9 +47,9 @@ class RecompensaControllerTest {
     private VeterinarioRepository veterinarioRepository;
 
     @Test
-    @DisplayName("POST /recompensas - VETERINARIO cria recompensa com sucesso")
-    @WithMockUser(roles = "VETERINARIO")
-    void criar_VetSucesso() throws Exception {
+    @DisplayName("POST /recompensas - ADMIN cria recompensa multipart com sucesso")
+    @WithMockUser(roles = "ADMIN")
+    void criar_AdminSucesso() throws Exception {
         Recompensa r = Recompensa.builder()
                 .idRecompensa(1L)
                 .nmRecompensa("Desconto 20%")
@@ -58,14 +59,14 @@ class RecompensaControllerTest {
                 .flAtivo(true)
                 .build();
 
-        when(recompensaService.criar(eq("Desconto 20%"), eq("Vale desconto"), eq(100), eq(TipoRecompensa.CUPOM_DESCONTO)))
+        when(recompensaService.criar(eq("Desconto 20%"), eq("Vale desconto"), eq(100), eq(TipoRecompensa.CUPOM_DESCONTO), isNull()))
                 .thenReturn(r);
 
-        var req = new RecompensaController.RecompensaRequest("Desconto 20%", "Vale desconto", 100, TipoRecompensa.CUPOM_DESCONTO);
-
-        mockMvc.perform(post("/recompensas")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(req)))
+        mockMvc.perform(multipart("/recompensas")
+                        .param("nome", "Desconto 20%")
+                        .param("descricao", "Vale desconto")
+                        .param("custoPontos", "100")
+                        .param("tipo", "CUPOM_DESCONTO"))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.idRecompensa").value(1))
                 .andExpect(jsonPath("$.nome").value("Desconto 20%"))
@@ -76,11 +77,11 @@ class RecompensaControllerTest {
     @DisplayName("POST /recompensas - Falha 403 para TUTOR")
     @WithMockUser(roles = "TUTOR")
     void criar_TutorNegado() throws Exception {
-        var req = new RecompensaController.RecompensaRequest("Desconto 20%", "Vale", 100, TipoRecompensa.CUPOM_DESCONTO);
-
-        mockMvc.perform(post("/recompensas")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(req)))
+        mockMvc.perform(multipart("/recompensas")
+                        .param("nome", "Desconto 20%")
+                        .param("descricao", "Vale")
+                        .param("custoPontos", "100")
+                        .param("tipo", "CUPOM_DESCONTO"))
                 .andExpect(status().isForbidden());
     }
 

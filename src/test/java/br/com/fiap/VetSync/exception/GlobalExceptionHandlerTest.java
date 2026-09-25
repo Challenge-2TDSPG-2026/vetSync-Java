@@ -15,6 +15,7 @@ import org.springframework.validation.BindingResult;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.multipart.support.MissingServletRequestPartException;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
@@ -97,6 +98,17 @@ class GlobalExceptionHandlerTest {
         assertThat(res.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(res.getBody()).isNotNull();
         assertThat(res.getBody().mensagem()).contains("O corpo da requisição é inválido");
+    }
+
+    @Test
+    void handleMissingRequestPart() {
+        MissingServletRequestPartException ex = new MissingServletRequestPartException("foto");
+
+        ResponseEntity<GlobalExceptionHandler.ErroResponse> res = handler.handleMissingRequestPart(ex);
+
+        assertThat(res.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(res.getBody()).isNotNull();
+        assertThat(res.getBody().mensagem()).isEqualTo("Envie o arquivo no campo 'foto'.");
     }
 
     @Test

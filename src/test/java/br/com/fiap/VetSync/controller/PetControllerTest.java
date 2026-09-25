@@ -11,9 +11,12 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
@@ -45,6 +48,9 @@ class PetControllerTest {
 
     @MockBean
     private br.com.fiap.VetSync.security.PetSecurity petSecurity;
+
+    @MockBean
+    private br.com.fiap.VetSync.security.PetAccessSecurity petAccessSecurity;
 
     @Test
     @DisplayName("POST /pets - Cadastrar pet com sucesso pelo TUTOR")
@@ -119,5 +125,63 @@ class PetControllerTest {
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.status").value(409))
                 .andExpect(jsonPath("$.mensagem").value("existem eventos de saúde vinculados"));
+    }
+
+    @Test
+    @DisplayName("PUT /pets/{id}/foto - envia a foto no multipart e devolve a URL protegida")
+    @WithMockUser(username = "tutor@teste.com", roles = "TUTOR")
+    void atualizarFoto_Sucesso() throws Exception {
+        byte[] jpeg = {(byte) 0xFF, (byte) 0xD8, (byte) 0xFF, 0x00};
+        Pet pet = Pet.builder().idPet(12L).nmPet("Luna").dtNascimento(LocalDate.now().minusYears(2))
+                .dsFoto(jpeg).dsFotoTipo("image/jpeg").build();
+        when(petAccessSecurity.canEdit(eq(12L), any())).thenReturn(true);
+        when(petService.atualizarFoto(eq(12L), any(MultipartFile.class))).thenReturn(pet);
+        when(petService.calcularIdade(pet)).thenReturn(2);
+        MockMultipartFile foto = new MockMultipartFile("foto", "luna.jpg", "image/jpeg", jpeg);
+
+        mockMvc.perform(multipart(HttpMethod.PUT, "/pets/12/foto").file(foto))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.numero").value("0012"))
+                .andExpect(jsonPath("$.fotoUrl").value("/pets/12/foto"));
+    }
+
+    @Test
+    @DisplayName("PUT /pets/{id}/foto - rejeita arquivo enviado em campo diferente de foto")
+    @WithMockUser(username = "tutor@teste.com", roles = "TUTOR")
+    void atualizarFoto_CampoIncorreto() throws Exception {
+        when(petAccessSecurity.canEdit(eq(12L), any())).thenReturn(true);
+        MockMultipartFile arquivo = new MockMultipartFile("arquivo", "luna.jpg", "image/jpeg", new byte[]{1, 2, 3});
+
+        mockMvc.perform(multipart(HttpMethod.PUT, "/pets/12/foto").file(arquivo))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("DELETE /pets/{id}/foto - remove a foto e devolve fotoUrl nula")
+    @WithMockUser(username = "tutor@teste.com", roles = "TUTOR")
+    void removerFoto_Sucesso() throws Exception {
+        Pet pet = Pet.builder().idPet(12L).nmPet("Luna").dtNascimento(LocalDate.now().minusYears(2)).build();
+        when(petAccessSecurity.canEdit(eq(12L), any())).thenReturn(true);
+        when(petService.removerFoto(12L)).thenReturn(pet);
+        when(petService.calcularIdade(pet)).thenReturn(2);
+
+        mockMvc.perform(delete("/pets/12/foto"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.fotoUrl").value(org.hamcrest.Matchers.nullValue()));
+    }
+
+    @Test
+    @DisplayName("GET /pets/{id}/foto - devolve bytes e MIME para usuário com acesso")
+    @WithMockUser(username = "tutor@teste.com", roles = "TUTOR")
+    void obterFoto_Sucesso() throws Exception {
+        byte[] jpeg = {(byte) 0xFF, (byte) 0xD8, (byte) 0xFF, 0x00};
+        Pet pet = Pet.builder().idPet(12L).nmPet("Luna").dsFoto(jpeg).dsFotoTipo("image/jpeg").build();
+        when(petAccessSecurity.canView(eq(12L), any())).thenReturn(true);
+        when(petService.buscarPorId(12L)).thenReturn(pet);
+
+        mockMvc.perform(get("/pets/12/foto"))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.IMAGE_JPEG))
+                .andExpect(content().bytes(jpeg));
     }
 }
