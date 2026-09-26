@@ -42,7 +42,9 @@ public class VeterinarioController {
             String email,
 
             @NotNull(message = "Clínica é obrigatória")
-            Long idClinica
+            Long idClinica,
+
+            String especialidade
     ) {}
 
     public record VeterinarioAtualizarRequest(
@@ -50,24 +52,27 @@ public class VeterinarioController {
             String nome,
 
             @NotNull(message = "Clínica é obrigatória")
-            Long idClinica
+            Long idClinica,
+
+            String especialidade
     ) {}
 
-    public record VeterinarioResponse(Long idVeterinario, String nmVeterinario, String nrCrmv, String dsEmail, Long idClinica, String nmClinica) {}
+    public record VeterinarioResponse(Long idVeterinario, String nmVeterinario, String nrCrmv, String dsEmail, Long idClinica, String nmClinica, String dsEspecialidade) {}
     public record CadastroResponse(Long idVeterinario, String email, String nome, String crm, String senhaTemporaria) {}
 
     private VeterinarioResponse toResponse(Veterinario vet) {
         return new VeterinarioResponse(
                 vet.getIdVeterinario(), vet.getNmVeterinario(), vet.getNrCrmv(), vet.getDsEmail(),
                 vet.getClinica() != null ? vet.getClinica().getIdClinica() : null,
-                vet.getClinica() != null ? vet.getClinica().getNmClinica() : null
+                vet.getClinica() != null ? vet.getClinica().getNmClinica() : null,
+                vet.getDsEspecialidade()
         );
     }
 
     @GetMapping
-    @Operation(summary = "Listar veterinários (para o tutor escolher um)")
-    public List<VeterinarioResponse> listar() {
-        return veterinarioService.listarTodos().stream().map(this::toResponse).toList();
+    @Operation(summary = "Listar veterinários (para o tutor escolher um)", description = "Aceita o parâmetro opcional 'especialidade' para filtrar os profissionais retornados.")
+    public List<VeterinarioResponse> listar(@RequestParam(required = false) String especialidade) {
+        return veterinarioService.listarTodos(especialidade).stream().map(this::toResponse).toList();
     }
 
     @GetMapping("/{id}")
@@ -82,7 +87,7 @@ public class VeterinarioController {
     @Operation(summary = "Cadastrar veterinário. Somente ADMIN.",
             description = "Gera CRM (6 dígitos) e senha temporária automaticamente, enviados por e-mail ao veterinário.")
     public CadastroResponse cadastrar(@Valid @RequestBody VeterinarioRequest request) {
-        var novo = veterinarioService.cadastrar(request.nome(), request.email(), request.idClinica());
+        var novo = veterinarioService.cadastrar(request.nome(), request.email(), request.idClinica(), request.especialidade());
         return new CadastroResponse(
                 novo.veterinario().getIdVeterinario(), novo.veterinario().getDsEmail(),
                 novo.veterinario().getNmVeterinario(), novo.veterinario().getNrCrmv(), novo.senhaTemporaria()
@@ -93,7 +98,7 @@ public class VeterinarioController {
     @PreAuthorize("@veterinarioSecurity.isSelf(#id, authentication)")
     @Operation(summary = "Atualizar dados do veterinário. Só o próprio.")
     public VeterinarioResponse atualizar(@PathVariable Long id, @Valid @RequestBody VeterinarioAtualizarRequest request) {
-        return toResponse(veterinarioService.atualizar(id, request.nome(), request.idClinica()));
+        return toResponse(veterinarioService.atualizar(id, request.nome(), request.idClinica(), request.especialidade()));
     }
 
 

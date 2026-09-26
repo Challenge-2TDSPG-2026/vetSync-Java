@@ -30,6 +30,10 @@ public class VeterinarioService {
     public record NovoVeterinario(Veterinario veterinario, String senhaTemporaria) {}
 
     public NovoVeterinario cadastrar(String nome, String email, Long idClinica) {
+        return cadastrar(nome, email, idClinica, null);
+    }
+
+    public NovoVeterinario cadastrar(String nome, String email, Long idClinica, String especialidade) {
         if (veterinarioRepository.existsByDsEmail(email)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "E-mail já cadastrado");
         }
@@ -45,6 +49,7 @@ public class VeterinarioService {
                 .dsEmail(email)
                 .dsSenha(passwordEncoder.encode(senhaTemporaria))
                 .clinica(clinica)
+                .dsEspecialidade(especialidade != null && !especialidade.isBlank() ? especialidade : null)
                 .build();
         vet = veterinarioRepository.save(vet);
 
@@ -88,6 +93,13 @@ public class VeterinarioService {
         return veterinarioRepository.findAll();
     }
 
+    public List<Veterinario> listarTodos(String especialidade) {
+        if (especialidade == null || especialidade.isBlank()) {
+            return listarTodos();
+        }
+        return veterinarioRepository.findByDsEspecialidade(especialidade);
+    }
+
     public Veterinario buscarAutenticado(Authentication authentication) {
         return veterinarioRepository.findByDsEmail(authentication.getName()).orElseThrow(
                 () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Veterinário autenticado não encontrado")
@@ -95,6 +107,10 @@ public class VeterinarioService {
     }
 
     public Veterinario atualizar(Long id, String nome, Long idClinica) {
+        return atualizar(id, nome, idClinica, null);
+    }
+
+    public Veterinario atualizar(Long id, String nome, Long idClinica, String especialidade) {
         Veterinario vet = buscarPorId(id);
         if (nome != null && !nome.isBlank()) {
             vet.setNmVeterinario(nome);
@@ -103,6 +119,9 @@ public class VeterinarioService {
             Clinica clinica = clinicaRepository.findById(idClinica)
                     .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Clínica não encontrada"));
             vet.setClinica(clinica);
+        }
+        if (especialidade != null && !especialidade.isBlank()) {
+            vet.setDsEspecialidade(especialidade);
         }
         return veterinarioRepository.save(vet);
     }

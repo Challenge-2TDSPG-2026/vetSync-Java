@@ -37,4 +37,7 @@ public class Veterinario {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_clinica", nullable = false)
     private Clinica clinica;
+
+    @Column(name = "ds_especialidade", length = 50)
+    private String dsEspecialidade;
 }
