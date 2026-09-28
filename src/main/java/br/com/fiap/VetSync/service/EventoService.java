@@ -3,6 +3,8 @@ package br.com.fiap.VetSync.service;
 import br.com.fiap.VetSync.entity.*;
 import br.com.fiap.VetSync.repository.ProfissionalEsteticaRepository;
 import br.com.fiap.VetSync.repository.EventoSaudeRepository;
+import br.com.fiap.VetSync.repository.EventoHistoricoRepository;
+import br.com.fiap.VetSync.repository.EventoAnexoRepository;
 import br.com.fiap.VetSync.repository.PlanoItemRepository;
 import br.com.fiap.VetSync.repository.PlanoTratamentoRepository;
 import br.com.fiap.VetSync.repository.TipoEventoRepository;
@@ -10,6 +12,8 @@ import br.com.fiap.VetSync.repository.VeterinarioRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
@@ -33,6 +37,13 @@ public class EventoService {
     private final PlanoTratamentoRepository planoTratamentoRepository;
     private final AgendaService agendaService;
     private final ServicoEsteticaService servicoEsteticaService;
+
+    @Autowired
+    private EventoHistoricoRepository eventoHistoricoRepository;
+    @Autowired
+    private EventoAnexoRepository eventoAnexoRepository;
+    @Autowired(required = false)
+    private AuditoriaService auditoriaService;
 
 
     private static final long MESES_LIMITE_ATRASO = 12;
@@ -59,7 +70,10 @@ public class EventoService {
         evento.setTipoEvento(tipoEvento);
         evento.setVeterinario(vet);
         evento.setDsStatus(StatusEvento.AGENDADO);
-        return eventoSaudeRepository.save(evento);
+        EventoSaude salvo = eventoSaudeRepository.save(evento);
+        salvarHistorico(salvo, "CRIACAO", null, salvo.getDsStatus(), null, salvo.getDtEvento(), null, salvo.getHrEvento(), null, salvo.getDsObservacao(), null, salvo.getVlCusto());
+        auditar(salvo, "CRIADO", null, salvo.getDsObservacao(), null);
+        return salvo;
     }
     private static final String SERVICO_ESTETICA_PALAVRA_CHAVE = "banho";
 
@@ -96,7 +110,10 @@ public class EventoService {
         evento.setProfissionalEstetica(profissional);
         evento.setServicos(servicos);
         evento.setDsStatus(StatusEvento.AGENDADO);
-        return eventoSaudeRepository.save(evento);
+        EventoSaude salvo = eventoSaudeRepository.save(evento);
+        salvarHistorico(salvo, "CRIACAO", null, salvo.getDsStatus(), null, salvo.getDtEvento(), null, salvo.getHrEvento(), null, salvo.getDsObservacao(), null, salvo.getVlCusto());
+        auditar(salvo, "CRIADO", null, salvo.getDsObservacao(), null);
+        return salvo;
     }
 
     private void validarHorarioLivreEstetica(Long idProfissionalEstetica, LocalDate dtEvento, String hrEvento, Long idEventoIgnorar) {
@@ -145,6 +162,85 @@ public class EventoService {
                 () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Evento não encontrado com id: " + id));
     }
 
+    public EventoSaude reagendar(Long id, LocalDate data, String hora) {
+        EventoSaude evento = buscarPorId(id);
+        exigirStatus(evento, StatusEvento.AGENDADO, "reagendar");
+        if (data == null || hora == null || hora.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Data e hora são obrigatórias");
+        }
+        if (evento.getVeterinario() != null) {
+            validarHorarioLivre(evento.getVeterinario().getIdVeterinario(), data, hora, id);
+        } else if (evento.getProfissionalEstetica() != null) {
+            validarHorarioLivreEstetica(evento.getProfissionalEstetica().getIdProfissionalEstetica(), data, hora, id);
+        }
+        salvarHistorico(evento, "REAGENDAMENTO", evento.getDsStatus(), evento.getDsStatus(),
+                evento.getDtEvento(), data, evento.getHrEvento(), hora, null, null, null, null);
+        evento.setDtEvento(data);
+        evento.setHrEvento(hora);
+        return eventoSaudeRepository.save(evento);
+    }
+
+    public List<EventoHistorico> historico(Long id) {
+        buscarPorId(id);
+        return eventoHistoricoRepository.findByEvento_IdEventoOrderByDtOcorrenciaDesc(id);
+    }
+
+    public List<EventoAnexo> listarAnexos(Long id) {
+        buscarPorId(id);
+        return eventoAnexoRepository.findByEvento_IdEventoOrderByDtCriacaoDesc(id);
+    }
+
+    public EventoAnexo adicionarAnexo(Long id, MultipartFile file, String ator) {
+        EventoSaude evento = buscarPorId(id);
+        if (file == null || file.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Arquivo é obrigatório");
+        }
+        if (file.getSize() > 10 * 1024 * 1024) {
+            throw new ResponseStatusException(HttpStatus.PAYLOAD_TOO_LARGE, "Arquivo excede o limite de 10 MB");
+        }
+        String tipo = file.getContentType() == null ? "application/octet-stream" : file.getContentType();
+        if (!tipo.startsWith("image/") && !tipo.equals("application/pdf")) {
+            throw new ResponseStatusException(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "Tipo de arquivo não permitido");
+        }
+        try {
+            EventoAnexo anexo = EventoAnexo.builder().evento(evento).nmArquivo(file.getOriginalFilename() == null ? "anexo" : file.getOriginalFilename())
+                    .dsMimeType(tipo).nrTamanho(file.getSize()).dsConteudo(file.getBytes()).dsAtor(ator)
+                    .dtCriacao(java.time.LocalDateTime.now()).build();
+            return eventoAnexoRepository.save(anexo);
+        } catch (java.io.IOException ex) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Não foi possível ler o arquivo", ex);
+        }
+    }
+
+    public EventoAnexo buscarAnexo(Long idEvento, Long idAnexo) {
+        return eventoAnexoRepository.findByIdAnexoAndEvento_IdEvento(idAnexo, idEvento)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Anexo não encontrado"));
+    }
+
+    public void removerAnexo(Long idEvento, Long idAnexo) {
+        eventoAnexoRepository.delete(buscarAnexo(idEvento, idAnexo));
+    }
+
+    private void salvarHistorico(EventoSaude evento, String acao, StatusEvento statusAnterior, StatusEvento statusNovo,
+                                 LocalDate dataAnterior, LocalDate dataNova, String horaAnterior, String horaNova,
+                                 String obsAnterior, String obsNova, BigDecimal custoAnterior, BigDecimal custoNovo) {
+        if (eventoHistoricoRepository == null) return;
+        eventoHistoricoRepository.save(EventoHistorico.builder().evento(evento).dsAcao(acao)
+                .dsStatusAnterior(statusAnterior == null ? null : statusAnterior.name())
+                .dsStatusNovo(statusNovo == null ? null : statusNovo.name())
+                .dtEventoAnterior(dataAnterior).dtEventoNovo(dataNova).hrEventoAnterior(horaAnterior)
+                .hrEventoNovo(horaNova).dsObservacaoAnterior(obsAnterior).dsObservacaoNova(obsNova)
+                .vlCustoAnterior(custoAnterior).vlCustoNovo(custoNovo).dsAtor("SISTEMA")
+                .dtOcorrencia(java.time.LocalDateTime.now()).build());
+    }
+
+    private void auditar(EventoSaude evento, String acao, String anterior, String novo, String ator) {
+        if (auditoriaService != null && evento != null && evento.getIdEvento() != null) {
+            auditoriaService.registrar("EVENTO", evento.getIdEvento(), acao,
+                    ator == null ? "SISTEMA" : ator, "SISTEMA", anterior, novo, null);
+        }
+    }
+
     public List<EventoSaude> listarPorPet(Long idPet) {
         return eventoSaudeRepository.findByPet_IdPet(idPet);
     }
@@ -163,9 +259,14 @@ public class EventoService {
         evento.setDsStatus(StatusEvento.CONCLUIDO);
         if (dsObservacao != null) {
             evento.setDsObservacao(dsObservacao);
+            evento.setDsObservacaoClinica(dsObservacao);
         }
         evento.setVlCusto(vlCusto != null ? vlCusto : BigDecimal.ZERO);
         EventoSaude concluido = eventoSaudeRepository.save(evento);
+        salvarHistorico(concluido, "CONCLUSAO", StatusEvento.AGENDADO, concluido.getDsStatus(),
+                concluido.getDtEvento(), concluido.getDtEvento(), concluido.getHrEvento(), concluido.getHrEvento(),
+                null, concluido.getDsObservacao(), null, concluido.getVlCusto());
+        auditar(concluido, "CONCLUIDO", StatusEvento.AGENDADO.name(), concluido.getDsStatus().name(), null);
 
         pontosService.lancarPendente(concluido);
         processarPlanoAoConcluir(concluido);
@@ -223,6 +324,10 @@ public class EventoService {
         evento.setDsStatus(StatusEvento.CANCELADO);
         evento.setDsMotivoCancelamento(motivo);
         EventoSaude cancelado = eventoSaudeRepository.save(evento);
+        salvarHistorico(cancelado, "CANCELAMENTO", StatusEvento.AGENDADO, cancelado.getDsStatus(),
+                cancelado.getDtEvento(), cancelado.getDtEvento(), cancelado.getHrEvento(), cancelado.getHrEvento(),
+                null, cancelado.getDsMotivoCancelamento(), null, null);
+        auditar(cancelado, "CANCELADO", StatusEvento.AGENDADO.name(), cancelado.getDsMotivoCancelamento(), null);
         processarPlanoAoCancelar(cancelado);
 
         EventoSaude novoEvento = null;
