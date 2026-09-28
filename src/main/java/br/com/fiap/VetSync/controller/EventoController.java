@@ -2,6 +2,8 @@ package br.com.fiap.VetSync.controller;
 
 import br.com.fiap.VetSync.entity.EventoSaude;
 import br.com.fiap.VetSync.entity.StatusEvento;
+import br.com.fiap.VetSync.entity.EventoHistorico;
+import br.com.fiap.VetSync.entity.EventoAnexo;
 import br.com.fiap.VetSync.security.PerfilUtils;
 import br.com.fiap.VetSync.security.PetAccessSecurity;
 import br.com.fiap.VetSync.service.EventoService;
@@ -19,6 +21,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
@@ -71,6 +76,13 @@ public class EventoController {
     ) {}
 
     public record EventoCancelarResponse(EventoResponse eventoCancelado, EventoResponse novoEvento) {}
+    public record ReagendarRequest(@NotNull LocalDate data, @NotBlank String hora) {}
+    public record HistoricoResponse(Long id, String acao, String statusAnterior, String statusNovo,
+                                    LocalDate dataAnterior, LocalDate dataNova, String horaAnterior, String horaNova,
+                                    String observacaoAnterior, String observacaoNova, BigDecimal custoAnterior,
+                                    BigDecimal custoNovo, String ator, java.time.LocalDateTime ocorridoEm) {}
+    public record AnexoResponse(Long id, String nome, String mimeType, Long tamanho, String ator,
+                                java.time.LocalDateTime criadoEm) {}
 
     public record ServicoResumoResponse(Long idServico, String nmServico) {}
 
@@ -87,7 +99,9 @@ public class EventoController {
             String motivoCancelamento,
             BigDecimal vlCusto,
             Long idPet,
-            List<ServicoResumoResponse> servicos
+            List<ServicoResumoResponse> servicos,
+            String observacaoTutor, String observacaoClinica, String diagnostico, String conduta,
+            java.time.LocalDateTime criadoEm
     ) {}
 
     private EventoResponse toResponse(EventoSaude evento) {
@@ -108,7 +122,8 @@ public class EventoController {
                 evento.getDsMotivoCancelamento(),
                 evento.getVlCusto(),
                 evento.getPet() != null ? evento.getPet().getIdPet() : null,
-                servicos
+                servicos, evento.getDsObservacaoTutor(), evento.getDsObservacaoClinica(),
+                evento.getDsDiagnostico(), evento.getDsConduta(), evento.getDtCriacao()
         );
     }
 
@@ -125,6 +140,7 @@ public class EventoController {
                 .dtEvento(request.dtEvento())
                 .hrEvento(request.hrEvento())
                 .dsObservacao(request.dsObservacao())
+                .dsObservacaoTutor(request.dsObservacao())
                 .build();
         return toResponse(eventoService.agendar(evento, request.idPet(), request.idTipoEvento(), request.idVeterinario()));
     }
@@ -143,6 +159,7 @@ public class EventoController {
                 .dtEvento(request.dtEvento())
                 .hrEvento(request.hrEvento())
                 .dsObservacao(request.dsObservacao())
+                .dsObservacaoTutor(request.dsObservacao())
                 .build();
         return toResponse(eventoService.agendarEstetica(
                 evento, request.idPet(), request.idTipoEvento(), request.idProfissionalEstetica(), request.idsServico()
@@ -168,6 +185,66 @@ public class EventoController {
     @Operation(summary = "Buscar evento por ID (só tutor dono, veterinário ou profissional de estética responsável)")
     public EventoResponse buscarPorId(@PathVariable Long id) {
         return toResponse(eventoService.buscarPorId(id));
+    }
+
+    @GetMapping("/{id}/detalhes")
+    @PreAuthorize("@eventoSecurity.isRelacionado(#id, authentication)")
+    public EventoResponse detalhes(@PathVariable Long id) {
+        return toResponse(eventoService.buscarPorId(id));
+    }
+
+    @GetMapping("/{id}/historico")
+    @PreAuthorize("@eventoSecurity.isRelacionado(#id, authentication)")
+    public List<HistoricoResponse> historico(@PathVariable Long id) {
+        return eventoService.historico(id).stream().map(this::toHistoricoResponse).toList();
+    }
+
+    @PatchMapping("/{id}/reagendar")
+    @PreAuthorize("hasRole('TUTOR') and @eventoSecurity.isTutorComEdicao(#id, authentication)")
+    public EventoResponse reagendar(@PathVariable Long id, @Valid @RequestBody ReagendarRequest request) {
+        return toResponse(eventoService.reagendar(id, request.data(), request.hora()));
+    }
+
+    @PostMapping(value = "/{id}/anexos", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("@eventoSecurity.isTutorComEdicao(#id, authentication) or @eventoSecurity.isVeterinarioResponsavel(#id, authentication)")
+    @ResponseStatus(HttpStatus.CREATED)
+    public AnexoResponse adicionarAnexo(@PathVariable Long id, @RequestPart("arquivo") MultipartFile arquivo,
+                                        Authentication authentication) {
+        return toAnexoResponse(eventoService.adicionarAnexo(id, arquivo, authentication.getName()));
+    }
+
+    @GetMapping("/{id}/anexos")
+    @PreAuthorize("@eventoSecurity.isRelacionado(#id, authentication)")
+    public List<AnexoResponse> anexos(@PathVariable Long id) {
+        return eventoService.listarAnexos(id).stream().map(this::toAnexoResponse).toList();
+    }
+
+    @GetMapping("/{id}/anexos/{idAnexo}")
+    @PreAuthorize("@eventoSecurity.isRelacionado(#id, authentication)")
+    public ResponseEntity<byte[]> baixarAnexo(@PathVariable Long id, @PathVariable Long idAnexo) {
+        EventoAnexo anexo = eventoService.buscarAnexo(id, idAnexo);
+        return ResponseEntity.ok().contentType(MediaType.parseMediaType(anexo.getDsMimeType()))
+                .header("Content-Disposition", "attachment; filename=\"" + anexo.getNmArquivo() + "\"")
+                .body(anexo.getDsConteudo());
+    }
+
+    @DeleteMapping("/{id}/anexos/{idAnexo}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @PreAuthorize("@eventoSecurity.isTutorComEdicao(#id, authentication) or @eventoSecurity.isVeterinarioResponsavel(#id, authentication)")
+    public void removerAnexo(@PathVariable Long id, @PathVariable Long idAnexo) {
+        eventoService.removerAnexo(id, idAnexo);
+    }
+
+    private HistoricoResponse toHistoricoResponse(EventoHistorico h) {
+        return new HistoricoResponse(h.getIdHistorico(), h.getDsAcao(), h.getDsStatusAnterior(), h.getDsStatusNovo(),
+                h.getDtEventoAnterior(), h.getDtEventoNovo(), h.getHrEventoAnterior(), h.getHrEventoNovo(),
+                h.getDsObservacaoAnterior(), h.getDsObservacaoNova(), h.getVlCustoAnterior(), h.getVlCustoNovo(),
+                h.getDsAtor(), h.getDtOcorrencia());
+    }
+
+    private AnexoResponse toAnexoResponse(EventoAnexo a) {
+        return new AnexoResponse(a.getIdAnexo(), a.getNmArquivo(), a.getDsMimeType(), a.getNrTamanho(),
+                a.getDsAtor(), a.getDtCriacao());
     }
 
     @PatchMapping("/{id}/concluir")
