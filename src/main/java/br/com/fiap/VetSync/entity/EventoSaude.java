@@ -8,6 +8,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.HashSet;
 import java.util.Set;
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "TB_EVENTO_SAUDE")
@@ -43,6 +44,22 @@ public class EventoSaude {
 
     @Column(name = "ds_observacao", length = 500)
     private String dsObservacao;
+
+    @Column(name = "ds_observacao_tutor", length = 500)
+    private String dsObservacaoTutor;
+
+    @Column(name = "ds_observacao_clinica", length = 1000)
+    private String dsObservacaoClinica;
+
+    @Column(name = "ds_diagnostico", length = 500)
+    private String dsDiagnostico;
+
+    @Column(name = "ds_conduta", length = 1000)
+    private String dsConduta;
+
+    @Column(name = "dt_criacao", nullable = false)
+    @Builder.Default
+    private LocalDateTime dtCriacao = LocalDateTime.now();
 
     @Builder.Default
     @Column(name = "vl_custo", precision = 10, scale = 2)
