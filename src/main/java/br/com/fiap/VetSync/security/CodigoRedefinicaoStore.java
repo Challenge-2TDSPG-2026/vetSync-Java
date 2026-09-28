@@ -3,6 +3,7 @@ package br.com.fiap.VetSync.security;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
+import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -47,6 +48,6 @@ public class CodigoRedefinicaoStore {
     }
 
     private String chave(String email) {
-        return email == null ? "" : email.trim().toLowerCase();
+        return email == null ? "" : email.trim().toLowerCase(Locale.ROOT);
     }
 }

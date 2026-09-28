@@ -15,6 +15,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
+import java.util.Locale;
 
 /**
  * Regras de negócio do fluxo "Esqueci minha senha":
@@ -50,7 +51,7 @@ public class PasswordResetService {
         if (email == null || email.isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "E-mail é obrigatório");
         }
-        String emailNormalizado = email.trim().toLowerCase();
+        String emailNormalizado = email.trim().toLowerCase(Locale.ROOT);
 
         boolean existe = tutorRepository.existsByDsEmail(emailNormalizado)
                 || veterinarioRepository.findByDsEmail(emailNormalizado).isPresent()
@@ -133,7 +134,7 @@ public class PasswordResetService {
         if (email == null || email.isBlank() || codigo == null || codigo.isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "E-mail e código são obrigatórios");
         }
-        String emailNormalizado = email.trim().toLowerCase();
+        String emailNormalizado = email.trim().toLowerCase(Locale.ROOT);
 
         if (codigoStore.excedeuTentativas(emailNormalizado)) {
             codigoStore.remover(emailNormalizado);

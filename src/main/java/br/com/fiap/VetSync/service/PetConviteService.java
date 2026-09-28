@@ -86,7 +86,7 @@ public class PetConviteService {
             throw new ConviteException(HttpStatus.FORBIDDEN, "Somente o proprietário do pet pode convidar");
         }
 
-        String emailNormalizado = email.trim().toLowerCase();
+        String emailNormalizado = email.trim().toLowerCase(Locale.ROOT);
 
         if (tutorRepository.existsByDsEmail(emailNormalizado)) {
             throw new ConviteException(HttpStatus.CONFLICT, "Já existe uma conta cadastrada com esse e-mail");

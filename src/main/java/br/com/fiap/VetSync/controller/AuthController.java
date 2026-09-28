@@ -25,6 +25,7 @@ import jakarta.validation.constraints.Size;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.Locale;
 import java.util.Map;
 
 @RestController
@@ -103,14 +104,23 @@ public class AuthController {
     @PostMapping("/login")
     @Operation(summary = "Login — e-mail e senha. Funciona para tutor, veterinário, profissional de estética ou admin.")
     public AuthResponse login(@RequestBody LoginRequest req) {
+        String email = req.email() == null ? null : req.email().trim();
+        String senha = req.senha();
+
+        if (email == null || email.isBlank() || senha == null || senha.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "E-mail e senha são obrigatórios");
+        }
+
         try {
             authManager.authenticate(
-                    new UsernamePasswordAuthenticationToken(req.email(), req.senha())
+                    new UsernamePasswordAuthenticationToken(email.toLowerCase(Locale.ROOT), senha)
             );
         } catch (BadCredentialsException e) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "E-mail ou senha inválidos");
+        } catch (AuthenticationException e) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Não foi possível autenticar o usuário");
         }
-        return montarAuthResponse(req.email(), jwtService.gerarToken(req.email()));
+        return montarAuthResponse(email.toLowerCase(Locale.ROOT), jwtService.gerarToken(email.toLowerCase(Locale.ROOT)));
     }
 
     @PostMapping("/registrar")
@@ -122,19 +132,24 @@ public class AuthController {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                     "A senha deve ter pelo menos " + SENHA_MIN_LENGTH + " caracteres");
         }
-        if (tutorRepository.existsByDsEmail(req.email())) {
+
+        String emailNormalizado = req.email() == null ? null : req.email().trim().toLowerCase(Locale.ROOT);
+        if (emailNormalizado == null || emailNormalizado.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "E-mail é obrigatório");
+        }
+        if (tutorRepository.existsByDsEmail(emailNormalizado)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "E-mail já cadastrado");
         }
         var tutor = Tutor.builder()
                 .nmTutor(req.nome())
-                .dsEmail(req.email())
+                .dsEmail(emailNormalizado)
                 .dsSenha(passwordEncoder.encode(req.senha()))
                 .dsCpf(req.cpf())
                 .nrTelefone(req.telefone())
                 .build();
         tutor = tutorRepository.save(tutor);
-        return new AuthResponse(jwtService.gerarToken(req.email()), tutor.getIdTutor(),
-                req.email(), req.nome(), "TUTOR");
+        return new AuthResponse(jwtService.gerarToken(emailNormalizado), tutor.getIdTutor(),
+                emailNormalizado, req.nome(), "TUTOR");
     }
 
     @PostMapping("/esqueci-senha")
