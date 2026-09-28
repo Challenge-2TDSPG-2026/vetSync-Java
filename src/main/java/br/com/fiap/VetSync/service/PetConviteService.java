@@ -68,6 +68,11 @@ public class PetConviteService {
             String email, String nomePet, RelacaoPet relacao, PermissaoPet permissao, LocalDateTime expiraEm
     ) {}
 
+    @Transactional(readOnly = true)
+    public List<PetConvite> listar(Long idPet) {
+        return petConviteRepository.findByPet_IdPetOrderByDtCriacaoDesc(idPet);
+    }
+
     // ---------------------------------------------------------------
     // Tutor proprietário cria o convite
     // ---------------------------------------------------------------
