@@ -36,7 +36,9 @@ public class PetAccessSecurity {
         if (isOwner(idPet, authentication)) {
             return true;
         }
-        return temAcessoAtivo(idPet, authentication, PermissaoPet.EDICAO);
+        return temAcessoAtivo(idPet, authentication, PermissaoPet.EDICAO)
+                || temAcessoAtivo(idPet, authentication, PermissaoPet.EDITAR_PERFIL)
+                || temAcessoAtivo(idPet, authentication, PermissaoPet.CRIAR_EVENTO);
     }
 
     private boolean temAcessoAtivo(Long idPet, Authentication authentication, PermissaoPet permissaoExigida) {
@@ -46,6 +48,9 @@ public class PetAccessSecurity {
         return petAcessoRepository.findByPet_IdPetAndDsStatus(idPet, StatusAcessoPet.ATIVO).stream()
                 .anyMatch(acesso -> acesso.getTutor() != null
                         && acesso.getTutor().getDsEmail().equalsIgnoreCase(authentication.getName())
-                        && (permissaoExigida == null || acesso.getDsPermissao() == permissaoExigida));
+                        && (permissaoExigida == null
+                        || acesso.getDsPermissao() == permissaoExigida
+                        || (permissaoExigida == PermissaoPet.EDICAO && acesso.getDsPermissao() == PermissaoPet.CRIAR_EVENTO)
+                        || (permissaoExigida == PermissaoPet.EDICAO && acesso.getDsPermissao() == PermissaoPet.EDITAR_PERFIL)));
     }
 }
