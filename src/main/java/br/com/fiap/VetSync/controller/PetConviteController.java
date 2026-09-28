@@ -91,6 +91,7 @@ public class PetConviteController {
             Long idAcesso, Long idTutor, String nomeTutor, String emailTutor,
             String relacao, String permissao, String status, LocalDateTime dtConcedido
     ) {}
+    public record AtualizarAcessoRequest(RelacaoPet relacao, PermissaoPet permissao) {}
 
     // ---------------------------------------------------------------
     // Helpers
@@ -193,6 +194,27 @@ public class PetConviteController {
     @Operation(summary = "Revogar o acesso de um cuidador/cônjuge")
     public void revogarAcesso(@PathVariable Long idPet, @PathVariable Long idAcesso) {
         petAcessoService.revogar(idPet, idAcesso);
+    }
+
+    @PatchMapping("/pets/{idPet}/acessos/{idAcesso}")
+    @PreAuthorize("hasRole('TUTOR') and @petAccessSecurity.isOwner(#idPet, authentication)")
+    public AcessoResponse atualizarAcesso(@PathVariable Long idPet, @PathVariable Long idAcesso,
+                                          @RequestBody AtualizarAcessoRequest request) {
+        return toResponse(petAcessoService.atualizar(idPet, idAcesso, request.relacao(), request.permissao()));
+    }
+
+    @GetMapping("/pets/{idPet}/convites")
+    @PreAuthorize("hasRole('TUTOR') and @petAccessSecurity.isOwner(#idPet, authentication)")
+    public List<ConviteResponse> listarConvites(@PathVariable Long idPet) {
+        return petConviteService.listar(idPet).stream().map(this::toResponse).toList();
+    }
+
+    @PostMapping("/convites/{token}/aceitar")
+    @ResponseStatus(HttpStatus.CREATED)
+    public RegistroResponse aceitar(@PathVariable String token, @Valid @RequestBody RegistrarConviteRequest request) {
+        Tutor tutor = petConviteService.aceitar(token, request.nome(), request.cpf(), request.telefone(), request.senha());
+        return new RegistroResponse(jwtService.gerarToken(tutor.getDsEmail()), tutor.getIdTutor(),
+                tutor.getDsEmail(), tutor.getNmTutor(), "TUTOR");
     }
 
     @DeleteMapping("/pets/{idPet}/convites/{idConvite}")
