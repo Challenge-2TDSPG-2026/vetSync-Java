@@ -45,7 +45,11 @@ public class VeterinarioController {
             Long idClinica,
 
             String especialidade
-    ) {}
+    ) {
+        public VeterinarioRequest(String nome, String email, Long idClinica) {
+            this(nome, email, idClinica, null);
+        }
+    }
 
     public record VeterinarioAtualizarRequest(
             @NotBlank(message = "Nome é obrigatório")
