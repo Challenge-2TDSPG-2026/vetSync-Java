@@ -23,6 +23,18 @@ public class TipoEvento {
 
     @Column(name = "ds_categoria", length = 30)
     private String dsCategoria;
+
+    /**
+     * Identifica fluxos de agendamento que não podem depender do nome exibido
+     * do tipo de evento. Ex.: CLINICO_GERAL.
+     */
+    @Column(name = "ds_modalidade_agendamento", length = 30)
+    private String dsModalidadeAgendamento;
+
+    @Builder.Default
+    @Column(name = "nr_duracao_minutos", nullable = false)
+    private Integer nrDuracaoMinutos = 30;
+
     @Builder.Default
     @Column(name = "nr_pontos", nullable = false)
     private Integer nrPontos = 0;

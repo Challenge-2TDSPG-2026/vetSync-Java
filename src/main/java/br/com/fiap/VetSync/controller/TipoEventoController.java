@@ -19,10 +19,24 @@ public class TipoEventoController {
 
     private final TipoEventoRepository tipoEventoRepository;
 
-    public record TipoEventoResponse(Long idTipoEvento, String nmTipoEvento, String dsCategoria, Integer nrPontos) {}
+    public record TipoEventoResponse(
+            Long idTipoEvento,
+            String nmTipoEvento,
+            String dsCategoria,
+            String dsModalidadeAgendamento,
+            Integer nrDuracaoMinutos,
+            Integer nrPontos
+    ) {}
 
     private TipoEventoResponse toResponse(TipoEvento tipo) {
-        return new TipoEventoResponse(tipo.getIdTipoEvento(), tipo.getNmTipoEvento(), tipo.getDsCategoria(), tipo.getNrPontos());
+        return new TipoEventoResponse(
+                tipo.getIdTipoEvento(),
+                tipo.getNmTipoEvento(),
+                tipo.getDsCategoria(),
+                tipo.getDsModalidadeAgendamento(),
+                tipo.getNrDuracaoMinutos(),
+                tipo.getNrPontos()
+        );
     }
 
     @GetMapping
