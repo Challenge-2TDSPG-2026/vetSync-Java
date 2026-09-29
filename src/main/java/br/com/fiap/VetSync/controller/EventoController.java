@@ -92,6 +92,8 @@ public class EventoController {
             String nmTipoEvento,
             String dsCategoria,
             String nmVeterinario,
+            Long idVeterinario,
+            String nmClinica,
             String nmProfissionalEstetica,
             LocalDate dtEvento,
             String hrEvento,
@@ -115,6 +117,8 @@ public class EventoController {
                 evento.getTipoEvento() != null ? evento.getTipoEvento().getNmTipoEvento() : null,
                 evento.getTipoEvento() != null ? evento.getTipoEvento().getDsCategoria() : null,
                 evento.getVeterinario() != null ? evento.getVeterinario().getNmVeterinario() : null,
+                evento.getVeterinario() != null ? evento.getVeterinario().getIdVeterinario() : null,
+                nomeClinica(evento),
                 evento.getProfissionalEstetica() != null ? evento.getProfissionalEstetica().getNmProfissionalEstetica() : null,
                 evento.getDtEvento(),
                 evento.getHrEvento(),
@@ -126,6 +130,17 @@ public class EventoController {
                 evento.getDsDiagnostico(), evento.getDsConduta(), evento.getDtCriacao()
         );
     }
+
+    private String nomeClinica(EventoSaude evento) {
+        if (evento.getVeterinario() != null && evento.getVeterinario().getClinica() != null) {
+            return evento.getVeterinario().getClinica().getNmClinica();
+        }
+        if (evento.getProfissionalEstetica() != null && evento.getProfissionalEstetica().getClinica() != null) {
+            return evento.getProfissionalEstetica().getClinica().getNmClinica();
+        }
+        return null;
+    }
+
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
