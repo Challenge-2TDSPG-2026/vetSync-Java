@@ -55,7 +55,7 @@ class LancamentoPontosRepositoryTest {
         EventoSaude ev = eventoSaudeRepository.save(EventoSaude.builder()
                 .pet(pet).tipoEvento(tipo).dtEvento(LocalDate.now()).dsStatus(StatusEvento.CONCLUIDO).build());
 
-        LancamentoPontos l1 = lancamentoPontosRepository.save(LancamentoPontos.builder()
+        lancamentoPontosRepository.save(LancamentoPontos.builder()
                 .evento(ev).nrPontos(20).dsStatus(StatusLancamentoPontos.LIBERADO).dtLancamento(LocalDate.now()).build());
 
         List<LancamentoPontos> pendentes = lancamentoPontosRepository.findByDsStatusOrderByDtLancamentoAsc(StatusLancamentoPontos.PENDENTE);

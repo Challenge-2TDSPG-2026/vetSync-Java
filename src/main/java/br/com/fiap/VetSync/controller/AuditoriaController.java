@@ -1,6 +1,5 @@
 package br.com.fiap.VetSync.controller;
 
-import br.com.fiap.VetSync.entity.Auditoria;
 import br.com.fiap.VetSync.service.AuditoriaService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;

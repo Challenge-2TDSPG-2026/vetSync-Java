@@ -1,6 +1,5 @@
 package br.com.fiap.VetSync.controller;
 
-import br.com.fiap.VetSync.entity.Admin;
 import br.com.fiap.VetSync.entity.Tutor;
 import br.com.fiap.VetSync.repository.AdminRepository;
 import br.com.fiap.VetSync.repository.ProfissionalEsteticaRepository;

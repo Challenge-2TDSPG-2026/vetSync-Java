@@ -59,7 +59,7 @@ class PrescricaoRepositoryTest {
         EventoSaude ev = eventoSaudeRepository.save(EventoSaude.builder().pet(pet).veterinario(vet).tipoEvento(tipo).dtEvento(LocalDate.now()).dsStatus(StatusEvento.CONCLUIDO).build());
         Medicamento med = medicamentoRepository.save(Medicamento.builder().nmMedicamento("Pomada Cicatrizante").build());
 
-        Prescricao p = prescricaoRepository.save(Prescricao.builder()
+        prescricaoRepository.save(Prescricao.builder()
                 .evento(ev)
                 .medicamento(med)
                 .dsPosologia("Aplicar 2x ao dia")

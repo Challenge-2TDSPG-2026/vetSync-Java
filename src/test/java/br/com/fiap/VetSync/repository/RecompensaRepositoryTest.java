@@ -35,7 +35,7 @@ class RecompensaRepositoryTest {
                 .flAtivo(true)
                 .build());
 
-        Recompensa rInativa = recompensaRepository.save(Recompensa.builder()
+        recompensaRepository.save(Recompensa.builder()
                 .nmRecompensa("Antigo")
                 .nrCustoPontos(100)
                 .dsTipo(TipoRecompensa.CUPOM_DESCONTO)

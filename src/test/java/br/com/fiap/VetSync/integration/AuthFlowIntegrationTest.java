@@ -42,7 +42,7 @@ class AuthFlowIntegrationTest {
                 "11988887777"
         );
 
-        MvcResult regResult = mockMvc.perform(post("/auth/registrar")
+        mockMvc.perform(post("/auth/registrar")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(registrarReq)))
                 .andExpect(status().isCreated())
