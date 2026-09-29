@@ -11,6 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -21,6 +22,7 @@ public class NotificacaoService {
     private final NotificacaoRepository notificacaoRepository;
     private final PreferenciaNotificacaoRepository preferenciaRepository;
 
+    /** Notificações pertencem somente a tutores; qualquer outro perfil recebe 403. */
     private Tutor tutorDoUsuario(String email) {
         return tutorRepository.findByDsEmail(email).orElseThrow(() ->
                 new ResponseStatusException(HttpStatus.FORBIDDEN,
@@ -29,12 +31,20 @@ public class NotificacaoService {
 
     @Transactional
     public DispositivoPush registrarDispositivo(String email, String token, PlataformaPush plataforma,
-                                                 String nomeDispositivo, String fusoHorario) {
+                                                String nomeDispositivo, String fusoHorario) {
         Tutor tutor = tutorDoUsuario(email);
+        String tokenLimpo = token.trim();
+
+        // Se o aparelho trocou de conta, desativa o token nas contas anteriores.
+        List<DispositivoPush> deOutros = dispositivoRepository
+                .findAtivosDeOutrosTutores(tokenLimpo, tutor.getIdTutor());
+        deOutros.forEach(d -> d.setAtivo(false));
+        dispositivoRepository.saveAll(deOutros);
+
         DispositivoPush dispositivo = dispositivoRepository
-                .findByTutorAndTokenAndPlataforma(tutor, token, plataforma)
+                .findByTutorAndTokenAndPlataforma(tutor, tokenLimpo, plataforma)
                 .orElseGet(() -> DispositivoPush.builder()
-                        .tutor(tutor).token(token).plataforma(plataforma).build());
+                        .tutor(tutor).token(tokenLimpo).plataforma(plataforma).build());
         dispositivo.setNomeDispositivo(nomeDispositivo);
         dispositivo.setFusoHorario(fusoHorario);
         dispositivo.setAtivo(true);
@@ -45,11 +55,13 @@ public class NotificacaoService {
     @Transactional
     public void removerDispositivo(String email, String token) {
         Tutor tutor = tutorDoUsuario(email);
-        dispositivoRepository.findByTutorAndToken(tutor, token).ifPresent(dispositivo -> {
-            dispositivo.setAtivo(false);
-            dispositivo.setUltimoUsoEm(LocalDateTime.now());
-            dispositivoRepository.save(dispositivo);
+        List<DispositivoPush> dispositivos = dispositivoRepository.findByTutorAndToken(tutor, token.trim());
+        LocalDateTime agora = LocalDateTime.now();
+        dispositivos.forEach(d -> {
+            d.setAtivo(false);
+            d.setUltimoUsoEm(agora);
         });
+        dispositivoRepository.saveAll(dispositivos);
     }
 
     @Transactional(readOnly = true)
@@ -63,8 +75,7 @@ public class NotificacaoService {
     @Transactional
     public Notificacao marcarComoLida(String email, Long id) {
         Tutor tutor = tutorDoUsuario(email);
-        Notificacao notificacao = notificacaoRepository.findById(id)
-                .filter(item -> item.getTutor().getIdTutor().equals(tutor.getIdTutor()))
+        Notificacao notificacao = notificacaoRepository.findByIdNotificacaoAndTutor(id, tutor)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Notificação não encontrada"));
         notificacao.setLida(true);
         return notificacaoRepository.save(notificacao);
