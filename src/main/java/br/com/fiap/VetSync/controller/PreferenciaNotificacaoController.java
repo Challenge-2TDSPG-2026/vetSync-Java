@@ -2,14 +2,18 @@ package br.com.fiap.VetSync.controller;
 
 import br.com.fiap.VetSync.entity.PreferenciaNotificacao;
 import br.com.fiap.VetSync.service.NotificacaoService;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/usuarios/preferencias/notificacoes")
 @RequiredArgsConstructor
+@PreAuthorize("hasRole('TUTOR')")
+@Tag(name = "Notificações")
 public class PreferenciaNotificacaoController {
 
     private final NotificacaoService service;
@@ -29,7 +33,7 @@ public class PreferenciaNotificacaoController {
 
     @PutMapping
     public PreferenciasResponse atualizar(@Valid @RequestBody PreferenciasRequest request,
-                                           Authentication auth) {
+                                          Authentication auth) {
         PreferenciaNotificacao preferencias = PreferenciaNotificacao.builder()
                 .pushAtivo(request.pushAtivo()).lembreteSeteDias(request.lembreteSeteDias())
                 .lembreteUmDia(request.lembreteUmDia()).lembreteDuasHoras(request.lembreteDuasHoras())
