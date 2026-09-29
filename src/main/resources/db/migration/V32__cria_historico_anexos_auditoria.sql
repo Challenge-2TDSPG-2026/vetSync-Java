@@ -1,6 +1,6 @@
 CREATE TABLE TB_EVENTO_HISTORICO (
     id_historico NUMBER(19) GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    id_evento NUMBER(19) NOT NULL,
+    id_evento NUMBER(10) NOT NULL,
     ds_acao VARCHAR2(40) NOT NULL,
     ds_status_anterior VARCHAR2(20), ds_status_novo VARCHAR2(20),
     ds_observacao_anterior VARCHAR2(500), ds_observacao_nova VARCHAR2(500),
@@ -14,7 +14,7 @@ CREATE INDEX ix_evento_historico_evento ON TB_EVENTO_HISTORICO(id_evento, dt_oco
 
 CREATE TABLE TB_EVENTO_ANEXO (
     id_anexo NUMBER(19) GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    id_evento NUMBER(19) NOT NULL,
+    id_evento NUMBER(10) NOT NULL,
     nm_arquivo VARCHAR2(255) NOT NULL, ds_mime_type VARCHAR2(100) NOT NULL,
     nr_tamanho NUMBER(19) NOT NULL, ds_conteudo BLOB NOT NULL,
     ds_ator VARCHAR2(150), dt_criacao TIMESTAMP NOT NULL,
