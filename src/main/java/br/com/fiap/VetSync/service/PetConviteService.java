@@ -24,6 +24,7 @@ import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.util.Base64;
 import java.util.List;
+import java.util.Locale;
 
 /**
  * Convite de acesso (cuidador/cônjuge) a um pet já cadastrado.
