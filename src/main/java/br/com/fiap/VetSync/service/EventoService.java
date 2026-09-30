@@ -37,6 +37,7 @@ public class EventoService {
     private final PlanoTratamentoRepository planoTratamentoRepository;
     private final AgendaService agendaService;
     private final ServicoEsteticaService servicoEsteticaService;
+    private final VinculoClinicaService vinculoClinicaService;
 
     @Autowired
     private EventoHistoricoRepository eventoHistoricoRepository;
@@ -63,6 +64,9 @@ public class EventoService {
                 () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Tipo de evento não encontrado: " + idTipoEvento));
         Veterinario vet = veterinarioRepository.findById(idVeterinario).orElseThrow(
                 () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Veterinário não encontrado: " + idVeterinario));
+
+        vinculoClinicaService.exigirClinicaAtivaDoTutor(pet.getTutor().getIdTutor(), vet.getClinica().getIdClinica());
+        evento.setClinica(vet.getClinica());
 
         validarHorarioLivre(idVeterinario, evento.getDtEvento(), evento.getHrEvento(), null);
 
@@ -92,6 +96,9 @@ public class EventoService {
         }
         ProfissionalEstetica profissional = profissionalEsteticaRepository.findById(idProfissionalEstetica).orElseThrow(
                 () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Profissional de estética não encontrado: " + idProfissionalEstetica));
+
+        vinculoClinicaService.exigirClinicaAtivaDoTutor(pet.getTutor().getIdTutor(), profissional.getClinica().getIdClinica());
+        evento.setClinica(profissional.getClinica());
 
         Set<ServicoEstetica> servicos = servicoEsteticaService.buscarVarios(idsServico);
         if (servicos.isEmpty()) {
@@ -336,6 +343,7 @@ public class EventoService {
                     .pet(cancelado.getPet())
                     .tipoEvento(cancelado.getTipoEvento())
                     .veterinario(cancelado.getVeterinario())
+                    .clinica(cancelado.getClinica())
                     .dtEvento(reagendarPara)
                     .hrEvento(horaReagendarPara)
                     .dsObservacao("Reagendado do evento #" + cancelado.getIdEvento())

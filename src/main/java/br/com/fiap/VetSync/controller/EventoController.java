@@ -132,6 +132,9 @@ public class EventoController {
     }
 
     private String nomeClinica(EventoSaude evento) {
+        if (evento.getClinica() != null) {
+            return evento.getClinica().getNmClinica();
+        }
         if (evento.getVeterinario() != null && evento.getVeterinario().getClinica() != null) {
             return evento.getVeterinario().getClinica().getNmClinica();
         }

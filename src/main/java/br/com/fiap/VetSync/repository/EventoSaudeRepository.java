@@ -57,4 +57,5 @@ public interface EventoSaudeRepository extends JpaRepository<EventoSaude, Long> 
     List<EventoSaude> findByVeterinario_IdVeterinarioAndDtEvento(Long idVeterinario, LocalDate dtEvento);
     List<EventoSaude> findByProfissionalEstetica_DsEmailOrderByDtEventoDesc(String email);
     List<EventoSaude> findByProfissionalEstetica_IdProfissionalEsteticaAndDtEvento(Long idProfissionalEstetica, LocalDate dtEvento);
+    boolean existsByPet_Tutor_IdTutorAndDsStatus(Long idTutor, StatusEvento dsStatus);
 }

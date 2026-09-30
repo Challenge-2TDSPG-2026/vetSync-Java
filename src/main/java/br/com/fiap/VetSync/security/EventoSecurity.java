@@ -2,6 +2,9 @@ package br.com.fiap.VetSync.security;
 
 import br.com.fiap.VetSync.entity.StatusEvento;
 import br.com.fiap.VetSync.repository.EventoSaudeRepository;
+import br.com.fiap.VetSync.repository.VeterinarioRepository;
+import br.com.fiap.VetSync.repository.ProfissionalEsteticaRepository;
+import br.com.fiap.VetSync.repository.VinculoTutorClinicaRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
@@ -12,6 +15,9 @@ public class EventoSecurity {
 
     private final EventoSaudeRepository eventoSaudeRepository;
     private final PetAccessSecurity petAccessSecurity;
+    private final VeterinarioRepository veterinarioRepository;
+    private final ProfissionalEsteticaRepository profissionalEsteticaRepository;
+    private final VinculoTutorClinicaRepository vinculoTutorClinicaRepository;
 
     public boolean isVeterinarioResponsavel(Long idEvento, Authentication authentication) {
         if (authentication == null || idEvento == null) return false;
@@ -60,7 +66,24 @@ public class EventoSecurity {
     public boolean isRelacionado(Long idEvento, Authentication authentication) {
         return isVeterinarioResponsavel(idEvento, authentication)
                 || isProfissionalEsteticaResponsavel(idEvento, authentication)
+                || isProfissionalDaClinicaAtivaDoTutor(idEvento, authentication)
                 || isTutorComAcesso(idEvento, authentication);
+    }
+
+    private boolean isProfissionalDaClinicaAtivaDoTutor(Long idEvento, Authentication authentication) {
+        if (authentication == null || idEvento == null) return false;
+        Long idClinica = veterinarioRepository.findByDsEmail(authentication.getName())
+                .map(v -> v.getClinica().getIdClinica())
+                .or(() -> profissionalEsteticaRepository.findByDsEmail(authentication.getName())
+                        .map(p -> p.getClinica().getIdClinica()))
+                .orElse(null);
+        if (idClinica == null) return false;
+        return eventoSaudeRepository.findById(idEvento)
+                .map(e -> e.getPet() != null && e.getPet().getTutor() != null
+                        && vinculoTutorClinicaRepository.findByTutor_IdTutorAndDtEncerramentoIsNull(e.getPet().getTutor().getIdTutor())
+                        .map(v -> v.getClinica().estaContratanteAtiva() && v.getClinica().getIdClinica().equals(idClinica))
+                        .orElse(false))
+                .orElse(false);
     }
 
 

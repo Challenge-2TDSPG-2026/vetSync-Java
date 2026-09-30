@@ -35,6 +35,10 @@ public class EventoSaude {
     @JoinColumn(name = "id_veterinario")
     private Veterinario veterinario;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_clinica")
+    private Clinica clinica;
+
     @NotNull(message = "Data do evento é obrigatória")
     @Column(name = "dt_evento", nullable = false)
     private LocalDate dtEvento;
