@@ -66,6 +66,10 @@ public class PetConvite {
     @Column(name = "dt_aceite")
     private LocalDateTime dtAceite;
 
+    @Builder.Default
+    @Column(name = "fl_todos_pets", nullable = false)
+    private boolean todosPets = false;
+
     @Transient
     public boolean isExpirado() {
         return dtExpiracao == null || !dtExpiracao.isAfter(LocalDateTime.now());

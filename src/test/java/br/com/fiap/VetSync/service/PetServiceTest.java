@@ -38,6 +38,9 @@ class PetServiceTest {
     @Mock
     private PetAcessoRepository petAcessoRepository;
 
+    @Mock
+    private ResponsavelService responsavelService;
+
     @InjectMocks
     private PetService petService;
 

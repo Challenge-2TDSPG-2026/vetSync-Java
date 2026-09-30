@@ -45,6 +45,9 @@ class PetConviteServiceTest {
     private PetAcessoService petAcessoService;
 
     @Mock
+    private ResponsavelService responsavelService;
+
+    @Mock
     private EmailService emailService;
 
     @Mock

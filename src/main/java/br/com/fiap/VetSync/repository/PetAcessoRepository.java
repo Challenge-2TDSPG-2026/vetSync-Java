@@ -15,6 +15,9 @@ public interface PetAcessoRepository extends JpaRepository<PetAcesso, Long> {
 
     Optional<PetAcesso> findByPet_IdPetAndTutor_IdTutor(Long idPet, Long idTutor);
 
+    List<PetAcesso> findByPet_Tutor_IdTutorAndTutor_IdTutorAndDsStatus(
+            Long idTutorProprietario, Long idTutorResponsavel, StatusAcessoPet dsStatus);
+
     boolean existsByPet_IdPetAndTutor_DsEmailIgnoreCaseAndDsStatus(
             Long idPet, String dsEmail, StatusAcessoPet dsStatus);
 }

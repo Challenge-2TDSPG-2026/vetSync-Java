@@ -36,6 +36,7 @@ public class PetService {
     private final EspecieRepository especieRepository;
     private final RacaRepository racaRepository;
     private final PetAcessoRepository petAcessoRepository;
+    private final ResponsavelService responsavelService;
 
     private static final long TAMANHO_MAXIMO_FOTO_BYTES = 5L * 1024 * 1024; // 5MB
     private static final Set<String> TIPOS_FOTO_PERMITIDOS = Set.of("image/jpeg", "image/png", "image/webp");
@@ -56,6 +57,7 @@ public class PetService {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
                     "Limite de " + NUMERO_MAXIMO_PET + " pets cadastrados atingido (número do pet tem até 4 dígitos)");
         }
+        responsavelService.concederAcessosAoNovoPet(salvo);
         return salvo;
     }
 

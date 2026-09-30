@@ -75,6 +75,18 @@ public class PetAcessoService {
         }
     }
 
+    public void revogarDoResponsavel(Long idTutorProprietario, Long idTutorResponsavel) {
+        List<PetAcesso> acessos = petAcessoRepository
+                .findByPet_Tutor_IdTutorAndTutor_IdTutorAndDsStatus(
+                        idTutorProprietario, idTutorResponsavel, StatusAcessoPet.ATIVO);
+        LocalDateTime agora = LocalDateTime.now();
+        acessos.forEach(acesso -> {
+            acesso.setDsStatus(StatusAcessoPet.REVOGADO);
+            acesso.setDtRevogado(agora);
+        });
+        petAcessoRepository.saveAll(acessos);
+    }
+
     public PetAcesso atualizar(Long idPet, Long idAcesso, RelacaoPet relacao, PermissaoPet permissao) {
         PetAcesso acesso = petAcessoRepository.findById(idAcesso)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Acesso não encontrado"));

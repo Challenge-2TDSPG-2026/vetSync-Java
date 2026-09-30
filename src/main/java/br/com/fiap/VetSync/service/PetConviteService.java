@@ -41,6 +41,7 @@ public class PetConviteService {
     private final PetRepository petRepository;
     private final TutorRepository tutorRepository;
     private final PetAcessoService petAcessoService;
+    private final ResponsavelService responsavelService;
     private final EmailService emailService;
     private final PasswordEncoder passwordEncoder;
     private final SecureRandom secureRandom = new SecureRandom();
@@ -87,15 +88,39 @@ public class PetConviteService {
             throw new ConviteException(HttpStatus.FORBIDDEN, "Somente o proprietário do pet pode convidar");
         }
 
+        return criarConvite(pet, idTutorOrigem, email, relacao, permissao, false);
+    }
+
+    @Transactional
+    public PetConvite criarResponsavel(Long idTutorOrigem, String email, PermissaoPet permissao) {
+        if (permissao != PermissaoPet.LEITURA && permissao != PermissaoPet.EDICAO) {
+            throw new ConviteException(HttpStatus.BAD_REQUEST,
+                    "Permissão deve ser LEITURA ou EDICAO");
+        }
+        List<Pet> pets = petRepository.findByTutor_IdTutor(idTutorOrigem);
+        if (pets.isEmpty()) {
+            throw new ConviteException(HttpStatus.CONFLICT,
+                    "Cadastre um pet antes de convidar um responsável");
+        }
+        return criarConvite(
+                pets.get(0), idTutorOrigem, email, RelacaoPet.CUIDADOR, permissao, true);
+    }
+
+    private PetConvite criarConvite(Pet pet, Long idTutorOrigem, String email,
+                                     RelacaoPet relacao, PermissaoPet permissao,
+                                     boolean todosPets) {
         String emailNormalizado = email.trim().toLowerCase(Locale.ROOT);
 
         if (tutorRepository.existsByDsEmail(emailNormalizado)) {
             throw new ConviteException(HttpStatus.CONFLICT, "Já existe uma conta cadastrada com esse e-mail");
         }
 
-        // Convites pendentes anteriores para o mesmo pet/e-mail perdem validade: só um fica ativo.
-        List<PetConvite> pendentesAnteriores = petConviteRepository
-                .findByPet_IdPetAndDsEmailDestinoIgnoreCaseAndDsStatus(idPet, emailNormalizado, StatusConvitePet.PENDENTE);
+        List<PetConvite> pendentesAnteriores = todosPets
+                ? petConviteRepository
+                .findByTutorOrigem_IdTutorAndDsEmailDestinoIgnoreCaseAndDsStatusAndTodosPetsTrue(
+                        idTutorOrigem, emailNormalizado, StatusConvitePet.PENDENTE)
+                : petConviteRepository.findByPet_IdPetAndDsEmailDestinoIgnoreCaseAndDsStatus(
+                        pet.getIdPet(), emailNormalizado, StatusConvitePet.PENDENTE);
         pendentesAnteriores.forEach(c -> c.setDsStatus(StatusConvitePet.CANCELADO));
         if (!pendentesAnteriores.isEmpty()) {
             petConviteRepository.saveAll(pendentesAnteriores);
@@ -114,6 +139,7 @@ public class PetConviteService {
                 .dsStatus(StatusConvitePet.PENDENTE)
                 .dtCriacao(agora)
                 .dtExpiracao(agora.plusHours(expiracaoHoras))
+                .todosPets(todosPets)
                 .build();
 
         convite = petConviteRepository.save(convite);
@@ -125,10 +151,16 @@ public class PetConviteService {
 
     private void enviarEmailConvite(PetConvite convite, String tokenPuro) {
         String link = webInviteUrl + "?token=" + tokenPuro;
-        String assunto = "Você foi convidado para cuidar de " + convite.getPet().getNmPet() + " no VetSync";
+        String escopo = convite.isTodosPets()
+                ? "todos os pets de " + convite.getTutorOrigem().getNmTutor()
+                : convite.getPet().getNmPet();
+        String assunto = convite.isTodosPets()
+                ? "Você foi convidado como responsável no VetSync"
+                : "Você foi convidado para cuidar de " + convite.getPet().getNmPet() + " no VetSync";
         String corpo = "Olá!\n\n"
                 + convite.getTutorOrigem().getNmTutor() + " convidou você para acompanhar "
-                + convite.getPet().getNmPet() + " no VetSync, como " + rotuloRelacao(convite.getDsRelacao()) + ".\n\n"
+                + escopo + " no VetSync"
+                + (convite.isTodosPets() ? ".\n\n" : ", como " + rotuloRelacao(convite.getDsRelacao()) + ".\n\n")
                 + "Para aceitar o convite, acesse o link abaixo e finalize seu cadastro:\n" + link + "\n\n"
                 + "Este link expira em " + expiracaoHoras + " horas.\n"
                 + "Se você não esperava este convite, pode ignorar este e-mail.";
@@ -152,7 +184,7 @@ public class PetConviteService {
         PetConvite convite = buscarValidoPorToken(tokenPuro);
         return new ConvitePublico(
                 convite.getDsEmailDestino(),
-                convite.getPet().getNmPet(),
+                convite.isTodosPets() ? "Todos os pets" : convite.getPet().getNmPet(),
                 convite.getDsRelacao(),
                 convite.getDsPermissao(),
                 convite.getDtExpiracao()
@@ -210,15 +242,21 @@ public class PetConviteService {
                 .build();
         tutor = tutorRepository.save(tutor);
 
-        petAcessoService.conceder(convite.getPet(), tutor, convite.getDsRelacao(), convite.getDsPermissao());
+        if (convite.isTodosPets()) {
+            responsavelService.conceder(
+                    convite.getTutorOrigem(), tutor, convite.getDsPermissao());
+        } else {
+            petAcessoService.conceder(
+                    convite.getPet(), tutor, convite.getDsRelacao(), convite.getDsPermissao());
+        }
 
         convite.setDsStatus(StatusConvitePet.ACEITO);
         convite.setDtAceite(LocalDateTime.now());
         convite.setTutorDestino(tutor);
         petConviteRepository.save(convite);
 
-        log.info("Convite {} aceito; acesso concedido ao pet {}", convite.getIdConvite(),
-                convite.getPet().getIdPet());
+        log.info("Convite {} aceito; escopo de acesso: {}", convite.getIdConvite(),
+                convite.isTodosPets() ? "todos os pets do tutor" : "pet " + convite.getPet().getIdPet());
 
         return tutor;
     }
