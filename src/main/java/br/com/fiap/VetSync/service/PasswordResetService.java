@@ -5,6 +5,7 @@ import br.com.fiap.VetSync.repository.ProfissionalEsteticaRepository;
 import br.com.fiap.VetSync.repository.TutorRepository;
 import br.com.fiap.VetSync.repository.VeterinarioRepository;
 import br.com.fiap.VetSync.security.CodigoRedefinicaoStore;
+import br.com.fiap.VetSync.security.TokenBlacklist;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -15,6 +16,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.Locale;
 
 /**
@@ -38,6 +40,7 @@ public class PasswordResetService {
     private final PasswordEncoder passwordEncoder;
     private final EmailService emailService;
     private final CodigoRedefinicaoStore codigoStore;
+    private final TokenBlacklist tokenBlacklist;
 
     private final SecureRandom random = new SecureRandom();
 
@@ -101,24 +104,26 @@ public class PasswordResetService {
 
         String emailNormalizado = buscarRegistroValido(email, codigo);
         String senhaCodificada = passwordEncoder.encode(novaSenha);
+        LocalDateTime agora = LocalDateTime.now(ZoneOffset.UTC);
+        LocalDateTime senhaAlteradaEm = agora.withNano((agora.getNano() / 1_000_000) * 1_000_000);
 
         boolean atualizado = tutorRepository.findByDsEmail(emailNormalizado)
-                .map(t -> { t.setDsSenha(senhaCodificada); tutorRepository.save(t); return true; })
+                .map(t -> { t.setDsSenha(senhaCodificada); t.setDtSenhaAlteradaEm(senhaAlteradaEm); tutorRepository.save(t); return true; })
                 .orElse(false);
 
         if (!atualizado) {
             atualizado = veterinarioRepository.findByDsEmail(emailNormalizado)
-                    .map(v -> { v.setDsSenha(senhaCodificada); veterinarioRepository.save(v); return true; })
+                    .map(v -> { v.setDsSenha(senhaCodificada); v.setDtSenhaAlteradaEm(senhaAlteradaEm); veterinarioRepository.save(v); return true; })
                     .orElse(false);
         }
         if (!atualizado) {
             atualizado = profissionalEsteticaRepository.findByDsEmail(emailNormalizado)
-                    .map(p -> { p.setDsSenha(senhaCodificada); profissionalEsteticaRepository.save(p); return true; })
+                    .map(p -> { p.setDsSenha(senhaCodificada); p.setDtSenhaAlteradaEm(senhaAlteradaEm); profissionalEsteticaRepository.save(p); return true; })
                     .orElse(false);
         }
         if (!atualizado) {
             atualizado = adminRepository.findByDsEmail(emailNormalizado)
-                    .map(a -> { a.setDsSenha(senhaCodificada); adminRepository.save(a); return true; })
+                    .map(a -> { a.setDsSenha(senhaCodificada); a.setDtSenhaAlteradaEm(senhaAlteradaEm); adminRepository.save(a); return true; })
                     .orElse(false);
         }
 
@@ -126,8 +131,9 @@ public class PasswordResetService {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuário não encontrado");
         }
 
+        tokenBlacklist.revogarSessoesDoUsuario(emailNormalizado);
         codigoStore.remover(emailNormalizado);
-        log.info("Senha redefinida com sucesso para: {}", emailNormalizado);
+        log.info("Senha redefinida com sucesso e sessões revogadas para: {}", emailNormalizado);
     }
 
     private String buscarRegistroValido(String email, String codigo) {

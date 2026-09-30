@@ -28,11 +28,18 @@ public class JwtFilter extends OncePerRequestFilter {
             String token = header.substring(7);
             if (!tokenBlacklist.isRevogado(token) && jwtService.tokenValido(token)) {
                 String email = jwtService.extrairEmail(token);
-                var user = userDetailsService.loadUserByUsername(email);
-                var auth = new UsernamePasswordAuthenticationToken(
-                        user, null, user.getAuthorities()
-                );
-                SecurityContextHolder.getContext().setAuthentication(auth);
+                boolean emitidoDepoisDaTroca = userDetailsService.ultimaAlteracaoSenha(email)
+                        .map(alteradaEm -> !jwtService.extrairDataEmissao(token).before(
+                                java.util.Date.from(alteradaEm.toInstant(java.time.ZoneOffset.UTC))))
+                        .orElse(true);
+                if (emitidoDepoisDaTroca && !tokenBlacklist.isRevogadoParaUsuario(
+                        email, jwtService.extrairDataEmissao(token))) {
+                    var user = userDetailsService.loadUserByUsername(email);
+                    var auth = new UsernamePasswordAuthenticationToken(
+                            user, null, user.getAuthorities()
+                    );
+                    SecurityContextHolder.getContext().setAuthentication(auth);
+                }
             }
         }
         chain.doFilter(req, res);

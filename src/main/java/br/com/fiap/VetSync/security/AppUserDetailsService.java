@@ -8,7 +8,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.userdetails.*;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.Locale;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -48,6 +50,14 @@ public class AppUserDetailsService implements UserDetailsService {
                                 .roles("ADMIN")
                                 .build()))
                 .orElseThrow(() -> new UsernameNotFoundException("Usuário não encontrado: " + email));
+    }
+
+    public Optional<LocalDateTime> ultimaAlteracaoSenha(String email) {
+        String emailNormalizado = normalizeEmail(email);
+        return tutorRepository.findByDsEmail(emailNormalizado).map(t -> t.getDtSenhaAlteradaEm())
+                .or(() -> veterinarioRepository.findByDsEmail(emailNormalizado).map(v -> v.getDtSenhaAlteradaEm()))
+                .or(() -> profissionalEsteticaRepository.findByDsEmail(emailNormalizado).map(p -> p.getDtSenhaAlteradaEm()))
+                .or(() -> adminRepository.findByDsEmail(emailNormalizado).map(a -> a.getDtSenhaAlteradaEm()));
     }
 
     private String normalizeEmail(String email) {

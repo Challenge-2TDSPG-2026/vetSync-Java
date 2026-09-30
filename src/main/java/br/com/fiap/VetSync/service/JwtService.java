@@ -37,6 +37,13 @@ public class JwtService {
                 .getBody().getSubject();
     }
 
+    public Date extrairDataEmissao(String token) {
+        return Jwts.parserBuilder()
+                .setSigningKey(getKey()).build()
+                .parseClaimsJws(token)
+                .getBody().getIssuedAt();
+    }
+
     public boolean tokenValido(String token) {
         try {
             Jwts.parserBuilder().setSigningKey(getKey()).build().parseClaimsJws(token);

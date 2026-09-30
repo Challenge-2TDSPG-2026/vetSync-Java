@@ -3,6 +3,8 @@ package br.com.fiap.VetSync.entity;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+
+import java.time.LocalDateTime;
 import lombok.*;
 
 @Entity
@@ -33,6 +35,9 @@ public class Veterinario {
 
     @Column(name = "ds_senha", nullable = false)
     private String dsSenha;
+
+    @Column(name = "dt_senha_alterada_em")
+    private LocalDateTime dtSenhaAlteradaEm;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_clinica", nullable = false)

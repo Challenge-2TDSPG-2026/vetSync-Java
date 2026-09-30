@@ -5,6 +5,7 @@ import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import lombok.*;
 
+import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -36,6 +37,9 @@ public class ProfissionalEstetica {
 
     @Column(name = "ds_senha", nullable = false)
     private String dsSenha;
+
+    @Column(name = "dt_senha_alterada_em")
+    private LocalDateTime dtSenhaAlteradaEm;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_clinica", nullable = false)

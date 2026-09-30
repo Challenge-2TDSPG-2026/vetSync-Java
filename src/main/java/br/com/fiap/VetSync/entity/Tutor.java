@@ -8,6 +8,7 @@ import jakarta.validation.constraints.Size;
 import lombok.*;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "TB_TUTOR")
@@ -71,6 +72,9 @@ public class Tutor {
 
     @Column(name = "ds_senha", nullable = false)
     private String dsSenha;
+
+    @Column(name = "dt_senha_alterada_em")
+    private LocalDateTime dtSenhaAlteradaEm;
 
     @Builder.Default
     @Column(name = "dt_cadastro", nullable = false)
