@@ -40,4 +40,4 @@ CREATE INDEX idx_vinculo_tutor ON TB_VINCULO_TUTOR_CLINICA (id_tutor, dt_encerra
 CREATE INDEX idx_vinculo_clinica ON TB_VINCULO_TUTOR_CLINICA (id_clinica, dt_encerramento);
 CREATE UNIQUE INDEX uq_vinculo_tutor_ativo ON TB_VINCULO_TUTOR_CLINICA
     (CASE WHEN dt_encerramento IS NULL THEN id_tutor END);
-CREATE INDEX idx_sessao_vinculo_token ON TB_SESSAO_VINCULO_CLINICA (ds_token_hash);
+-- ds_token_hash já possui índice criado pela restrição UNIQUE da tabela.
