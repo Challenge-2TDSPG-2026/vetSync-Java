@@ -65,7 +65,34 @@ public class AuthController {
             String cpf,
 
             @Pattern(regexp = "^\\d{10,11}$", message = "Telefone deve conter 10 ou 11 dígitos")
-            String telefone
+            String telefone,
+
+            @NotBlank(message = "CEP é obrigatório")
+            @Pattern(regexp = "^\\d{8}$", message = "CEP deve conter 8 dígitos numéricos")
+            String cep,
+
+            @NotBlank(message = "Endereço é obrigatório")
+            @Size(max = 150)
+            String logradouro,
+
+            @NotBlank(message = "Número é obrigatório")
+            @Size(max = 20)
+            String numero,
+
+            @Size(max = 100)
+            String complemento,
+
+            @NotBlank(message = "Bairro é obrigatório")
+            @Size(max = 100)
+            String bairro,
+
+            @NotBlank(message = "Cidade é obrigatória")
+            @Size(max = 100)
+            String cidade,
+
+            @NotBlank(message = "UF é obrigatória")
+            @Pattern(regexp = "^[A-Z]{2}$", message = "UF deve conter duas letras maiúsculas")
+            String uf
     ) {}
 
     public record AuthResponse(String token, Long idUsuario, String email, String nome, String perfil) {}
@@ -146,6 +173,13 @@ public class AuthController {
                 .dsSenha(passwordEncoder.encode(req.senha()))
                 .dsCpf(req.cpf())
                 .nrTelefone(req.telefone())
+                .nrCep(req.cep())
+                .dsLogradouro(req.logradouro())
+                .nrEndereco(req.numero())
+                .dsComplemento(req.complemento())
+                .dsBairro(req.bairro())
+                .nmCidade(req.cidade())
+                .sgUf(req.uf())
                 .build();
         tutor = tutorRepository.save(tutor);
         return new AuthResponse(jwtService.gerarToken(emailNormalizado), tutor.getIdTutor(),

@@ -97,7 +97,7 @@ class AuthControllerTest {
     @Test
     @DisplayName("POST /auth/registrar - Sucesso")
     void registrar_Sucesso() throws Exception {
-        var req = new AuthController.RegistrarRequest("Novo Tutor", "novo@teste.com", "senha123", "12345678901", "11999990000");
+        var req = new AuthController.RegistrarRequest("Novo Tutor", "novo@teste.com", "senha123", "12345678901", "11999990000", "01310100", "Avenida Paulista", "1000", "Apto 10", "Bela Vista", "São Paulo", "SP");
 
         when(tutorRepository.existsByDsEmail("novo@teste.com")).thenReturn(false);
         when(passwordEncoder.encode("senha123")).thenReturn("hashed-pwd");
@@ -120,7 +120,7 @@ class AuthControllerTest {
     @Test
     @DisplayName("POST /auth/registrar - Falha validação (campos vazios) -> 400 Bad Request")
     void registrar_CamposInvalidos() throws Exception {
-        var req = new AuthController.RegistrarRequest("", "email-invalido", "123", "cpf-invalido", "123");
+        var req = new AuthController.RegistrarRequest("", "email-invalido", "123", "cpf-invalido", "123", "12", "", "", "", "", "", "");
 
         mockMvc.perform(post("/auth/registrar")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -133,7 +133,7 @@ class AuthControllerTest {
     @Test
     @DisplayName("POST /auth/registrar - E-mail Duplicado -> 409 Conflict")
     void registrar_EmailDuplicado() throws Exception {
-        var req = new AuthController.RegistrarRequest("Novo", "existe@teste.com", "senha123", "12345678901", "11999990000");
+        var req = new AuthController.RegistrarRequest("Novo", "existe@teste.com", "senha123", "12345678901", "11999990000", "01310100", "Avenida Paulista", "1000", null, "Bela Vista", "São Paulo", "SP");
         when(tutorRepository.existsByDsEmail("existe@teste.com")).thenReturn(true);
 
         mockMvc.perform(post("/auth/registrar")

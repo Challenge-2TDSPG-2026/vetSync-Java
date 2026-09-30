@@ -71,7 +71,7 @@ class PlanoTratamentoFlowIntegrationTest {
         String vetToken = objectMapper.readTree(vetLogin.getResponse().getContentAsString()).get("token").asText();
 
         MvcResult tutorRes = mockMvc.perform(post("/auth/registrar").contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(new AuthController.RegistrarRequest("Tatiana", "tatiana@teste.com", "senha123", "99988811122", "11988882222")))).andReturn();
+                .content(objectMapper.writeValueAsString(new AuthController.RegistrarRequest("Tatiana", "tatiana@teste.com", "senha123", "99988811122", "11988882222", "01310100", "Avenida Paulista", "1000", null, "Bela Vista", "São Paulo", "SP")))).andReturn();
         String tutorToken = objectMapper.readTree(tutorRes.getResponse().getContentAsString()).get("token").asText();
 
         MvcResult petRes = mockMvc.perform(post("/pets")

@@ -29,7 +29,34 @@ public class TutorController {
             String nmTutor,
 
             @Pattern(regexp = "^\\d{10,11}$", message = "Telefone deve ter 10 ou 11 dígitos")
-            String nrTelefone
+            String nrTelefone,
+
+            @NotBlank(message = "CEP é obrigatório")
+            @Pattern(regexp = "^\\d{8}$", message = "CEP deve conter 8 dígitos numéricos")
+            String nrCep,
+
+            @NotBlank(message = "Endereço é obrigatório")
+            @Size(max = 150)
+            String dsLogradouro,
+
+            @NotBlank(message = "Número é obrigatório")
+            @Size(max = 20)
+            String nrEndereco,
+
+            @Size(max = 100)
+            String dsComplemento,
+
+            @NotBlank(message = "Bairro é obrigatório")
+            @Size(max = 100)
+            String dsBairro,
+
+            @NotBlank(message = "Cidade é obrigatória")
+            @Size(max = 100)
+            String nmCidade,
+
+            @NotBlank(message = "UF é obrigatória")
+            @Pattern(regexp = "^[A-Z]{2}$", message = "UF deve conter duas letras maiúsculas")
+            String sgUf
     ) {}
 
     public record TutorResponse(
@@ -37,7 +64,14 @@ public class TutorController {
             String nmTutor,
             String dsEmail,
             String nrTelefone,
-            String dsCpf
+            String dsCpf,
+            String nrCep,
+            String dsLogradouro,
+            String nrEndereco,
+            String dsComplemento,
+            String dsBairro,
+            String nmCidade,
+            String sgUf
     ) {}
 
     private TutorResponse toResponse(Tutor tutor) {
@@ -46,7 +80,14 @@ public class TutorController {
                 tutor.getNmTutor(),
                 tutor.getDsEmail(),
                 tutor.getNrTelefone(),
-                tutor.getDsCpf()
+                tutor.getDsCpf(),
+                tutor.getNrCep(),
+                tutor.getDsLogradouro(),
+                tutor.getNrEndereco(),
+                tutor.getDsComplemento(),
+                tutor.getDsBairro(),
+                tutor.getNmCidade(),
+                tutor.getSgUf()
         );
     }
 
@@ -68,11 +109,18 @@ public class TutorController {
 
     @PutMapping("/{id}")
     @PreAuthorize("@tutorSecurity.isSelf(#id, authentication)")
-    @Operation(summary = "Atualizar dados do tutor (nome e telefone). Só o próprio tutor.")
+    @Operation(summary = "Atualizar dados e endereço do tutor. Só o próprio tutor.")
     public TutorResponse atualizar(@PathVariable Long id, @RequestBody @Valid TutorAtualizarRequest request) {
         Tutor tutorAtualizado = Tutor.builder()
                 .nmTutor(request.nmTutor())
                 .nrTelefone(request.nrTelefone())
+                .nrCep(request.nrCep())
+                .dsLogradouro(request.dsLogradouro())
+                .nrEndereco(request.nrEndereco())
+                .dsComplemento(request.dsComplemento())
+                .dsBairro(request.dsBairro())
+                .nmCidade(request.nmCidade())
+                .sgUf(request.sgUf())
                 .build();
         return toResponse(tutorService.atualizar(id, tutorAtualizado));
     }

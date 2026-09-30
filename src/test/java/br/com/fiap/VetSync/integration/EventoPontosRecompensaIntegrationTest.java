@@ -107,7 +107,14 @@ class EventoPontosRecompensaIntegrationTest {
                 "camila@teste.com",
                 "senha123456",
                 "98765432100",
-                "11977776666"
+                "11977776666",
+                "01310100",
+                "Avenida Paulista",
+                "1000",
+                null,
+                "Bela Vista",
+                "São Paulo",
+                "SP"
         );
         MvcResult tutorRes = mockMvc.perform(post("/auth/registrar")
                         .contentType(MediaType.APPLICATION_JSON)

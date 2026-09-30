@@ -39,7 +39,14 @@ class AuthFlowIntegrationTest {
                 "lucas.integ@teste.com",
                 "senhaForte123",
                 "12345678909",
-                "11988887777"
+                "11988887777",
+                "01310100",
+                "Avenida Paulista",
+                "1000",
+                null,
+                "Bela Vista",
+                "São Paulo",
+                "SP"
         );
 
         mockMvc.perform(post("/auth/registrar")

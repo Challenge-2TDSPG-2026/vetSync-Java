@@ -92,7 +92,7 @@ class TutorControllerTest {
         Tutor t = Tutor.builder().idTutor(1L).nmTutor("Maria Silva").nrTelefone("11988887777").build();
         when(tutorService.atualizar(eq(1L), any(Tutor.class))).thenReturn(t);
 
-        var req = new TutorController.TutorAtualizarRequest("Maria Silva", "11988887777");
+        var req = new TutorController.TutorAtualizarRequest("Maria Silva", "11988887777", "01310100", "Avenida Paulista", "1000", "Apto 10", "Bela Vista", "São Paulo", "SP");
 
         mockMvc.perform(put("/tutores/1")
                         .contentType(MediaType.APPLICATION_JSON)

@@ -47,6 +47,13 @@ public class TutorService {
         Tutor tutor = buscarPorId(id);
         tutor.setNmTutor(tutorAtualizado.getNmTutor());
         tutor.setNrTelefone(tutorAtualizado.getNrTelefone());
+        tutor.setNrCep(tutorAtualizado.getNrCep());
+        tutor.setDsLogradouro(tutorAtualizado.getDsLogradouro());
+        tutor.setNrEndereco(tutorAtualizado.getNrEndereco());
+        tutor.setDsComplemento(tutorAtualizado.getDsComplemento());
+        tutor.setDsBairro(tutorAtualizado.getDsBairro());
+        tutor.setNmCidade(tutorAtualizado.getNmCidade());
+        tutor.setSgUf(tutorAtualizado.getSgUf());
         return tutorRepository.save(tutor);
     }
 
