@@ -32,4 +32,12 @@ public class Clinica {
 
     @Column(name = "ds_uf", length = 2)
     private String dsUf;
+
+    @Builder.Default
+    @Column(name = "st_contratante", nullable = false, length = 1)
+    private String stContratante = "A";
+
+    public boolean estaContratanteAtiva() {
+        return "A".equals(stContratante);
+    }
 }

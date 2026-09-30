@@ -53,6 +53,7 @@ public class SecurityConfig {
                                 "/auth/login", "/auth/registrar",
                                 "/auth/esqueci-senha", "/auth/validar-codigo", "/auth/redefinir-senha",
                                 "/auth/convites/**", "/auth/registrar-convite",
+                                "/vinculos-clinica/validar-codigo",
                                 "/admins/bootstrap",
                                 "/agendamentos-retorno/**",
                                 "/carteiras-publicas/**",

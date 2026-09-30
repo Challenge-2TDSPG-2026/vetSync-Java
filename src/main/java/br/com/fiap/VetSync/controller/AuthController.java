@@ -7,6 +7,7 @@ import br.com.fiap.VetSync.repository.TutorRepository;
 import br.com.fiap.VetSync.repository.VeterinarioRepository;
 import br.com.fiap.VetSync.security.TokenBlacklist;
 import br.com.fiap.VetSync.service.JwtService;
+import br.com.fiap.VetSync.service.VinculoClinicaService;
 import br.com.fiap.VetSync.service.PasswordResetService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -43,6 +44,7 @@ public class AuthController {
     private final TokenBlacklist tokenBlacklist;
     private final ProfissionalEsteticaRepository profissionalEsteticaRepository;
     private final PasswordResetService passwordResetService;
+    private final VinculoClinicaService vinculoClinicaService;
 
     private static final int SENHA_MIN_LENGTH = 6;
 
@@ -93,10 +95,20 @@ public class AuthController {
             @NotBlank(message = "UF é obrigatória")
             @Pattern(regexp = "^[A-Z]{2}$", message = "UF deve conter duas letras maiúsculas")
             String uf
-    ) {}
+,
 
-    public record AuthResponse(String token, Long idUsuario, String email, String nome, String perfil) {}
-    public record MeResponse(Long idUsuario, String email, String nome, String perfil) {}
+            @NotBlank(message = "Confirme o código da clínica antes de concluir o cadastro")
+            String sessaoVinculo
+    ) {
+
+        public RegistrarRequest(String nome, String email, String senha, String cpf, String telefone, String cep,
+                                String logradouro, String numero, String complemento, String bairro, String cidade, String uf) {
+            this(nome, email, senha, cpf, telefone, cep, logradouro, numero, complemento, bairro, cidade, uf, null);
+        }
+    }
+
+    public record AuthResponse(String token, Long idUsuario, String email, String nome, String perfil, boolean temVinculoAtivo) {}
+    public record MeResponse(Long idUsuario, String email, String nome, String perfil, boolean temVinculoAtivo) {}
 
     public record EsqueciSenhaRequest(
             @NotBlank(message = "E-mail é obrigatório")
@@ -181,9 +193,9 @@ public class AuthController {
                 .nmCidade(req.cidade())
                 .sgUf(req.uf())
                 .build();
-        tutor = tutorRepository.save(tutor);
+        tutor = vinculoClinicaService.criarTutorComVinculo(tutor, req.sessaoVinculo());
         return new AuthResponse(jwtService.gerarToken(emailNormalizado), tutor.getIdTutor(),
-                emailNormalizado, req.nome(), "TUTOR");
+                emailNormalizado, req.nome(), "TUTOR", true);
     }
 
     @PostMapping("/esqueci-senha")
@@ -229,20 +241,21 @@ public class AuthController {
 
         var tutor = tutorRepository.findByDsEmail(email);
         if (tutor.isPresent()) {
-            return new MeResponse(tutor.get().getIdTutor(), email, tutor.get().getNmTutor(), "TUTOR");
+            return new MeResponse(tutor.get().getIdTutor(), email, tutor.get().getNmTutor(), "TUTOR",
+                    vinculoClinicaService.temVinculoAtivo(tutor.get().getIdTutor()));
         }
         var vet = veterinarioRepository.findByDsEmail(email);
         if (vet.isPresent()) {
-            return new MeResponse(vet.get().getIdVeterinario(), email, vet.get().getNmVeterinario(), "VETERINARIO");
+            return new MeResponse(vet.get().getIdVeterinario(), email, vet.get().getNmVeterinario(), "VETERINARIO", true);
         }
         var profissional = profissionalEsteticaRepository.findByDsEmail(email);
         if (profissional.isPresent()) {
             return new MeResponse(profissional.get().getIdProfissionalEstetica(), email,
-                    profissional.get().getNmProfissionalEstetica(), "PROFISSIONAL_ESTETICA");
+                    profissional.get().getNmProfissionalEstetica(), "PROFISSIONAL_ESTETICA", true);
         }
         var admin = adminRepository.findByDsEmail(email);
         if (admin.isPresent()) {
-            return new MeResponse(admin.get().getIdAdmin(), email, admin.get().getNmAdmin(), "ADMIN");
+            return new MeResponse(admin.get().getIdAdmin(), email, admin.get().getNmAdmin(), "ADMIN", true);
         }
         throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuário não encontrado");
     }
@@ -250,20 +263,21 @@ public class AuthController {
     private AuthResponse montarAuthResponse(String email, String token) {
         var tutor = tutorRepository.findByDsEmail(email);
         if (tutor.isPresent()) {
-            return new AuthResponse(token, tutor.get().getIdTutor(), email, tutor.get().getNmTutor(), "TUTOR");
+            return new AuthResponse(token, tutor.get().getIdTutor(), email, tutor.get().getNmTutor(), "TUTOR",
+                    vinculoClinicaService.temVinculoAtivo(tutor.get().getIdTutor()));
         }
         var vet = veterinarioRepository.findByDsEmail(email);
         if (vet.isPresent()) {
-            return new AuthResponse(token, vet.get().getIdVeterinario(), email, vet.get().getNmVeterinario(), "VETERINARIO");
+            return new AuthResponse(token, vet.get().getIdVeterinario(), email, vet.get().getNmVeterinario(), "VETERINARIO", true);
         }
         var profissional = profissionalEsteticaRepository.findByDsEmail(email);
         if (profissional.isPresent()) {
             return new AuthResponse(token, profissional.get().getIdProfissionalEstetica(), email,
-                    profissional.get().getNmProfissionalEstetica(), "PROFISSIONAL_ESTETICA");
+                    profissional.get().getNmProfissionalEstetica(), "PROFISSIONAL_ESTETICA", true);
         }
         var admin = adminRepository.findByDsEmail(email);
         if (admin.isPresent()) {
-            return new AuthResponse(token, admin.get().getIdAdmin(), email, admin.get().getNmAdmin(), "ADMIN");
+            return new AuthResponse(token, admin.get().getIdAdmin(), email, admin.get().getNmAdmin(), "ADMIN", true);
         }
         throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuário não encontrado");
     }
