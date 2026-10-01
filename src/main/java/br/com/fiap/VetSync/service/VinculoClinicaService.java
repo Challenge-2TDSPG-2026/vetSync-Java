@@ -4,6 +4,7 @@ import br.com.fiap.VetSync.entity.*;
 import br.com.fiap.VetSync.repository.*;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
@@ -14,6 +15,7 @@ import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.util.HexFormat;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -31,6 +33,10 @@ public class VinculoClinicaService {
 
     public record CodigoEmitido(String codigo, Clinica clinica) {}
     public record CodigoValidado(String sessaoVinculo, Clinica clinica, LocalDateTime expiraEm) {}
+
+    public List<Clinica> listarClinicas() {
+        return clinicaRepository.findAll(Sort.by(Sort.Direction.ASC, "nmClinica"));
+    }
 
     @Transactional
     public CodigoEmitido emitirCodigo(Long idClinica) {

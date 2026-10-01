@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @RestController
 @RequestMapping("/vinculos-clinica")
@@ -30,6 +31,7 @@ public class VinculoClinicaController {
     public record VinculoResponse(Long idClinica, String nomeClinica, LocalDateTime inicio, boolean ativo) {}
     public record ContratoRequest(@NotNull(message = "ativo é obrigatório") Boolean ativo) {}
     public record CodigoEmitidoResponse(Long idClinica, String nomeClinica, String codigo) {}
+    public record ClinicaResumoResponse(Long idClinica, String nomeClinica) {}
 
     @PostMapping("/validar-codigo")
     public SessaoResponse validarCodigo(@Valid @RequestBody CodigoRequest request) {
@@ -52,6 +54,14 @@ public class VinculoClinicaController {
         VinculoTutorClinica vinculo = vinculoService.buscarVinculoAtivo(idTutor);
         if (vinculo == null || !vinculo.getClinica().estaContratanteAtiva()) throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Nenhuma clínica ativa vinculada");
         return toResponse(vinculo);
+    }
+
+    @GetMapping("/clinicas")
+    @PreAuthorize("hasRole('ADMIN')")
+    public List<ClinicaResumoResponse> listarClinicas() {
+        return vinculoService.listarClinicas().stream()
+                .map(clinica -> new ClinicaResumoResponse(clinica.getIdClinica(), clinica.getNmClinica()))
+                .toList();
     }
 
     @PostMapping("/clinicas/{idClinica}/codigo")
