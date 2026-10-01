@@ -1,5 +1,6 @@
 package br.com.fiap.VetSync.controller;
 
+import br.com.fiap.VetSync.service.AgendaDoDiaService;
 import br.com.fiap.VetSync.service.AgendaSlotsService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -17,10 +18,11 @@ import java.util.List;
 @RestController
 @RequestMapping("/agenda")
 @RequiredArgsConstructor
-@Tag(name = "Agenda", description = "Disponibilidade real para o fluxo de agendamento do tutor")
+@Tag(name = "Agenda", description = "Disponibilidade para o agendamento do tutor e agenda do dia para o admin")
 public class AgendaController {
 
     private final AgendaSlotsService agendaSlotsService;
+    private final AgendaDoDiaService agendaDoDiaService;
 
     public record SlotsResponse(LocalDate data, List<AgendaSlotsService.SlotDisponivel> slots) {}
 
@@ -32,5 +34,14 @@ public class AgendaController {
             @RequestParam(defaultValue = "CLINICO_GERAL") String modalidade
     ) {
         return new SlotsResponse(data, agendaSlotsService.listarSlots(data, modalidade));
+    }
+
+    @GetMapping("/dia")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Atendimentos do dia (admin)", description = "Todos os eventos da data informada, de qualquer status, ordenados por horário. Usado no painel do admin.")
+    public List<AgendaDoDiaService.AtendimentoDia> atendimentosDoDia(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate data
+    ) {
+        return agendaDoDiaService.listar(data);
     }
 }

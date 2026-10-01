@@ -58,4 +58,22 @@ public interface EventoSaudeRepository extends JpaRepository<EventoSaude, Long> 
     List<EventoSaude> findByProfissionalEstetica_DsEmailOrderByDtEventoDesc(String email);
     List<EventoSaude> findByProfissionalEstetica_IdProfissionalEsteticaAndDtEvento(Long idProfissionalEstetica, LocalDate dtEvento);
     boolean existsByPet_Tutor_IdTutorAndDsStatus(Long idTutor, StatusEvento dsStatus);
+
+    /**
+     * Agenda do dia para o painel do admin: todos os eventos da data (qualquer status),
+     * já com pet, tutor, raça, tipo e profissional carregados para evitar N+1.
+     * A ordenação por horário é feita no service (hr_evento é texto HH:mm e pode ser nulo).
+     */
+    @Query("""
+            select e from EventoSaude e
+            join fetch e.pet p
+            join fetch p.tutor
+            join fetch p.raca
+            join fetch e.tipoEvento
+            left join fetch e.veterinario
+            left join fetch e.profissionalEstetica
+            left join fetch e.clinica
+            where e.dtEvento = :data
+            """)
+    List<EventoSaude> findAgendaDoDia(@Param("data") LocalDate data);
 }
