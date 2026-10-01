@@ -18,6 +18,9 @@ public class SessaoVinculoClinica {
     @ManyToOne(fetch = FetchType.LAZY) @JoinColumn(name = "id_clinica", nullable = false)
     private Clinica clinica;
 
+    @ManyToOne(fetch = FetchType.LAZY) @JoinColumn(name = "id_codigo_vinculo")
+    private CodigoVinculoClinica codigoVinculo;
+
     @Column(name = "ds_token_hash", nullable = false, unique = true, length = 64)
     private String dsTokenHash;
 

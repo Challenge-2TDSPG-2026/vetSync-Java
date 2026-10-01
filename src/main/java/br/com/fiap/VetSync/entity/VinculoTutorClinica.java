@@ -21,6 +21,9 @@ public class VinculoTutorClinica {
     @ManyToOne(fetch = FetchType.LAZY) @JoinColumn(name = "id_clinica", nullable = false)
     private Clinica clinica;
 
+    @ManyToOne(fetch = FetchType.LAZY) @JoinColumn(name = "id_codigo_vinculo")
+    private CodigoVinculoClinica codigoVinculo;
+
     @Column(name = "dt_inicio", nullable = false) @Builder.Default
     private LocalDateTime dtInicio = LocalDateTime.now();
 

@@ -31,7 +31,8 @@ public class VinculoClinicaController {
     public record VinculoResponse(Long idClinica, String nomeClinica, LocalDateTime inicio, boolean ativo) {}
     public record ContratoRequest(@NotNull(message = "ativo é obrigatório") Boolean ativo) {}
     public record CodigoEmitidoResponse(Long idClinica, String nomeClinica, String codigo) {}
-    public record ClinicaResumoResponse(Long idClinica, String nomeClinica) {}
+    public record ClinicaResumoResponse(Long idClinica, String nomeClinica, boolean contratanteAtiva,
+                                        String statusContrato, boolean codigoAtivo) {}
 
     @PostMapping("/validar-codigo")
     public SessaoResponse validarCodigo(@Valid @RequestBody CodigoRequest request) {
@@ -60,7 +61,11 @@ public class VinculoClinicaController {
     @PreAuthorize("hasRole('ADMIN')")
     public List<ClinicaResumoResponse> listarClinicas() {
         return vinculoService.listarClinicas().stream()
-                .map(clinica -> new ClinicaResumoResponse(clinica.getIdClinica(), clinica.getNmClinica()))
+                .map(item -> new ClinicaResumoResponse(
+                        item.clinica().getIdClinica(), item.clinica().getNmClinica(),
+                        item.clinica().estaContratanteAtiva(),
+                        item.clinica().estaContratanteAtiva() ? "ATIVO" : "INATIVO",
+                        item.codigoAtivo()))
                 .toList();
     }
 
@@ -70,6 +75,13 @@ public class VinculoClinicaController {
     public CodigoEmitidoResponse emitirCodigo(@PathVariable Long idClinica) {
         var emitido = vinculoService.emitirCodigo(idClinica);
         return new CodigoEmitidoResponse(emitido.clinica().getIdClinica(), emitido.clinica().getNmClinica(), emitido.codigo());
+    }
+
+    @DeleteMapping("/clinicas/{idClinica}/codigo")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @PreAuthorize("hasRole('ADMIN')")
+    public void revogarCodigo(@PathVariable Long idClinica) {
+        vinculoService.revogarCodigo(idClinica);
     }
 
     @PatchMapping("/clinicas/{idClinica}/contrato")
