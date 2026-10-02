@@ -35,7 +35,7 @@ public class Clinica {
 
     @Builder.Default
     @Column(name = "st_contratante", nullable = false, length = 1)
-    private String stContratante = "I";
+    private String stContratante = "A";
 
     public boolean estaContratanteAtiva() {
         return "A".equals(stContratante);
