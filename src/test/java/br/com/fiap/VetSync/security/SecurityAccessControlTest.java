@@ -11,6 +11,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest
@@ -65,6 +66,38 @@ class SecurityAccessControlTest {
         mockMvc.perform(post("/admins")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"nome\":\"Hack\",\"email\":\"hack@adm.com\"}"))
+                .andExpect(status().isForbidden());
+    }
+
+    private static final String CORPO_EDICAO_EQUIPE = "{\"nome\":\"Nome Editado\",\"idClinica\":1}";
+
+    @Test
+    @DisplayName("ADMIN deve ter acesso à edição de veterinário e profissional de estética (id inexistente retorna 404, não 403)")
+    @WithMockUser(roles = "ADMIN")
+    void adminEditandoEquipe() throws Exception {
+        mockMvc.perform(put("/veterinarios/999999")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(CORPO_EDICAO_EQUIPE))
+                .andExpect(status().isNotFound());
+
+        mockMvc.perform(put("/profissionais-estetica/999999")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(CORPO_EDICAO_EQUIPE))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @DisplayName("TUTOR tentando editar veterinário ou profissional de estética deve receber 403 Forbidden")
+    @WithMockUser(roles = "TUTOR")
+    void tutorEditandoEquipe() throws Exception {
+        mockMvc.perform(put("/veterinarios/999999")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(CORPO_EDICAO_EQUIPE))
+                .andExpect(status().isForbidden());
+
+        mockMvc.perform(put("/profissionais-estetica/999999")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(CORPO_EDICAO_EQUIPE))
                 .andExpect(status().isForbidden());
     }
 }

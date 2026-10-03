@@ -99,8 +99,8 @@ public class VeterinarioController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("@veterinarioSecurity.isSelf(#id, authentication)")
-    @Operation(summary = "Atualizar dados do veterinário. Só o próprio.")
+    @PreAuthorize("@veterinarioSecurity.isSelf(#id, authentication) or hasRole('ADMIN')")
+    @Operation(summary = "Atualizar dados do veterinário (nome, clínica e especialidade). Só o próprio ou o ADMIN.")
     public VeterinarioResponse atualizar(@PathVariable Long id, @Valid @RequestBody VeterinarioAtualizarRequest request) {
         return toResponse(veterinarioService.atualizar(id, request.nome(), request.idClinica(), request.especialidade()));
     }

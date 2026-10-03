@@ -98,8 +98,8 @@ public class ProfissionalEsteticaController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("@profissionalEsteticaSecurity.isSelf(#id, authentication)")
-    @Operation(summary = "Atualizar dados do profissional de estética. Só o próprio.")
+    @PreAuthorize("@profissionalEsteticaSecurity.isSelf(#id, authentication) or hasRole('ADMIN')")
+    @Operation(summary = "Atualizar dados do profissional de estética (nome e clínica). Só o próprio ou o ADMIN.")
     public ProfissionalEsteticaResponse atualizar(@PathVariable Long id, @Valid @RequestBody ProfissionalEsteticaAtualizarRequest request) {
         return toResponse(profissionalEsteticaService.atualizar(id, request.nome(), request.idClinica()));
     }
