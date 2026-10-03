@@ -47,6 +47,7 @@ class EventoPontosRecompensaIntegrationTest {
                 .dsCnpj("11222333000199")
                 .dsCidade("São Paulo")
                 .dsUf("SP")
+                .stContratante("A")
                 .build());
 
         TipoEvento tipoVacina = tipoEventoRepository.save(TipoEvento.builder()

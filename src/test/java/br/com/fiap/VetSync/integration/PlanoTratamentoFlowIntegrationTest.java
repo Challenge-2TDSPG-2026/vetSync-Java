@@ -45,6 +45,7 @@ class PlanoTratamentoFlowIntegrationTest {
         Clinica clinica = clinicaRepository.save(Clinica.builder()
                 .nmClinica("Clínica Integrada")
                 .dsCnpj("55443322000188")
+                .stContratante("A")
                 .build());
 
         TipoEvento t1 = tipoEventoRepository.save(TipoEvento.builder().nmTipoEvento("Dose 1").dsCategoria("TERAPEUTICO").nrPontos(10).build());

@@ -47,6 +47,10 @@ public class VinculoClinicaService {
     @Transactional
     public CodigoEmitido emitirCodigo(Long idClinica) {
         Clinica clinica = buscarClinicaParaAtualizacao(idClinica);
+        // Só clínicas com contrato confirmado podem ter código de vínculo.
+        if (!clinica.estaContratanteAtiva()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Ative o contrato da clínica antes de emitir um código de vínculo");
+        }
         // Emitir outro código revoga o anterior (e as sessões ainda abertas dele).
         revogar(codigoRepository.findByClinica_IdClinicaAndStAtivo(idClinica, "A"));
         String codigo = gerarSegredo(18);

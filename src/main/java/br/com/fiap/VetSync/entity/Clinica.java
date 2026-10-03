@@ -33,9 +33,10 @@ public class Clinica {
     @Column(name = "ds_uf", length = 2)
     private String dsUf;
 
+    /** 'A' = contrato ativo, 'I' = inativo. Clínica nova nasce inativa até o Admin confirmar o contrato. */
     @Builder.Default
     @Column(name = "st_contratante", nullable = false, length = 1)
-    private String stContratante = "A";
+    private String stContratante = "I";
 
     public boolean estaContratanteAtiva() {
         return "A".equals(stContratante);
