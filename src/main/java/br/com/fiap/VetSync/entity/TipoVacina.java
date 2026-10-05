@@ -29,4 +29,8 @@ public class TipoVacina {
     @Builder.Default
     @Column(name = "fl_ativo", nullable = false)
     private Boolean ativo = true;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_clinica")
+    private Clinica clinica;
 }

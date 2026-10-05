@@ -26,9 +26,10 @@ public class PetSaudeController {
     private final ProximaAcaoService acaoService;
 
     public record AcaoResponse(String id, String tipo, String prioridade, String titulo, String descricao,
-                                Long eventoReferenciaId, LocalDate dataLimite, boolean podeAgendar) {}
+                               Long eventoReferenciaId, LocalDate dataLimite, boolean podeAgendar) {}
 
-    public record TipoVacinaRequest(@NotBlank String nome, @NotNull @Positive Integer periodicidadeDias) {}
+    public record TipoVacinaRequest(@NotBlank String nome, @NotNull @Positive Integer periodicidadeDias,
+                                    @NotNull(message = "Clínica é obrigatória") Long idClinica) {}
     public record VacinaRequest(@NotNull Long tipoVacinaId, Long eventoId, @NotNull LocalDate aplicadaEm,
                                 LocalDate proximaDoseEm, String comprovanteUrl) {}
     public record VacinaResponse(Long id, String nome, LocalDate aplicadaEm, LocalDate proximaDoseEm,
@@ -58,11 +59,13 @@ public class PetSaudeController {
     @ResponseStatus(HttpStatus.CREATED)
     @PreAuthorize("hasRole('ADMIN')")
     public TipoVacinaResponse criarTipoVacina(@Valid @RequestBody TipoVacinaRequest request) {
-        TipoVacina tipo = vacinaService.criarTipo(request.nome(), request.periodicidadeDias());
-        return new TipoVacinaResponse(tipo.getIdTipoVacina(), tipo.getNmTipoVacina(), tipo.getNrPeriodicidadeDias());
+        TipoVacina tipo = vacinaService.criarTipo(request.nome(), request.periodicidadeDias(), request.idClinica());
+        return new TipoVacinaResponse(tipo.getIdTipoVacina(), tipo.getNmTipoVacina(), tipo.getNrPeriodicidadeDias(),
+                tipo.getClinica() != null ? tipo.getClinica().getIdClinica() : null,
+                tipo.getClinica() != null ? tipo.getClinica().getNmClinica() : null);
     }
 
-    public record TipoVacinaResponse(Long id, String nome, Integer periodicidadeDias) {}
+    public record TipoVacinaResponse(Long id, String nome, Integer periodicidadeDias, Long idClinica, String nmClinica) {}
 
     @GetMapping("/{id:\\d+}/carteira-vacinacao")
     @PreAuthorize("hasAnyRole('ADMIN','VETERINARIO') or @petAccessSecurity.canView(#id, authentication)")
@@ -94,7 +97,7 @@ public class PetSaudeController {
         return new VacinaResponse(vacina.getIdVacina(), vacina.getTipoVacina().getNmTipoVacina(),
                 vacina.getDtAplicacao(), vacina.getDtProximaDose(), vacinaService.status(vacina, LocalDate.now()).name(),
                 request.eventoId(), vacina.getEvento() == null || vacina.getEvento().getVeterinario() == null ? null
-                        : vacina.getEvento().getVeterinario().getNmVeterinario(), vacina.getComprovanteUrl());
+                : vacina.getEvento().getVeterinario().getNmVeterinario(), vacina.getComprovanteUrl());
     }
 
     @GetMapping("/{id:\\d+}/perfil-saude")

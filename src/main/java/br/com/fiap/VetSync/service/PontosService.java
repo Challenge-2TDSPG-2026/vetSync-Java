@@ -29,6 +29,7 @@ public class PontosService {
                 ? evento.getTipoEvento().getNrPontos() : 0;
         LancamentoPontos lancamento = LancamentoPontos.builder()
                 .evento(evento)
+                .clinica(evento.getClinica())
                 .nrPontos(pontos)
                 .dsStatus(StatusLancamentoPontos.PENDENTE)
                 .build();
@@ -40,6 +41,7 @@ public class PontosService {
         int bonus = plano.getNrPontosBonus() != null ? plano.getNrPontosBonus() : 0;
         LancamentoPontos lancamento = LancamentoPontos.builder()
                 .planoTratamento(plano)
+                .clinica(plano.getClinica())
                 .nrPontos(bonus)
                 .dsStatus(StatusLancamentoPontos.PENDENTE)
                 .build();
@@ -80,13 +82,14 @@ public class PontosService {
     }
 
 
-    public int calcularPontosLiberados(Long idTutor) {
+    /** Pontos liberados do tutor SOMENTE na clínica informada (pontos não acompanham o tutor entre clínicas). */
+    public int calcularPontosLiberados(Long idTutor, Long idClinica) {
         int deEventos = lancamentoPontosRepository
-                .findByEvento_Pet_Tutor_IdTutorAndDsStatus(idTutor, StatusLancamentoPontos.LIBERADO)
+                .findByEvento_Pet_Tutor_IdTutorAndClinica_IdClinicaAndDsStatus(idTutor, idClinica, StatusLancamentoPontos.LIBERADO)
                 .stream().mapToInt(LancamentoPontos::getNrPontos).sum();
 
         int deBonusPlano = lancamentoPontosRepository
-                .findByPlanoTratamento_Pet_Tutor_IdTutorAndDsStatus(idTutor, StatusLancamentoPontos.LIBERADO)
+                .findByPlanoTratamento_Pet_Tutor_IdTutorAndClinica_IdClinicaAndDsStatus(idTutor, idClinica, StatusLancamentoPontos.LIBERADO)
                 .stream().mapToInt(LancamentoPontos::getNrPontos).sum();
 
         return deEventos + deBonusPlano;

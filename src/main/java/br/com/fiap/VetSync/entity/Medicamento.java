@@ -28,4 +28,10 @@ public class Medicamento {
 
     @Column(name = "vl_preco_ref", precision = 10, scale = 2)
     private BigDecimal vlPrecoRef;
+
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_clinica")
+    private Clinica clinica;
 }

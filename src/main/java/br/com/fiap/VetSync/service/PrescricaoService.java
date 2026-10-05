@@ -56,6 +56,13 @@ public class PrescricaoService {
         Medicamento medicamento = medicamentoRepository.findById(idMedicamento).orElseThrow(
                 () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Medicamento não encontrado: " + idMedicamento));
 
+        // O medicamento precisa ser da clínica em que o atendimento acontece (legados sem clínica continuam valendo).
+        if (medicamento.getClinica() != null && evento.getClinica() != null
+                && !medicamento.getClinica().getIdClinica().equals(evento.getClinica().getIdClinica())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Esse medicamento pertence a outra clínica");
+        }
+
         Prescricao.PrescricaoBuilder builder = Prescricao.builder()
                 .evento(evento)
                 .medicamento(medicamento)

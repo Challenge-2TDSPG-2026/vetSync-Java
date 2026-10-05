@@ -42,4 +42,10 @@ public class LancamentoPontos {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_admin_validador")
     private Admin adminValidador;
+
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_clinica")
+    private Clinica clinica;
 }

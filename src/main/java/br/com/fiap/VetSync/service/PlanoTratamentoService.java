@@ -25,6 +25,7 @@ public class PlanoTratamentoService {
     private final VeterinarioRepository veterinarioRepository;
     private final TipoEventoRepository tipoEventoRepository;
     private final EventoService eventoService;
+    private final VinculoClinicaService vinculoClinicaService;
 
     private static final int MINIMO_ITENS = 2;
 
@@ -38,9 +39,14 @@ public class PlanoTratamentoService {
         Veterinario vet = veterinarioRepository.findById(idVeterinarioAutenticado).orElseThrow(
                 () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Veterinário não encontrado"));
 
+        // O plano só pode ser feito na clínica em que o tutor está vinculado, e fica na clínica do veterinário
+        // que o está criando (que precisa ser essa mesma clínica).
+        vinculoClinicaService.exigirClinicaAtivaDoTutor(pet.getTutor().getIdTutor(), vet.getClinica().getIdClinica());
+
         PlanoTratamento plano = PlanoTratamento.builder()
                 .pet(pet)
                 .veterinario(vet)
+                .clinica(vet.getClinica())
                 .nrPontosBonus(nrPontosBonus != null ? nrPontosBonus : 0)
                 .dsStatus(StatusPlanoTratamento.EM_ANDAMENTO)
                 .build();
@@ -93,6 +99,7 @@ public class PlanoTratamentoService {
         if (plano.getDsStatus() != StatusPlanoTratamento.EM_ANDAMENTO) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Esse plano de tratamento não está mais em andamento");
         }
+        exigirVeterinarioDaClinicaDoPlano(plano, idVeterinario);
 
         EventoSaude evento = EventoSaude.builder()
                 .dtEvento(dtEvento)
@@ -106,5 +113,18 @@ public class PlanoTratamentoService {
         item.setDsStatus(StatusPlanoItem.AGENDADO);
         planoItemRepository.save(item);
         return agendado;
+    }
+
+    /** Itens do plano só podem ser agendados por veterinários da clínica onde o plano foi criado. */
+    private void exigirVeterinarioDaClinicaDoPlano(PlanoTratamento plano, Long idVeterinario) {
+        if (plano.getClinica() == null) {
+            return; // plano legado, criado antes do escopo por clínica
+        }
+        Veterinario vet = veterinarioRepository.findById(idVeterinario).orElseThrow(
+                () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Veterinário não encontrado"));
+        if (!plano.getClinica().getIdClinica().equals(vet.getClinica().getIdClinica())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                    "Os itens do plano só podem ser agendados na clínica em que o plano foi criado");
+        }
     }
 }

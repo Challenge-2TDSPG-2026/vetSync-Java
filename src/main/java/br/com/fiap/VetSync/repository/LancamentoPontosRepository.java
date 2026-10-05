@@ -15,6 +15,12 @@ public interface LancamentoPontosRepository extends JpaRepository<LancamentoPont
     List<LancamentoPontos> findByEvento_Pet_Tutor_IdTutorAndDsStatus(Long idTutor, StatusLancamentoPontos status);
     List<LancamentoPontos> findByPlanoTratamento_Pet_Tutor_IdTutorAndDsStatus(Long idTutor, StatusLancamentoPontos status);
 
+    // Saldo por clínica: os pontos só valem na clínica em que foram ganhos.
+    List<LancamentoPontos> findByEvento_Pet_Tutor_IdTutorAndClinica_IdClinicaAndDsStatus(
+            Long idTutor, Long idClinica, StatusLancamentoPontos status);
+    List<LancamentoPontos> findByPlanoTratamento_Pet_Tutor_IdTutorAndClinica_IdClinicaAndDsStatus(
+            Long idTutor, Long idClinica, StatusLancamentoPontos status);
+
     List<LancamentoPontos> findByEvento_Pet_Tutor_DsEmailOrderByDtLancamentoDesc(String email);
     List<LancamentoPontos> findByPlanoTratamento_Pet_Tutor_DsEmailOrderByDtLancamentoDesc(String email);
 }

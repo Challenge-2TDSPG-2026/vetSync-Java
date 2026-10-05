@@ -44,12 +44,16 @@ public class RelatorioEsteticaController {
             String dsProblema,
             String nmPet,
             String nmTutor,
-            String nmProfissionalEstetica
+            String nmProfissionalEstetica,
+            Long idClinica,
+            String nmClinica
     ) {}
 
     private RelatorioResponse toResponse(RelatorioEstetica r) {
         var evento = r.getEvento();
         var pet = evento != null ? evento.getPet() : null;
+        var clinica = evento != null && evento.getClinica() != null ? evento.getClinica()
+                : (r.getProfissionalEstetica() != null ? r.getProfissionalEstetica().getClinica() : null);
         return new RelatorioResponse(
                 r.getIdRelatorio(),
                 r.getDsStatus().name(),
@@ -57,7 +61,9 @@ public class RelatorioEsteticaController {
                 r.getDsProblema(),
                 pet != null ? pet.getNmPet() : null,
                 pet != null && pet.getTutor() != null ? pet.getTutor().getNmTutor() : null,
-                r.getProfissionalEstetica() != null ? r.getProfissionalEstetica().getNmProfissionalEstetica() : null
+                r.getProfissionalEstetica() != null ? r.getProfissionalEstetica().getNmProfissionalEstetica() : null,
+                clinica != null ? clinica.getIdClinica() : null,
+                clinica != null ? clinica.getNmClinica() : null
         );
     }
 

@@ -34,7 +34,8 @@ class PontosServiceTest {
     @DisplayName("Deve lançar pontos pendentes a partir de evento concluído")
     void lancarPendente_Evento() {
         TipoEvento tipo = TipoEvento.builder().nrPontos(25).build();
-        EventoSaude evento = EventoSaude.builder().idEvento(1L).tipoEvento(tipo).build();
+        Clinica clinica = Clinica.builder().idClinica(7L).nmClinica("Clínica Centro").build();
+        EventoSaude evento = EventoSaude.builder().idEvento(1L).tipoEvento(tipo).clinica(clinica).build();
 
         when(lancamentoPontosRepository.save(any(LancamentoPontos.class))).thenAnswer(inv -> inv.getArgument(0));
 
@@ -42,18 +43,21 @@ class PontosServiceTest {
         assertThat(lanc.getNrPontos()).isEqualTo(25);
         assertThat(lanc.getDsStatus()).isEqualTo(StatusLancamentoPontos.PENDENTE);
         assertThat(lanc.getEvento()).isEqualTo(evento);
+        assertThat(lanc.getClinica()).isEqualTo(clinica); // pontos nascem na clínica do atendimento
     }
 
     @Test
     @DisplayName("Deve lançar bônus pendente a partir de plano de tratamento concluído")
     void lancarBonusPendente_Plano() {
-        PlanoTratamento plano = PlanoTratamento.builder().idPlano(1L).nrPontosBonus(100).build();
+        Clinica clinica = Clinica.builder().idClinica(7L).nmClinica("Clínica Centro").build();
+        PlanoTratamento plano = PlanoTratamento.builder().idPlano(1L).nrPontosBonus(100).clinica(clinica).build();
         when(lancamentoPontosRepository.save(any(LancamentoPontos.class))).thenAnswer(inv -> inv.getArgument(0));
 
         LancamentoPontos lanc = pontosService.lancarBonusPendente(plano);
         assertThat(lanc.getNrPontos()).isEqualTo(100);
         assertThat(lanc.getDsStatus()).isEqualTo(StatusLancamentoPontos.PENDENTE);
         assertThat(lanc.getPlanoTratamento()).isEqualTo(plano);
+        assertThat(lanc.getClinica()).isEqualTo(clinica); // bônus fica na clínica do plano
     }
 
     @Test
@@ -92,18 +96,18 @@ class PontosServiceTest {
     }
 
     @Test
-    @DisplayName("Deve calcular pontos liberados somando eventos e bônus de planos")
+    @DisplayName("Deve calcular pontos liberados na clínica somando eventos e bônus de planos")
     void calcularPontosLiberados() {
         LancamentoPontos l1 = LancamentoPontos.builder().nrPontos(20).build();
         LancamentoPontos l2 = LancamentoPontos.builder().nrPontos(30).build();
         LancamentoPontos l3 = LancamentoPontos.builder().nrPontos(50).build();
 
-        when(lancamentoPontosRepository.findByEvento_Pet_Tutor_IdTutorAndDsStatus(1L, StatusLancamentoPontos.LIBERADO))
+        when(lancamentoPontosRepository.findByEvento_Pet_Tutor_IdTutorAndClinica_IdClinicaAndDsStatus(1L, 7L, StatusLancamentoPontos.LIBERADO))
                 .thenReturn(List.of(l1, l2));
-        when(lancamentoPontosRepository.findByPlanoTratamento_Pet_Tutor_IdTutorAndDsStatus(1L, StatusLancamentoPontos.LIBERADO))
+        when(lancamentoPontosRepository.findByPlanoTratamento_Pet_Tutor_IdTutorAndClinica_IdClinicaAndDsStatus(1L, 7L, StatusLancamentoPontos.LIBERADO))
                 .thenReturn(List.of(l3));
 
-        int total = pontosService.calcularPontosLiberados(1L);
+        int total = pontosService.calcularPontosLiberados(1L, 7L);
         assertThat(total).isEqualTo(100);
     }
 }

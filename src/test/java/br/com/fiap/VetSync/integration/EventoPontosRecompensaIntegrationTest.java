@@ -93,7 +93,8 @@ class EventoPontosRecompensaIntegrationTest {
                 "Guia Passeio",
                 "Guia de alta durabilidade",
                 30,
-                TipoRecompensa.PRODUTO
+                TipoRecompensa.PRODUTO,
+                clinica.getIdClinica()
         );
         MvcResult recRes = mockMvc.perform(post("/recompensas")
                         .header("Authorization", "Bearer " + vetToken)

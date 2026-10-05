@@ -59,7 +59,9 @@ public class PrescricaoController {
             Integer qtDosesDia,
             String nmPet,
             String nmTutor,
-            String nmVeterinario
+            String nmVeterinario,
+            Long idClinica,
+            String nmClinica
     ) {}
 
     private PrescricaoResponse toResponse(Prescricao p) {
@@ -76,7 +78,9 @@ public class PrescricaoController {
                 p.getQtDosesDia(),
                 pet != null ? pet.getNmPet() : null,
                 pet != null && pet.getTutor() != null ? pet.getTutor().getNmTutor() : null,
-                evento != null && evento.getVeterinario() != null ? evento.getVeterinario().getNmVeterinario() : null
+                evento != null && evento.getVeterinario() != null ? evento.getVeterinario().getNmVeterinario() : null,
+                evento != null && evento.getClinica() != null ? evento.getClinica().getIdClinica() : null,
+                evento != null && evento.getClinica() != null ? evento.getClinica().getNmClinica() : null
         );
     }
 

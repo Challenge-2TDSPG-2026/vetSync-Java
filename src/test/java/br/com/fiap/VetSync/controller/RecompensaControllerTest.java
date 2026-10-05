@@ -59,14 +59,15 @@ class RecompensaControllerTest {
                 .flAtivo(true)
                 .build();
 
-        when(recompensaService.criar(eq("Desconto 20%"), eq("Vale desconto"), eq(100), eq(TipoRecompensa.CUPOM_DESCONTO), isNull()))
+        when(recompensaService.criar(eq("Desconto 20%"), eq("Vale desconto"), eq(100), eq(TipoRecompensa.CUPOM_DESCONTO), eq(7L), isNull()))
                 .thenReturn(r);
 
         mockMvc.perform(multipart("/recompensas")
                         .param("nome", "Desconto 20%")
                         .param("descricao", "Vale desconto")
                         .param("custoPontos", "100")
-                        .param("tipo", "CUPOM_DESCONTO"))
+                        .param("tipo", "CUPOM_DESCONTO")
+                        .param("idClinica", "7"))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.idRecompensa").value(1))
                 .andExpect(jsonPath("$.nome").value("Desconto 20%"))
@@ -111,9 +112,9 @@ class RecompensaControllerTest {
     void saldo_TutorSucesso() throws Exception {
         Tutor tutor = Tutor.builder().idTutor(1L).build();
         when(tutorService.buscarPorEmail("tutor@teste.com")).thenReturn(Optional.of(tutor));
-        when(recompensaService.calcularSaldo(1L)).thenReturn(85);
+        when(recompensaService.calcularSaldo(1L, 7L)).thenReturn(85);
 
-        mockMvc.perform(get("/recompensas/saldo"))
+        mockMvc.perform(get("/recompensas/saldo").param("idClinica", "7"))
                 .andExpect(status().isOk())
                 .andExpect(content().string("85"));
     }

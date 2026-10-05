@@ -1,5 +1,6 @@
 package br.com.fiap.VetSync.service;
 
+import br.com.fiap.VetSync.entity.Clinica;
 import br.com.fiap.VetSync.entity.Medicamento;
 import br.com.fiap.VetSync.repository.MedicamentoRepository;
 import lombok.RequiredArgsConstructor;
@@ -15,9 +16,12 @@ import java.util.List;
 public class MedicamentoService {
 
     private final MedicamentoRepository medicamentoRepository;
+    private final ClinicaService clinicaService;
 
-    public Medicamento criar(String nmMedicamento, String dsPrincipio, BigDecimal vlPrecoRef) {
+    public Medicamento criar(String nmMedicamento, String dsPrincipio, BigDecimal vlPrecoRef, Long idClinica) {
+        Clinica clinica = clinicaService.buscarObrigatoria(idClinica);
         Medicamento medicamento = Medicamento.builder()
+                .clinica(clinica)
                 .nmMedicamento(nmMedicamento)
                 .dsPrincipio(dsPrincipio)
                 .vlPrecoRef(vlPrecoRef)
@@ -34,8 +38,19 @@ public class MedicamentoService {
         return medicamentoRepository.findAll();
     }
 
-    public Medicamento atualizar(Long id, String nmMedicamento, String dsPrincipio, BigDecimal vlPrecoRef) {
+    /** Catálogo que o veterinário enxerga: o da própria clínica + medicamentos legados sem clínica. */
+    public List<Medicamento> listarDaClinica(Long idClinica) {
+        return medicamentoRepository.findByClinicaIsNullOrClinica_IdClinicaOrderByNmMedicamentoAsc(idClinica);
+    }
+
+    /** Filtro opcional do admin pela clínica escolhida. */
+    public List<Medicamento> listarDaClinicaExata(Long idClinica) {
+        return medicamentoRepository.findByClinica_IdClinicaOrderByNmMedicamentoAsc(idClinica);
+    }
+
+    public Medicamento atualizar(Long id, String nmMedicamento, String dsPrincipio, BigDecimal vlPrecoRef, Long idClinica) {
         Medicamento medicamento = buscarPorId(id);
+        medicamento.setClinica(clinicaService.buscarObrigatoria(idClinica));
         medicamento.setNmMedicamento(nmMedicamento);
         medicamento.setDsPrincipio(dsPrincipio);
         medicamento.setVlPrecoRef(vlPrecoRef);

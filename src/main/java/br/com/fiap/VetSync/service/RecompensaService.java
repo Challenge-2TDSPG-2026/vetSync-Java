@@ -24,6 +24,8 @@ public class RecompensaService {
     private final VeterinarioRepository veterinarioRepository;
     private final TutorService tutorService;
     private final PontosService pontosService;
+    private final ClinicaService clinicaService;
+    private final VinculoClinicaService vinculoClinicaService;
 
     private static final long TAMANHO_MAXIMO_IMAGEM_BYTES = 5L * 1024 * 1024; // 5MB
     private static final Set<String> TIPOS_IMAGEM_PERMITIDOS = Set.of(
@@ -33,12 +35,15 @@ public class RecompensaService {
     /** Resultado da exclusão: true = removido do banco; false = apenas inativado (há resgates vinculados). */
     public record ResultadoExclusao(boolean excluidoDefinitivamente) {}
 
-    public Recompensa criar(String nome, String descricao, Integer custoPontos, TipoRecompensa tipo) {
-        return criar(nome, descricao, custoPontos, tipo, null);
+    public Recompensa criar(String nome, String descricao, Integer custoPontos, TipoRecompensa tipo, Long idClinica) {
+        return criar(nome, descricao, custoPontos, tipo, idClinica, null);
     }
 
-    public Recompensa criar(String nome, String descricao, Integer custoPontos, TipoRecompensa tipo, MultipartFile imagem) {
+    public Recompensa criar(String nome, String descricao, Integer custoPontos, TipoRecompensa tipo,
+                            Long idClinica, MultipartFile imagem) {
+        Clinica clinica = clinicaService.buscarObrigatoria(idClinica);
         Recompensa.RecompensaBuilder builder = Recompensa.builder()
+                .clinica(clinica)
                 .nmRecompensa(nome)
                 .dsDescricao(descricao)
                 .nrCustoPontos(custoPontos)
@@ -64,8 +69,17 @@ public class RecompensaService {
      */
     @Transactional
     public Recompensa atualizar(Long id, String nome, String descricao, Integer custoPontos, TipoRecompensa tipo,
-                                Boolean ativo, MultipartFile imagem, boolean removerImagem) {
+                                Long idClinica, Boolean ativo, MultipartFile imagem, boolean removerImagem) {
         Recompensa recompensa = buscarPorId(id);
+        Clinica clinica = clinicaService.buscarObrigatoria(idClinica);
+        boolean mudouDeClinica = recompensa.getClinica() != null
+                && !recompensa.getClinica().getIdClinica().equals(clinica.getIdClinica());
+        if (mudouDeClinica && resgateRepository.existsByRecompensa_IdRecompensa(id)) {
+            // Mover a recompensa de clínica reescreveria o saldo de quem já a resgatou.
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Essa recompensa já tem resgates e não pode mudar de clínica");
+        }
+        recompensa.setClinica(clinica);
         recompensa.setNmRecompensa(nome);
         recompensa.setDsDescricao(descricao);
         recompensa.setNrCustoPontos(custoPontos);
@@ -121,6 +135,11 @@ public class RecompensaService {
         return recompensaRepository.findByFlAtivoTrue();
     }
 
+    /** Catálogo de uma clínica (o que o tutor vinculado e o veterinário daquela clínica enxergam). */
+    public List<Recompensa> listarAtivasDaClinica(Long idClinica) {
+        return recompensaRepository.findByFlAtivoTrueAndClinica_IdClinicaOrderByIdRecompensaAsc(idClinica);
+    }
+
     /** NOVO: catálogo completo (ativos e inativos) para a tela administrativa. */
     public List<Recompensa> listarTodas() {
         return recompensaRepository.findAllByOrderByIdRecompensaAsc();
@@ -132,10 +151,11 @@ public class RecompensaService {
         );
     }
 
-    public int calcularSaldo(Long idTutor) {
-        int ganhos = pontosService.calcularPontosLiberados(idTutor);
+    /** Saldo do tutor SOMENTE na clínica informada: pontos e resgates de outras clínicas não entram na conta. */
+    public int calcularSaldo(Long idTutor, Long idClinica) {
+        int ganhos = pontosService.calcularPontosLiberados(idTutor, idClinica);
 
-        int gastos = resgateRepository.findByTutor_IdTutorOrderByDtResgateDesc(idTutor).stream()
+        int gastos = resgateRepository.findByTutor_IdTutorAndRecompensa_Clinica_IdClinicaOrderByDtResgateDesc(idTutor, idClinica).stream()
                 .filter(r -> r.getDsStatus() == StatusResgate.VALIDADO)
                 .mapToInt(r -> r.getRecompensa().getNrCustoPontos())
                 .sum();
@@ -143,12 +163,30 @@ public class RecompensaService {
         return ganhos - gastos;
     }
 
+    /** Saldo na clínica em que o tutor está vinculado hoje (0 se não houver vínculo ativo). */
+    public int calcularSaldoNaClinicaVinculada(Long idTutor) {
+        VinculoTutorClinica vinculo = vinculoClinicaService.buscarVinculoAtivo(idTutor);
+        if (vinculo == null) {
+            return 0;
+        }
+        return calcularSaldo(idTutor, vinculo.getClinica().getIdClinica());
+    }
+
     public Resgate solicitarResgate(Long idTutor, Long idRecompensa) {
         Recompensa recompensa = buscarPorId(idRecompensa);
         if (!Boolean.TRUE.equals(recompensa.getFlAtivo())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Essa recompensa não está mais disponível");
         }
-        int saldo = calcularSaldo(idTutor);
+        if (recompensa.getClinica() == null) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Essa recompensa não está disponível em nenhuma clínica");
+        }
+        Long idClinica = recompensa.getClinica().getIdClinica();
+        VinculoTutorClinica vinculo = vinculoClinicaService.buscarVinculoAtivo(idTutor);
+        if (vinculo == null || !vinculo.getClinica().getIdClinica().equals(idClinica)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                    "Essa recompensa pertence a outra clínica. Os pontos só valem na clínica em que foram ganhos");
+        }
+        int saldo = calcularSaldo(idTutor, idClinica);
         if (saldo < recompensa.getNrCustoPontos()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                     "Saldo insuficiente: você tem " + saldo + " pontos, precisa de " + recompensa.getNrCustoPontos());
@@ -169,6 +207,11 @@ public class RecompensaService {
         return resgateRepository.findByDsStatusOrderByDtResgateAsc(StatusResgate.PENDENTE);
     }
 
+    /** Fila de validação do veterinário: só resgates de recompensas da clínica dele. */
+    public List<Resgate> listarPendentesDaClinica(Long idClinica) {
+        return resgateRepository.findByDsStatusAndRecompensa_Clinica_IdClinicaOrderByDtResgateAsc(StatusResgate.PENDENTE, idClinica);
+    }
+
     public Resgate validar(Long idResgate, Long idVeterinario, boolean aprovado) {
         Resgate resgate = resgateRepository.findById(idResgate).orElseThrow(
                 () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Resgate não encontrado")
@@ -180,6 +223,10 @@ public class RecompensaService {
         Veterinario vet = veterinarioRepository.findById(idVeterinario).orElseThrow(
                 () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Veterinário não encontrado")
         );
+        Clinica clinicaRecompensa = resgate.getRecompensa() != null ? resgate.getRecompensa().getClinica() : null;
+        if (clinicaRecompensa != null && !clinicaRecompensa.getIdClinica().equals(vet.getClinica().getIdClinica())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Esse resgate pertence a outra clínica");
+        }
         resgate.setVeterinarioValidador(vet);
         resgate.setDsStatus(aprovado ? StatusResgate.VALIDADO : StatusResgate.NEGADO);
         return resgateRepository.save(resgate);

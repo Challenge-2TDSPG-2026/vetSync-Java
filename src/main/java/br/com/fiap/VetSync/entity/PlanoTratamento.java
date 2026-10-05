@@ -38,4 +38,10 @@ public class PlanoTratamento {
     @Builder.Default
     @Column(name = "dt_criacao", nullable = false)
     private LocalDate dtCriacao = LocalDate.now();
+
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_clinica")
+    private Clinica clinica;
 }

@@ -36,7 +36,9 @@ public class PontosController {
             String nmTipoEvento,
             Long idPlano,
             String nmPet,
-            String nmTutor
+            String nmTutor,
+            Long idClinica,
+            String nmClinica
     ) {}
 
     private LancamentoPontosResponse toResponse(LancamentoPontos l) {
@@ -55,7 +57,9 @@ public class PontosController {
                 evento != null && evento.getTipoEvento() != null ? evento.getTipoEvento().getNmTipoEvento() : null,
                 plano != null ? plano.getIdPlano() : null,
                 pet != null ? pet.getNmPet() : null,
-                pet != null && pet.getTutor() != null ? pet.getTutor().getNmTutor() : null
+                pet != null && pet.getTutor() != null ? pet.getTutor().getNmTutor() : null,
+                l.getClinica() != null ? l.getClinica().getIdClinica() : null,
+                l.getClinica() != null ? l.getClinica().getNmClinica() : null
         );
     }
 
@@ -66,7 +70,7 @@ public class PontosController {
     }
 
     @GetMapping
-    @Operation(summary = "Listar lançamentos de pontos", description = "Tutor vê os próprios (pendentes e liberados, de evento ou bônus de plano); admin vê a fila de pendentes.")
+    @Operation(summary = "Listar lançamentos de pontos", description = "Tutor vê os próprios (pendentes e liberados, de evento ou bônus de plano), cada um com a clínica em que foi gerado; admin vê a fila de pendentes, também com a clínica.")
     public List<LancamentoPontosResponse> listar(Authentication authentication) {
         List<LancamentoPontos> lancamentos = PerfilUtils.isAdmin(authentication)
                 ? pontosService.listarPendentes()

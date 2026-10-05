@@ -46,4 +46,10 @@ public class Recompensa {
 
     @Column(name = "ds_imagem_tipo", length = 100)
     private String dsImagemTipo;
+
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_clinica")
+    private Clinica clinica;
 }

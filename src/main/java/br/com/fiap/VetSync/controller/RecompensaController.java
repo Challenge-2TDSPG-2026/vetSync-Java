@@ -3,9 +3,12 @@ package br.com.fiap.VetSync.controller;
 import br.com.fiap.VetSync.entity.Recompensa;
 import br.com.fiap.VetSync.entity.Resgate;
 import br.com.fiap.VetSync.entity.TipoRecompensa;
+import br.com.fiap.VetSync.entity.VinculoTutorClinica;
 import br.com.fiap.VetSync.repository.VeterinarioRepository;
+import br.com.fiap.VetSync.security.PerfilUtils;
 import br.com.fiap.VetSync.service.RecompensaService;
 import br.com.fiap.VetSync.service.TutorService;
+import br.com.fiap.VetSync.service.VinculoClinicaService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -34,6 +37,7 @@ public class RecompensaController {
     private final RecompensaService recompensaService;
     private final TutorService tutorService;
     private final VeterinarioRepository veterinarioRepository;
+    private final VinculoClinicaService vinculoClinicaService;
 
     // Usado com multipart/form-data: os campos chegam como @RequestParam, não como JSON no corpo.
     public record RecompensaRequest(
@@ -47,7 +51,10 @@ public class RecompensaController {
             Integer custoPontos,
 
             @NotNull(message = "Tipo é obrigatório")
-            TipoRecompensa tipo
+            TipoRecompensa tipo,
+
+            @NotNull(message = "Clínica é obrigatória")
+            Long idClinica
     ) {}
 
     // NOVO: edição (multipart). 'ativo' é opcional; 'removerImagem' só vale se nenhuma imagem nova for enviada.
@@ -64,6 +71,9 @@ public class RecompensaController {
             @NotNull(message = "Tipo é obrigatório")
             TipoRecompensa tipo,
 
+            @NotNull(message = "Clínica é obrigatória")
+            Long idClinica,
+
             Boolean ativo,
 
             Boolean removerImagem
@@ -71,7 +81,7 @@ public class RecompensaController {
 
     public record RecompensaResponse(
             Long idRecompensa, String nome, String descricao, Integer custoPontos, String tipo, boolean ativa,
-            String imagemUrl
+            String imagemUrl, Long idClinica, String nmClinica
     ) {}
 
     public record ExclusaoResponse(boolean excluidoDefinitivamente, String mensagem) {}
@@ -89,7 +99,9 @@ public class RecompensaController {
     private RecompensaResponse toResponse(Recompensa r) {
         String imagemUrl = r.getDsImagem() != null ? "/recompensas/" + r.getIdRecompensa() + "/imagem" : null;
         return new RecompensaResponse(r.getIdRecompensa(), r.getNmRecompensa(), r.getDsDescricao(),
-                r.getNrCustoPontos(), r.getDsTipo().name(), Boolean.TRUE.equals(r.getFlAtivo()), imagemUrl);
+                r.getNrCustoPontos(), r.getDsTipo().name(), Boolean.TRUE.equals(r.getFlAtivo()), imagemUrl,
+                r.getClinica() != null ? r.getClinica().getIdClinica() : null,
+                r.getClinica() != null ? r.getClinica().getNmClinica() : null);
     }
 
     private ResgateResponse toResponse(Resgate r) {
@@ -106,6 +118,12 @@ public class RecompensaController {
                 .getIdTutor();
     }
 
+    private Long idClinicaDoVeterinario(Authentication authentication) {
+        return veterinarioRepository.findByDsEmail(authentication.getName())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Veterinário autenticado não encontrado"))
+                .getClinica().getIdClinica();
+    }
+
     private Long idVeterinarioAutenticado(Authentication authentication) {
         return veterinarioRepository.findByDsEmail(authentication.getName())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Veterinário autenticado não encontrado"))
@@ -113,9 +131,24 @@ public class RecompensaController {
     }
 
     @GetMapping
-    @Operation(summary = "Listar recompensas/produtos ativos do catálogo")
-    public List<RecompensaResponse> listar() {
-        return recompensaService.listarAtivas().stream().map(this::toResponse).toList();
+    @Operation(summary = "Listar recompensas/produtos ativos do catálogo",
+            description = "Tutor vê só o catálogo da clínica em que está vinculado; veterinário, o da própria clínica; "
+                    + "admin vê todos (ou filtra com ?idClinica=).")
+    public List<RecompensaResponse> listar(Authentication authentication,
+                                           @RequestParam(value = "idClinica", required = false) Long idClinica) {
+        List<Recompensa> recompensas;
+        if (PerfilUtils.isTutor(authentication)) {
+            VinculoTutorClinica vinculo = vinculoClinicaService.buscarVinculoAtivo(idTutorAutenticado(authentication));
+            recompensas = vinculo == null ? List.of()
+                    : recompensaService.listarAtivasDaClinica(vinculo.getClinica().getIdClinica());
+        } else if (PerfilUtils.isVeterinario(authentication)) {
+            recompensas = recompensaService.listarAtivasDaClinica(idClinicaDoVeterinario(authentication));
+        } else if (idClinica != null) {
+            recompensas = recompensaService.listarAtivasDaClinica(idClinica);
+        } else {
+            recompensas = recompensaService.listarAtivas();
+        }
+        return recompensas.stream().map(this::toResponse).toList();
     }
 
     // NOVO
@@ -139,12 +172,12 @@ public class RecompensaController {
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(
             summary = "Cadastrar recompensa/produto no catálogo (com upload de imagem opcional). Somente ADMIN.",
-            description = "Requisição multipart/form-data. Campos: nome, descricao, custoPontos, tipo (PRODUTO ou CUPOM_DESCONTO) e, opcionalmente, o arquivo 'imagem' (JPEG, PNG ou WEBP, até 5MB)."
+            description = "Requisição multipart/form-data. Campos: nome, descricao, custoPontos, tipo (PRODUTO ou CUPOM_DESCONTO), idClinica e, opcionalmente, o arquivo 'imagem' (JPEG, PNG ou WEBP, até 5MB)."
     )
     public RecompensaResponse criar(@Valid RecompensaRequest request,
                                     @RequestParam(value = "imagem", required = false) MultipartFile imagem) {
         Recompensa recompensa = recompensaService.criar(
-                request.nome(), request.descricao(), request.custoPontos(), request.tipo(), imagem
+                request.nome(), request.descricao(), request.custoPontos(), request.tipo(), request.idClinica(), imagem
         );
         return toResponse(recompensa);
     }
@@ -154,13 +187,13 @@ public class RecompensaController {
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(
             summary = "Editar recompensa/produto (dados e foto). Somente ADMIN.",
-            description = "Requisição multipart/form-data. Campos: nome, descricao, custoPontos, tipo, ativo (opcional), "
+            description = "Requisição multipart/form-data. Campos: nome, descricao, custoPontos, tipo, idClinica, ativo (opcional), "
                     + "removerImagem (opcional) e 'imagem' (opcional; se enviada, substitui a foto atual)."
     )
     public RecompensaResponse atualizar(@PathVariable Long id, @Valid RecompensaUpdateRequest request,
                                         @RequestParam(value = "imagem", required = false) MultipartFile imagem) {
         Recompensa recompensa = recompensaService.atualizar(
-                id, request.nome(), request.descricao(), request.custoPontos(), request.tipo(),
+                id, request.nome(), request.descricao(), request.custoPontos(), request.tipo(), request.idClinica(),
                 request.ativo(), imagem, Boolean.TRUE.equals(request.removerImagem())
         );
         return toResponse(recompensa);
@@ -195,9 +228,14 @@ public class RecompensaController {
 
     @GetMapping("/saldo")
     @PreAuthorize("hasRole('TUTOR')")
-    @Operation(summary = "Saldo de pontos do tutor autenticado")
-    public int saldo(Authentication authentication) {
-        return recompensaService.calcularSaldo(idTutorAutenticado(authentication));
+    @Operation(summary = "Saldo de pontos do tutor autenticado em uma clínica",
+            description = "Pontos são por clínica. Sem ?idClinica= devolve o saldo na clínica em que o tutor está vinculado hoje (0 sem vínculo).")
+    public int saldo(Authentication authentication,
+                     @RequestParam(value = "idClinica", required = false) Long idClinica) {
+        Long idTutor = idTutorAutenticado(authentication);
+        return idClinica != null
+                ? recompensaService.calcularSaldo(idTutor, idClinica)
+                : recompensaService.calcularSaldoNaClinicaVinculada(idTutor);
     }
 
     @PatchMapping("/{id}/resgatar")
@@ -213,7 +251,7 @@ public class RecompensaController {
         boolean ehVeterinario = authentication.getAuthorities().stream()
                 .anyMatch(a -> a.getAuthority().equals("ROLE_VETERINARIO"));
         List<Resgate> resgates = ehVeterinario
-                ? recompensaService.listarPendentes()
+                ? recompensaService.listarPendentesDaClinica(idClinicaDoVeterinario(authentication))
                 : recompensaService.listarResgatesDoTutor(idTutorAutenticado(authentication));
         return resgates.stream().map(this::toResponse).toList();
     }
