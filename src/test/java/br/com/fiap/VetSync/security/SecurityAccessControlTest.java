@@ -29,6 +29,9 @@ class SecurityAccessControlTest {
 
         mockMvc.perform(get("/v3/api-docs"))
                 .andExpect(status().isOk());
+
+        mockMvc.perform(get("/actuator/health"))
+                .andExpect(status().isOk());
     }
 
     @Test

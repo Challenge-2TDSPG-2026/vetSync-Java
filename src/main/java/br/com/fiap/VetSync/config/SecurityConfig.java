@@ -57,6 +57,7 @@ public class SecurityConfig {
                                 "/admins/bootstrap",
                                 "/agendamentos-retorno/**",
                                 "/carteiras-publicas/**",
+                                "/actuator/health",
                                 "/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**"
                         ).permitAll()
                         .requestMatchers("/pets/**").authenticated()
