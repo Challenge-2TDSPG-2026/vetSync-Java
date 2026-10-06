@@ -3,11 +3,12 @@ package br.com.fiap.VetSync.repository;
 import br.com.fiap.VetSync.entity.LancamentoPontos;
 import br.com.fiap.VetSync.entity.StatusLancamentoPontos;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 
 import java.util.List;
 import java.util.Optional;
 
-public interface LancamentoPontosRepository extends JpaRepository<LancamentoPontos, Long> {
+public interface LancamentoPontosRepository extends JpaRepository<LancamentoPontos, Long>, JpaSpecificationExecutor<LancamentoPontos> {
     Optional<LancamentoPontos> findByEvento_IdEvento(Long idEvento);
     Optional<LancamentoPontos> findByPlanoTratamento_IdPlano(Long idPlano);
     List<LancamentoPontos> findByDsStatusOrderByDtLancamentoAsc(StatusLancamentoPontos status);

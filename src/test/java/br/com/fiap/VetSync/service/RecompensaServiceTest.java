@@ -64,21 +64,16 @@ class RecompensaServiceTest {
         assertThat(r.getFlAtivo()).isTrue();
     }
 
+    private PontosService.SaldoPontos saldoDisponivel(int disponivel) {
+        return new PontosService.SaldoPontos(0, disponivel, 0, 0, 0, 0, disponivel);
+    }
+
     @Test
-    @DisplayName("Deve calcular saldo líquido de pontos (ganhos - resgates validados)")
+    @DisplayName("O saldo do resgate é o saldo disponível calculado pelo PontosService (já sem reservas, bloqueados e vencidos)")
     void calcularSaldo() {
-        when(pontosService.calcularPontosLiberados(1L, 7L)).thenReturn(200);
+        when(pontosService.calcularSaldo(1L, 7L)).thenReturn(new PontosService.SaldoPontos(10, 200, 20, 30, 50, 80, 70));
 
-        Recompensa r1 = Recompensa.builder().nrCustoPontos(50).build();
-        Resgate val = Resgate.builder().dsStatus(StatusResgate.VALIDADO).recompensa(r1).build();
-
-        Recompensa r2 = Recompensa.builder().nrCustoPontos(80).build();
-        Resgate pend = Resgate.builder().dsStatus(StatusResgate.PENDENTE).recompensa(r2).build();
-
-        when(resgateRepository.findByTutor_IdTutorAndRecompensa_Clinica_IdClinicaOrderByDtResgateDesc(1L, 7L)).thenReturn(List.of(val, pend));
-
-        int saldo = recompensaService.calcularSaldo(1L, 7L);
-        assertThat(saldo).isEqualTo(150); // 200 - 50 = 150
+        assertThat(recompensaService.calcularSaldo(1L, 7L)).isEqualTo(70);
     }
 
     @Test
@@ -94,8 +89,7 @@ class RecompensaServiceTest {
 
         when(recompensaRepository.findById(10L)).thenReturn(Optional.of(rec));
         when(vinculoClinicaService.buscarVinculoAtivo(1L)).thenReturn(vinculoEm(clinica));
-        when(pontosService.calcularPontosLiberados(1L, 7L)).thenReturn(100);
-        when(resgateRepository.findByTutor_IdTutorAndRecompensa_Clinica_IdClinicaOrderByDtResgateDesc(1L, 7L)).thenReturn(List.of());
+        when(pontosService.calcularSaldo(1L, 7L)).thenReturn(saldoDisponivel(100));
         when(tutorService.buscarPorId(1L)).thenReturn(tutor);
         when(resgateRepository.save(any(Resgate.class))).thenAnswer(inv -> inv.getArgument(0));
 
@@ -117,8 +111,7 @@ class RecompensaServiceTest {
 
         when(recompensaRepository.findById(10L)).thenReturn(Optional.of(rec));
         when(vinculoClinicaService.buscarVinculoAtivo(1L)).thenReturn(vinculoEm(clinica));
-        when(pontosService.calcularPontosLiberados(1L, 7L)).thenReturn(100);
-        when(resgateRepository.findByTutor_IdTutorAndRecompensa_Clinica_IdClinicaOrderByDtResgateDesc(1L, 7L)).thenReturn(List.of());
+        when(pontosService.calcularSaldo(1L, 7L)).thenReturn(saldoDisponivel(100));
 
         assertThatThrownBy(() -> recompensaService.solicitarResgate(1L, 10L))
                 .isInstanceOf(ResponseStatusException.class)
@@ -207,8 +200,7 @@ class RecompensaServiceTest {
     @DisplayName("Saldo na clínica vinculada usa só a clínica do vínculo ativo")
     void calcularSaldoNaClinicaVinculada_ComVinculo() {
         when(vinculoClinicaService.buscarVinculoAtivo(1L)).thenReturn(vinculoEm(clinica));
-        when(pontosService.calcularPontosLiberados(1L, 7L)).thenReturn(40);
-        when(resgateRepository.findByTutor_IdTutorAndRecompensa_Clinica_IdClinicaOrderByDtResgateDesc(1L, 7L)).thenReturn(List.of());
+        when(pontosService.calcularSaldo(1L, 7L)).thenReturn(saldoDisponivel(40));
 
         assertThat(recompensaService.calcularSaldoNaClinicaVinculada(1L)).isEqualTo(40);
     }

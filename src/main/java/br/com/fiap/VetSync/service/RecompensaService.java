@@ -151,16 +151,12 @@ public class RecompensaService {
         );
     }
 
-    /** Saldo do tutor SOMENTE na clínica informada: pontos e resgates de outras clínicas não entram na conta. */
+    /**
+     * Saldo resgatável do tutor SOMENTE na clínica informada: pontos de outras clínicas, pendentes, bloqueados e
+     * vencidos não entram, e resgates pendentes ficam reservados até serem validados ou negados.
+     */
     public int calcularSaldo(Long idTutor, Long idClinica) {
-        int ganhos = pontosService.calcularPontosLiberados(idTutor, idClinica);
-
-        int gastos = resgateRepository.findByTutor_IdTutorAndRecompensa_Clinica_IdClinicaOrderByDtResgateDesc(idTutor, idClinica).stream()
-                .filter(r -> r.getDsStatus() == StatusResgate.VALIDADO)
-                .mapToInt(r -> r.getRecompensa().getNrCustoPontos())
-                .sum();
-
-        return ganhos - gastos;
+        return pontosService.calcularSaldo(idTutor, idClinica).saldoDisponivel();
     }
 
     /** Saldo na clínica em que o tutor está vinculado hoje (0 se não houver vínculo ativo). */
