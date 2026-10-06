@@ -64,21 +64,22 @@ public class RecompensaService {
     }
 
     /**
-     * NOVO: edita os dados do produto. Se 'imagem' vier preenchida, substitui a foto atual;
-     * se 'removerImagem' for true (e nenhuma imagem nova vier), remove a foto; caso contrário, mantém a atual.
+     * Edita os dados da recompensa DA CLÍNICA informada (a clínica da recompensa não pode ser trocada).
+     * Recompensas legadas, que ainda não têm clínica, recebem a clínica informada na primeira edição.
+     * Se 'imagem' vier preenchida, substitui a foto atual; se 'removerImagem' for true (e nenhuma imagem nova vier),
+     * remove a foto; caso contrário, mantém a atual. Resgates já feitos não mudam: guardam a própria cópia.
      */
     @Transactional
     public Recompensa atualizar(Long id, String nome, String descricao, Integer custoPontos, TipoRecompensa tipo,
                                 Long idClinica, Boolean ativo, MultipartFile imagem, boolean removerImagem) {
         Recompensa recompensa = buscarPorId(id);
-        Clinica clinica = clinicaService.buscarObrigatoria(idClinica);
-        boolean mudouDeClinica = recompensa.getClinica() != null
-                && !recompensa.getClinica().getIdClinica().equals(clinica.getIdClinica());
-        if (mudouDeClinica && resgateRepository.existsByRecompensa_IdRecompensa(id)) {
-            // Mover a recompensa de clínica reescreveria o saldo de quem já a resgatou.
-            throw new ResponseStatusException(HttpStatus.CONFLICT,
-                    "Essa recompensa já tem resgates e não pode mudar de clínica");
+        if (recompensa.getClinica() != null && !recompensa.getClinica().getIdClinica().equals(idClinica)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND,
+                    "Recompensa " + id + " não pertence à clínica " + idClinica);
         }
+        Clinica clinica = recompensa.getClinica() != null
+                ? recompensa.getClinica()
+                : clinicaService.buscarObrigatoria(idClinica);
         recompensa.setClinica(clinica);
         recompensa.setNmRecompensa(nome);
         recompensa.setDsDescricao(descricao);
@@ -105,12 +106,12 @@ public class RecompensaService {
     }
 
     /**
-     * NOVO: exclui o produto. Se já existirem resgates vinculados (FK em TB_RESGATE), não é possível
+     * Exclui a recompensa DA CLÍNICA informada. Se já existirem resgates vinculados (FK em TB_RESGATE), não é possível
      * apagar sem perder o histórico dos tutores; nesse caso o produto é apenas inativado.
      */
     @Transactional
-    public ResultadoExclusao excluir(Long id) {
-        Recompensa recompensa = buscarPorId(id);
+    public ResultadoExclusao excluir(Long id, Long idClinica) {
+        Recompensa recompensa = buscarDaClinica(id, idClinica);
         if (resgateRepository.existsByRecompensa_IdRecompensa(id)) {
             recompensa.setFlAtivo(false);
             recompensaRepository.save(recompensa);
@@ -118,6 +119,20 @@ public class RecompensaService {
         }
         recompensaRepository.delete(recompensa);
         return new ResultadoExclusao(true);
+    }
+
+    /** Busca a recompensa garantindo que ela pertence à clínica informada. */
+    private Recompensa buscarDaClinica(Long id, Long idClinica) {
+        Recompensa recompensa = buscarPorId(id);
+        if (recompensa.getClinica() == null) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Essa recompensa não está associada a nenhuma clínica. Edite-a para escolher a clínica antes de excluir");
+        }
+        if (!recompensa.getClinica().getIdClinica().equals(idClinica)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND,
+                    "Recompensa " + id + " não pertence à clínica " + idClinica);
+        }
+        return recompensa;
     }
 
     private void validarImagem(MultipartFile imagem) {
@@ -140,9 +155,11 @@ public class RecompensaService {
         return recompensaRepository.findByFlAtivoTrueAndClinica_IdClinicaOrderByIdRecompensaAsc(idClinica);
     }
 
-    /** NOVO: catálogo completo (ativos e inativos) para a tela administrativa. */
-    public List<Recompensa> listarTodas() {
-        return recompensaRepository.findAllByOrderByIdRecompensaAsc();
+    /** Catálogo completo (ativos e inativos) para a tela administrativa; filtra por clínica quando informada. */
+    public List<Recompensa> listarTodas(Long idClinica) {
+        return idClinica == null
+                ? recompensaRepository.findAllByOrderByIdRecompensaAsc()
+                : recompensaRepository.findAllByClinica_IdClinicaOrderByIdRecompensaAsc(idClinica);
     }
 
     public Recompensa buscarPorId(Long id) {
@@ -190,6 +207,12 @@ public class RecompensaService {
         Resgate resgate = Resgate.builder()
                 .tutor(tutorService.buscarPorId(idTutor))
                 .recompensa(recompensa)
+                // cópia congelada: editar a recompensa depois não altera este resgate nem o saldo
+                .nmRecompensa(recompensa.getNmRecompensa())
+                .dsDescricaoRecompensa(recompensa.getDsDescricao())
+                .dsTipoRecompensa(recompensa.getDsTipo())
+                .nrCustoPontos(recompensa.getNrCustoPontos())
+                .clinica(recompensa.getClinica())
                 .dsStatus(StatusResgate.PENDENTE)
                 .build();
         return resgateRepository.save(resgate);
@@ -205,7 +228,7 @@ public class RecompensaService {
 
     /** Fila de validação do veterinário: só resgates de recompensas da clínica dele. */
     public List<Resgate> listarPendentesDaClinica(Long idClinica) {
-        return resgateRepository.findByDsStatusAndRecompensa_Clinica_IdClinicaOrderByDtResgateAsc(StatusResgate.PENDENTE, idClinica);
+        return resgateRepository.findByDsStatusAndClinica_IdClinicaOrderByDtResgateAsc(StatusResgate.PENDENTE, idClinica);
     }
 
     public Resgate validar(Long idResgate, Long idVeterinario, boolean aprovado) {
@@ -219,7 +242,7 @@ public class RecompensaService {
         Veterinario vet = veterinarioRepository.findById(idVeterinario).orElseThrow(
                 () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Veterinário não encontrado")
         );
-        Clinica clinicaRecompensa = resgate.getRecompensa() != null ? resgate.getRecompensa().getClinica() : null;
+        Clinica clinicaRecompensa = resgate.clinicaOrigem(); // clínica congelada no resgate
         if (clinicaRecompensa != null && !clinicaRecompensa.getIdClinica().equals(vet.getClinica().getIdClinica())) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Esse resgate pertence a outra clínica");
         }

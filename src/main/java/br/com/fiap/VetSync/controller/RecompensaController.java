@@ -1,5 +1,6 @@
 package br.com.fiap.VetSync.controller;
 
+import br.com.fiap.VetSync.entity.Clinica;
 import br.com.fiap.VetSync.entity.Recompensa;
 import br.com.fiap.VetSync.entity.Resgate;
 import br.com.fiap.VetSync.entity.TipoRecompensa;
@@ -86,9 +87,11 @@ public class RecompensaController {
 
     public record ExclusaoResponse(boolean excluidoDefinitivamente, String mensagem) {}
 
+    /** Dados da recompensa e custo congelados no momento do resgate (não mudam se o catálogo for editado). */
     public record ResgateResponse(
             Long idResgate, String status, LocalDateTime dtResgate,
-            String nmRecompensa, Integer custoPontos, String nmVeterinarioValidador
+            Long idRecompensa, String nmRecompensa, String dsDescricao, String tipo, Integer custoPontos,
+            Long idClinica, String nmClinica, String nmVeterinarioValidador
     ) {}
 
     public record ValidarResgateRequest(
@@ -105,9 +108,15 @@ public class RecompensaController {
     }
 
     private ResgateResponse toResponse(Resgate r) {
+        Clinica clinica = r.clinicaOrigem();
         return new ResgateResponse(
                 r.getIdResgate(), r.getDsStatus().name(), r.getDtResgate(),
-                r.getRecompensa().getNmRecompensa(), r.getRecompensa().getNrCustoPontos(),
+                r.getRecompensa() != null ? r.getRecompensa().getIdRecompensa() : null,
+                r.nomeRecompensa(), r.descricaoRecompensa(),
+                r.tipoRecompensa() != null ? r.tipoRecompensa().name() : null,
+                r.custoAplicado(),
+                clinica != null ? clinica.getIdClinica() : null,
+                clinica != null ? clinica.getNmClinica() : null,
                 r.getVeterinarioValidador() != null ? r.getVeterinarioValidador().getNmVeterinario() : null
         );
     }
@@ -151,12 +160,12 @@ public class RecompensaController {
         return recompensas.stream().map(this::toResponse).toList();
     }
 
-    // NOVO
     @GetMapping("/todas")
     @PreAuthorize("hasRole('ADMIN')")
-    @Operation(summary = "Listar todo o catálogo, inclusive inativos. Somente ADMIN.")
-    public List<RecompensaResponse> listarTodas() {
-        return recompensaService.listarTodas().stream().map(this::toResponse).toList();
+    @Operation(summary = "Listar todo o catálogo, inclusive inativos. Somente ADMIN.",
+            description = "Cada item traz a clínica de origem. Use ?idClinica= para filtrar por clínica.")
+    public List<RecompensaResponse> listarTodas(@RequestParam(value = "idClinica", required = false) Long idClinica) {
+        return recompensaService.listarTodas(idClinica).stream().map(this::toResponse).toList();
     }
 
     // NOVO
@@ -187,8 +196,9 @@ public class RecompensaController {
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(
             summary = "Editar recompensa/produto (dados e foto). Somente ADMIN.",
-            description = "Requisição multipart/form-data. Campos: nome, descricao, custoPontos, tipo, idClinica, ativo (opcional), "
-                    + "removerImagem (opcional) e 'imagem' (opcional; se enviada, substitui a foto atual)."
+            description = "Requisição multipart/form-data. Campos: nome, descricao, custoPontos, tipo, idClinica (obrigatório e deve ser a "
+                    + "clínica da recompensa; a clínica não pode ser trocada), ativo (opcional), removerImagem (opcional) e 'imagem' "
+                    + "(opcional; se enviada, substitui a foto atual). Resgates já feitos mantêm os dados e o custo da época."
     )
     public RecompensaResponse atualizar(@PathVariable Long id, @Valid RecompensaUpdateRequest request,
                                         @RequestParam(value = "imagem", required = false) MultipartFile imagem) {
@@ -199,15 +209,15 @@ public class RecompensaController {
         return toResponse(recompensa);
     }
 
-    // NOVO
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(
-            summary = "Excluir recompensa/produto. Somente ADMIN.",
-            description = "Se o produto já tiver resgates vinculados, ele é apenas inativado para preservar o histórico dos tutores."
+            summary = "Excluir recompensa/produto da clínica informada. Somente ADMIN.",
+            description = "Exige ?idClinica= e ela deve ser a clínica da recompensa. Se o produto já tiver resgates vinculados, "
+                    + "ele é apenas inativado para preservar o histórico dos tutores."
     )
-    public ExclusaoResponse excluir(@PathVariable Long id) {
-        var resultado = recompensaService.excluir(id);
+    public ExclusaoResponse excluir(@PathVariable Long id, @RequestParam("idClinica") Long idClinica) {
+        var resultado = recompensaService.excluir(id, idClinica);
         return resultado.excluidoDefinitivamente()
                 ? new ExclusaoResponse(true, "Produto excluído")
                 : new ExclusaoResponse(false, "Produto possui resgates vinculados e foi apenas inativado");

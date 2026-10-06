@@ -269,9 +269,10 @@ public class PontosService {
         return saldos;
     }
 
+    /** Resgates do tutor na clínica em que foram feitos (clínica congelada no resgate, não a atual da recompensa). */
     private List<Resgate> resgatesDe(Long idTutor, Long idClinica) {
         List<Resgate> resgates = resgateRepository
-                .findByTutor_IdTutorAndRecompensa_Clinica_IdClinicaOrderByDtResgateDesc(idTutor, idClinica);
+                .findByTutor_IdTutorAndClinica_IdClinicaOrderByDtResgateDesc(idTutor, idClinica);
         return resgates != null ? resgates : List.of();
     }
 
@@ -298,6 +299,8 @@ public class PontosService {
      * do que vence primeiro para o que vence depois. Assim, pontos antigos já gastos não fazem o saldo
      * ficar negativo quando vencem. O que sobra em lotes dentro da validade é o saldo disponível;
      * o que sobra em lotes vencidos é "expirado".
+     * O custo de cada resgate é o congelado no momento em que ele foi feito, então editar o preço
+     * da recompensa depois não altera o saldo.
      */
     static SaldoPontos calcular(List<LancamentoPontos> lancamentos, List<Resgate> resgates, LocalDate hoje) {
         int pendentes = 0, bloqueados = 0, liberados = 0;
@@ -321,8 +324,7 @@ public class PontosService {
                 .sorted(Comparator.comparing(Resgate::getDtResgate))
                 .toList();
         for (Resgate r : consumidores) {
-            int custo = r.getRecompensa() != null && r.getRecompensa().getNrCustoPontos() != null
-                    ? r.getRecompensa().getNrCustoPontos() : 0;
+            int custo = r.custoAplicado(); // custo congelado no momento do resgate
             if (r.getDsStatus() == StatusResgate.VALIDADO) resgatados += custo; else reservados += custo;
 
             LocalDate dataResgate = r.getDtResgate().toLocalDate();

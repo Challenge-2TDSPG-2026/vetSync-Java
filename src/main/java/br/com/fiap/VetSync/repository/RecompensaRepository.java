@@ -11,6 +11,9 @@ public interface RecompensaRepository extends JpaRepository<Recompensa, Long> {
     // Catálogo visível para quem pertence a uma clínica (tutor vinculado ou veterinário).
     List<Recompensa> findByFlAtivoTrueAndClinica_IdClinicaOrderByIdRecompensaAsc(Long idClinica);
 
-    // NOVO: listagem administrativa (inclui inativos)
+    // Listagem administrativa (inclui inativos)
     List<Recompensa> findAllByOrderByIdRecompensaAsc();
+
+    // Listagem administrativa filtrada por clínica (inclui inativos)
+    List<Recompensa> findAllByClinica_IdClinicaOrderByIdRecompensaAsc(Long idClinica);
 }
