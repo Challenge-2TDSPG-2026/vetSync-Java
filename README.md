@@ -452,18 +452,24 @@ Atenção: a collection ainda usa o nome legado `JornadaPet`; as rotas nela pode
 
 ## Deploy
 
-O `deploy.sh` automatiza a publicação em Azure Container Apps via Azure CLI. Ajuste as variáveis de resource group, registry e nome da aplicação no topo do script antes de rodar:
+O deploy oficial usa Azure App Service com Oracle FIAP. O workflow
+`.github/workflows/deploy-azure.yml` executa `./mvnw clean verify` em pull requests e
+pushes para `main`. Em um push para `main`, o mesmo JAR validado é publicado no App
+Service e o endpoint `/actuator/health` é verificado.
+
+O acesso do GitHub Actions ao Azure usa OIDC, sem senha ou publish profile. Os recursos,
+o Key Vault, a identidade federada e os identificadores `AZURE_CLIENT_ID`,
+`AZURE_TENANT_ID` e `AZURE_SUBSCRIPTION_ID` são configurados pelos scripts do
+repositório [vetSync-DevOps](https://github.com/Challenge-2TDSPG-2026/vetSync-DevOps).
+
+Antes de enviar uma alteração para `main`, valide localmente:
 
 ```bash
-./deploy.sh
+./mvnw clean verify
 ```
 
-Para build e execução manual da imagem:
-
-```bash
-docker build -t vetsync:local .
-docker run -p 8080:8080 --env-file .env vetsync:local
-```
+O histórico aplicado no Oracle é controlado pelo Flyway. Não altere migrations que já
+tenham sido executadas; mudanças de schema devem receber uma nova versão.
 
 ---
 

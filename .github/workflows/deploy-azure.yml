@@ -1,0 +1,107 @@
+name: CI/CD Java - Azure App Service
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: vetsync-java-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    name: Build and tests
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout the exact commit
+        uses: actions/checkout@v4
+
+      - name: Configure Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: maven
+
+      - name: Build and run tests
+        run: |
+          chmod +x mvnw
+          ./mvnw --batch-mode clean verify
+
+      - name: Prepare the deployment artifact
+        shell: bash
+        run: |
+          jar_path=$(find target -maxdepth 1 -type f -name '*.jar' ! -name '*-plain.jar' -print -quit)
+          if [[ -z "$jar_path" ]]; then
+            echo "No executable JAR was generated." >&2
+            exit 1
+          fi
+          mkdir -p artifact
+          cp "$jar_path" artifact/app.jar
+          (
+            cd artifact
+            sha256sum app.jar > app.jar.sha256
+          )
+
+      - name: Store artifact for this commit
+        uses: actions/upload-artifact@v4
+        with:
+          name: vetsync-${{ github.sha }}
+          path: artifact/
+          if-no-files-found: error
+          retention-days: 7
+
+  deploy:
+    name: Deploy commit to Azure
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Download artifact produced by the build job
+        uses: actions/download-artifact@v4
+        with:
+          name: vetsync-${{ github.sha }}
+          path: artifact
+
+      - name: Verify artifact checksum
+        working-directory: artifact
+        run: sha256sum --check app.jar.sha256
+
+      - name: Authenticate in Azure with OIDC
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Deploy JAR to App Service
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: app-vetsync-rm563197
+          package: artifact/app.jar
+
+      - name: Validate public health endpoint
+        shell: bash
+        run: |
+          health_url="https://app-vetsync-rm563197.azurewebsites.net/actuator/health"
+          for attempt in {1..18}; do
+            if curl --fail --silent --show-error --max-time 20 "$health_url"; then
+              echo
+              echo "Commit $GITHUB_SHA is healthy in Azure."
+              exit 0
+            fi
+            echo "Health check attempt $attempt/18 failed; retrying in 10 seconds..."
+            sleep 10
+          done
+          echo "The deployment did not become healthy." >&2
+          exit 1
