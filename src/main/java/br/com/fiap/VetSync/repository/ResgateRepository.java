@@ -25,6 +25,10 @@ public interface ResgateRepository extends JpaRepository<Resgate, Long> {
     @Query("select r from Resgate r where r.idResgate = :idResgate")
     Optional<Resgate> findByIdParaAtualizar(@Param("idResgate") Long idResgate);
 
+    // Indicadores do painel do admin (global ou por clínica, usando a clínica congelada no resgate)
+    long countByDsStatus(StatusResgate status);
+    long countByDsStatusAndClinica_IdClinica(StatusResgate status, Long idClinica);
+
     // Usado para decidir entre excluir de vez ou apenas inativar o produto
     boolean existsByRecompensa_IdRecompensa(Long idRecompensa);
 }

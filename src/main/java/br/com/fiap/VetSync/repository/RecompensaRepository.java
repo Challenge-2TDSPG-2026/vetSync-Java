@@ -16,4 +16,8 @@ public interface RecompensaRepository extends JpaRepository<Recompensa, Long> {
 
     // Listagem administrativa filtrada por clínica (inclui inativos)
     List<Recompensa> findAllByClinica_IdClinicaOrderByIdRecompensaAsc(Long idClinica);
+
+    // Indicadores do painel do admin (global ou por clínica)
+    long countByFlAtivo(Boolean ativo);
+    long countByFlAtivoAndClinica_IdClinica(Boolean ativo, Long idClinica);
 }
