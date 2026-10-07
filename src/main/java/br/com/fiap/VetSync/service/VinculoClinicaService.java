@@ -4,6 +4,7 @@ import br.com.fiap.VetSync.entity.*;
 import br.com.fiap.VetSync.repository.*;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -31,6 +32,8 @@ public class VinculoClinicaService {
     private final CodigoVinculoClinicaRepository codigoRepository;
     private final SessaoVinculoClinicaRepository sessaoRepository;
     private final VinculoTutorClinicaRepository vinculoRepository;
+    @Autowired(required = false)
+    private AuditoriaService auditoriaService;
 
     public record CodigoEmitido(String codigo, Clinica clinica) {}
     public record CodigoValidado(String sessaoVinculo, Clinica clinica, LocalDateTime expiraEm) {}
@@ -52,9 +55,11 @@ public class VinculoClinicaService {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Ative o contrato da clínica antes de emitir um código de vínculo");
         }
         // Emitir outro código revoga o anterior (e as sessões ainda abertas dele).
-        revogar(codigoRepository.findByClinica_IdClinicaAndStAtivo(idClinica, "A"));
+        revogar(codigoRepository.findByClinica_IdClinicaAndStAtivo(idClinica, "A"), "substituído por novo código");
         String codigo = gerarSegredo(18);
-        codigoRepository.saveAndFlush(CodigoVinculoClinica.builder().clinica(clinica).dsCodigoHash(hash(codigo)).build());
+        CodigoVinculoClinica emitido = codigoRepository.saveAndFlush(CodigoVinculoClinica.builder().clinica(clinica).dsCodigoHash(hash(codigo)).build());
+        // O código em si (e o hash) nunca vão para a auditoria.
+        auditar(AuditoriaTipos.CODIGO_VINCULO, emitido.getIdCodigoVinculo(), "CODIGO_EMITIDO", clinica, null, "ATIVO", null, null);
         return new CodigoEmitido(codigo, clinica);
     }
 
@@ -65,14 +70,17 @@ public class VinculoClinicaService {
         if (ativos.isEmpty()) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "A clínica não possui código ativo para revogar");
         }
-        revogar(ativos);
+        revogar(ativos, "revogado manualmente");
     }
 
     @Transactional
     public void definirContrato(Long idClinica, boolean ativo) {
         Clinica clinica = buscarClinicaParaAtualizacao(idClinica);
+        String anterior = clinica.estaContratanteAtiva() ? "ATIVO" : "INATIVO";
         clinica.setStContratante(ativo ? "A" : "I");
         clinicaRepository.save(clinica);
+        auditar(AuditoriaTipos.CONTRATO, clinica.getIdClinica(), ativo ? "CONTRATO_ATIVADO" : "CONTRATO_DESATIVADO",
+                clinica, anterior, ativo ? "ATIVO" : "INATIVO", null, null);
     }
 
     @Transactional
@@ -92,8 +100,10 @@ public class VinculoClinicaService {
     public Tutor criarTutorComVinculo(Tutor tutor, String sessaoVinculo) {
         SessaoConsumida sessao = consumirSessao(sessaoVinculo);
         Tutor salvo = tutorRepository.save(tutor);
-        vinculoRepository.save(VinculoTutorClinica.builder().tutor(salvo)
+        VinculoTutorClinica vinculo = vinculoRepository.save(VinculoTutorClinica.builder().tutor(salvo)
                 .clinica(sessao.clinica()).codigoVinculo(sessao.codigo()).build());
+        auditar(AuditoriaTipos.VINCULO, vinculo.getIdVinculoTutorClinica(), "VINCULO_CRIADO", sessao.clinica(),
+                null, "tutor=" + salvo.getIdTutor(), salvo.getDsEmail(), "TUTOR");
         return salvo;
     }
 
@@ -109,9 +119,19 @@ public class VinculoClinicaService {
         if (atual != null && atual.getClinica().getIdClinica().equals(novaClinica.getIdClinica())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Você já está vinculado a esta clínica");
         }
-        if (atual != null) { atual.setDtEncerramento(LocalDateTime.now()); vinculoRepository.save(atual); }
-        return vinculoRepository.save(VinculoTutorClinica.builder().tutor(tutor)
+        if (atual != null) {
+            atual.setDtEncerramento(LocalDateTime.now());
+            vinculoRepository.save(atual);
+            auditar(AuditoriaTipos.VINCULO, atual.getIdVinculoTutorClinica(), "VINCULO_ENCERRADO", atual.getClinica(),
+                    "tutor=" + tutor.getIdTutor() + "; ativo", "encerrado (troca para " + novaClinica.getNmClinica() + ")",
+                    tutor.getDsEmail(), "TUTOR");
+        }
+        VinculoTutorClinica novo = vinculoRepository.save(VinculoTutorClinica.builder().tutor(tutor)
                 .clinica(novaClinica).codigoVinculo(sessao.codigo()).build());
+        auditar(AuditoriaTipos.VINCULO, novo.getIdVinculoTutorClinica(), "VINCULO_TROCADO", novaClinica,
+                atual != null ? "clinica=" + atual.getClinica().getNmClinica() : null,
+                "tutor=" + tutor.getIdTutor() + "; clinica=" + novaClinica.getNmClinica(), tutor.getDsEmail(), "TUTOR");
+        return novo;
     }
 
     public VinculoTutorClinica buscarVinculoAtivo(Long idTutor) { return vinculoRepository.findByTutor_IdTutorAndDtEncerramentoIsNull(idTutor).orElse(null); }
@@ -142,12 +162,21 @@ public class VinculoClinicaService {
         return new SessaoConsumida(sessao.getClinica(), codigo);
     }
 
-    private void revogar(List<CodigoVinculoClinica> codigos) {
+    private void revogar(List<CodigoVinculoClinica> codigos, String motivo) {
         if (codigos.isEmpty()) return;
         LocalDateTime agora = LocalDateTime.now();
         codigos.forEach(c -> { c.setStAtivo("I"); c.setDtRevogacao(agora); });
         codigoRepository.saveAllAndFlush(codigos);
         sessaoRepository.expirarPendentesDosCodigos(codigos, agora);
+        codigos.forEach(c -> auditar(AuditoriaTipos.CODIGO_VINCULO, c.getIdCodigoVinculo(), "CODIGO_REVOGADO",
+                c.getClinica(), "ATIVO", "REVOGADO (" + motivo + ")", null, null));
+    }
+
+    private void auditar(String entidade, Long id, String acao, Clinica clinica, String anterior, String novo,
+                         String atorPadrao, String perfilPadrao) {
+        if (auditoriaService != null && id != null) {
+            auditoriaService.registrarAcao(entidade, id, acao, clinica, anterior, novo, atorPadrao, perfilPadrao);
+        }
     }
 
     private Clinica buscarClinicaParaAtualizacao(Long id) { return clinicaRepository.findByIdParaAtualizacao(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Clínica não encontrada")); }

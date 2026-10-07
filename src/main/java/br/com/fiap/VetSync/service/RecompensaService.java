@@ -5,6 +5,7 @@ import br.com.fiap.VetSync.repository.RecompensaRepository;
 import br.com.fiap.VetSync.repository.ResgateRepository;
 import br.com.fiap.VetSync.repository.VeterinarioRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,6 +27,8 @@ public class RecompensaService {
     private final PontosService pontosService;
     private final ClinicaService clinicaService;
     private final VinculoClinicaService vinculoClinicaService;
+    @Autowired(required = false)
+    private AuditoriaService auditoriaService;
 
     private static final long TAMANHO_MAXIMO_IMAGEM_BYTES = 5L * 1024 * 1024; // 5MB
     private static final Set<String> TIPOS_IMAGEM_PERMITIDOS = Set.of(
@@ -39,6 +42,7 @@ public class RecompensaService {
         return criar(nome, descricao, custoPontos, tipo, idClinica, null);
     }
 
+    @Transactional
     public Recompensa criar(String nome, String descricao, Integer custoPontos, TipoRecompensa tipo,
                             Long idClinica, MultipartFile imagem) {
         Clinica clinica = clinicaService.buscarObrigatoria(idClinica);
@@ -60,7 +64,9 @@ public class RecompensaService {
             }
         }
 
-        return recompensaRepository.save(builder.build());
+        Recompensa salva = recompensaRepository.save(builder.build());
+        auditarCatalogo(salva, "CATALOGO_ITEM_CRIADO", null, resumo(salva));
+        return salva;
     }
 
     /**
@@ -80,6 +86,7 @@ public class RecompensaService {
         Clinica clinica = recompensa.getClinica() != null
                 ? recompensa.getClinica()
                 : clinicaService.buscarObrigatoria(idClinica);
+        String antes = resumo(recompensa);
         recompensa.setClinica(clinica);
         recompensa.setNmRecompensa(nome);
         recompensa.setDsDescricao(descricao);
@@ -102,7 +109,13 @@ public class RecompensaService {
             recompensa.setDsImagemTipo(null);
         }
 
-        return recompensaRepository.save(recompensa);
+        Recompensa salva = recompensaRepository.save(recompensa);
+        String depois = resumo(salva);
+        if (!antes.equals(depois) || (imagem != null && !imagem.isEmpty()) || removerImagem) {
+            String sufixo = (imagem != null && !imagem.isEmpty()) ? "; imagem=substituída" : removerImagem ? "; imagem=removida" : "";
+            auditarCatalogo(salva, "CATALOGO_ITEM_ATUALIZADO", antes, depois + sufixo);
+        }
+        return salva;
     }
 
     /**
@@ -113,11 +126,15 @@ public class RecompensaService {
     public ResultadoExclusao excluir(Long id, Long idClinica) {
         Recompensa recompensa = buscarDaClinica(id, idClinica);
         if (resgateRepository.existsByRecompensa_IdRecompensa(id)) {
+            String antes = resumo(recompensa);
             recompensa.setFlAtivo(false);
             recompensaRepository.save(recompensa);
+            auditarCatalogo(recompensa, "CATALOGO_ITEM_INATIVADO", antes, resumo(recompensa) + "; motivo=possui resgates");
             return new ResultadoExclusao(false);
         }
+        String antes = resumo(recompensa);
         recompensaRepository.delete(recompensa);
+        auditarCatalogo(recompensa, "CATALOGO_ITEM_EXCLUIDO", antes, null);
         return new ResultadoExclusao(true);
     }
 
@@ -185,6 +202,7 @@ public class RecompensaService {
         return calcularSaldo(idTutor, vinculo.getClinica().getIdClinica());
     }
 
+    @Transactional
     public Resgate solicitarResgate(Long idTutor, Long idRecompensa) {
         Recompensa recompensa = buscarPorId(idRecompensa);
         if (!Boolean.TRUE.equals(recompensa.getFlAtivo())) {
@@ -215,7 +233,9 @@ public class RecompensaService {
                 .clinica(recompensa.getClinica())
                 .dsStatus(StatusResgate.PENDENTE)
                 .build();
-        return resgateRepository.save(resgate);
+        Resgate salvo = resgateRepository.save(resgate);
+        auditarResgate(salvo, "RESGATE_SOLICITADO", null, "PENDENTE; item=" + salvo.getNmRecompensa() + "; custo=" + salvo.custoAplicado());
+        return salvo;
     }
 
     public List<Resgate> listarResgatesDoTutor(Long idTutor) {
@@ -257,7 +277,10 @@ public class RecompensaService {
 
         resgate.setVeterinarioValidador(vet);
         resgate.setDsStatus(aprovado ? StatusResgate.VALIDADO : StatusResgate.NEGADO);
-        return resgateRepository.save(resgate);
+        Resgate salvo = resgateRepository.save(resgate);
+        auditarResgate(salvo, aprovado ? "RESGATE_VALIDADO" : "RESGATE_NEGADO", "PENDENTE",
+                salvo.getDsStatus().name() + "; item=" + salvo.getNmRecompensa() + "; custo=" + salvo.custoAplicado());
+        return salvo;
     }
 
     /**
@@ -276,5 +299,22 @@ public class RecompensaService {
                     "A clínica do resgate não corresponde à clínica da recompensa. Os pontos não podem ser debitados");
         }
         return clinicaResgate.getIdClinica();
+    }
+
+    private static String resumo(Recompensa r) {
+        return "nome=" + r.getNmRecompensa() + "; custo=" + r.getNrCustoPontos() + "; tipo=" + r.getDsTipo()
+                + "; ativo=" + r.getFlAtivo() + "; descricao=" + r.getDsDescricao();
+    }
+
+    private void auditarCatalogo(Recompensa r, String acao, String anterior, String novo) {
+        if (auditoriaService != null && r != null && r.getIdRecompensa() != null) {
+            auditoriaService.registrarAcao(AuditoriaTipos.CATALOGO, r.getIdRecompensa(), acao, r.getClinica(), anterior, novo, null, null);
+        }
+    }
+
+    private void auditarResgate(Resgate r, String acao, String anterior, String novo) {
+        if (auditoriaService != null && r != null && r.getIdResgate() != null) {
+            auditoriaService.registrarAcao(AuditoriaTipos.RESGATE, r.getIdResgate(), acao, r.getClinica(), anterior, novo, null, null);
+        }
     }
 }

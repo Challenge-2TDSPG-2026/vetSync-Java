@@ -244,7 +244,7 @@ public class EventoService {
     private void auditar(EventoSaude evento, String acao, String anterior, String novo, String ator) {
         if (auditoriaService != null && evento != null && evento.getIdEvento() != null) {
             auditoriaService.registrar("EVENTO", evento.getIdEvento(), acao,
-                    ator == null ? "SISTEMA" : ator, "SISTEMA", anterior, novo, null);
+                    ator == null ? "SISTEMA" : ator, "SISTEMA", evento.getClinica(), anterior, novo, null);
         }
     }
 

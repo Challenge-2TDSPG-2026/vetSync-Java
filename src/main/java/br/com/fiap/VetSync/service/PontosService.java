@@ -8,6 +8,7 @@ import jakarta.persistence.criteria.Join;
 import jakarta.persistence.criteria.JoinType;
 import jakarta.persistence.criteria.Predicate;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
@@ -26,6 +27,8 @@ public class PontosService {
     private final LancamentoPontosRepository lancamentoPontosRepository;
     private final AdminRepository adminRepository;
     private final ResgateRepository resgateRepository;
+    @Autowired(required = false)
+    private AuditoriaService auditoriaService;
 
     /** Quantos dias os pontos valem a partir da liberação. */
     @Value("${app.pontos.validade-dias:365}")
@@ -65,7 +68,9 @@ public class PontosService {
                 .nrPontos(pontos)
                 .dsStatus(StatusLancamentoPontos.PENDENTE)
                 .build();
-        return lancamentoPontosRepository.save(lancamento);
+        LancamentoPontos salvo = lancamentoPontosRepository.save(lancamento);
+        auditar(salvo, "PONTOS_LANCADOS", null, "pontos=" + pontos + "; status=PENDENTE");
+        return salvo;
     }
 
 
@@ -77,7 +82,9 @@ public class PontosService {
                 .nrPontos(bonus)
                 .dsStatus(StatusLancamentoPontos.PENDENTE)
                 .build();
-        return lancamentoPontosRepository.save(lancamento);
+        LancamentoPontos salvo = lancamentoPontosRepository.save(lancamento);
+        auditar(salvo, "PONTOS_LANCADOS", null, "pontos=" + bonus + "; status=PENDENTE; bonus de plano");
+        return salvo;
     }
 
     public LancamentoPontos buscarPorId(Long id) {
@@ -154,7 +161,10 @@ public class PontosService {
         lancamento.setDsStatus(StatusLancamentoPontos.LIBERADO);
         lancamento.setDtLiberacao(hoje);
         lancamento.setDtValidade(hoje.plusDays(validadeDias));
-        return lancamentoPontosRepository.save(lancamento);
+        LancamentoPontos salvo = lancamentoPontosRepository.save(lancamento);
+        auditar(salvo, "PONTOS_LIBERADOS", "PENDENTE",
+                "LIBERADO; pontos=" + salvo.getNrPontos() + "; validade=" + salvo.getDtValidade());
+        return salvo;
     }
 
     /**
@@ -189,7 +199,9 @@ public class PontosService {
         lancamento.setDtBloqueio(hoje);
         lancamento.setDsMotivoBloqueio(motivo.trim());
         lancamento.setAdminBloqueio(admin);
-        return lancamentoPontosRepository.save(lancamento);
+        LancamentoPontos salvo = lancamentoPontosRepository.save(lancamento);
+        auditar(salvo, "PONTOS_BLOQUEADOS", atual.name(), "BLOQUEADO; motivo=" + motivo.trim());
+        return salvo;
     }
 
     /** Desbloqueia: volta a PENDENTE se nunca foi liberado, ou a LIBERADO (respeitando a validade original). */
@@ -202,12 +214,22 @@ public class PontosService {
         }
         buscarAdmin(idAdmin);
 
+        String motivoAnterior = lancamento.getDsMotivoBloqueio();
         lancamento.setDsStatus(lancamento.getDtLiberacao() != null
                 ? StatusLancamentoPontos.LIBERADO : StatusLancamentoPontos.PENDENTE);
         lancamento.setDtBloqueio(null);
         lancamento.setDsMotivoBloqueio(null);
         lancamento.setAdminBloqueio(null);
-        return lancamentoPontosRepository.save(lancamento);
+        LancamentoPontos salvo = lancamentoPontosRepository.save(lancamento);
+        auditar(salvo, "PONTOS_DESBLOQUEADOS", "BLOQUEADO; motivo=" + motivoAnterior, salvo.getDsStatus().name());
+        return salvo;
+    }
+
+    private void auditar(LancamentoPontos l, String acao, String anterior, String novo) {
+        if (auditoriaService != null && l != null && l.getIdLancamento() != null) {
+            auditoriaService.registrarAcao(AuditoriaTipos.PONTOS, l.getIdLancamento(), acao, l.getClinica(),
+                    anterior, novo, null, null);
+        }
     }
 
     private LancamentoPontos buscarDaClinica(Long idLancamento, Long idClinica) {
