@@ -137,22 +137,109 @@ class RecompensaServiceTest {
         verify(resgateRepository, never()).save(any());
     }
 
-    @Test
-    @DisplayName("Deve validar resgate com sucesso")
-    void validar_Sucesso() {
-        Resgate resgate = Resgate.builder()
-                .idResgate(5L)
-                .dsStatus(StatusResgate.PENDENTE)
-                .build();
-        Veterinario vet = Veterinario.builder().idVeterinario(3L).build();
+    private Resgate resgatePendente(Clinica clinicaDoResgate, Clinica clinicaDaRecompensa) {
+        Recompensa rec = Recompensa.builder().idRecompensa(10L).clinica(clinicaDaRecompensa).build();
+        return Resgate.builder().idResgate(5L).dsStatus(StatusResgate.PENDENTE)
+                .recompensa(rec).clinica(clinicaDoResgate).build();
+    }
 
-        when(resgateRepository.findById(5L)).thenReturn(Optional.of(resgate));
+    @Test
+    @DisplayName("Deve validar resgate com sucesso quando veterinário, resgate e recompensa são da mesma clínica")
+    void validar_Sucesso() {
+        Resgate resgate = resgatePendente(clinica, clinica);
+        Veterinario vet = Veterinario.builder().idVeterinario(3L).clinica(clinica).build();
+
+        when(resgateRepository.findByIdParaAtualizar(5L)).thenReturn(Optional.of(resgate));
         when(veterinarioRepository.findById(3L)).thenReturn(Optional.of(vet));
         when(resgateRepository.save(any(Resgate.class))).thenAnswer(inv -> inv.getArgument(0));
 
         Resgate validado = recompensaService.validar(5L, 3L, true);
         assertThat(validado.getDsStatus()).isEqualTo(StatusResgate.VALIDADO);
         assertThat(validado.getVeterinarioValidador()).isEqualTo(vet);
+        assertThat(validado.getClinica()).isEqualTo(clinica);
+    }
+
+    @Test
+    @DisplayName("Deve negar resgate mantendo a clínica do resgate")
+    void validar_Negar() {
+        Resgate resgate = resgatePendente(clinica, clinica);
+        Veterinario vet = Veterinario.builder().idVeterinario(3L).clinica(clinica).build();
+
+        when(resgateRepository.findByIdParaAtualizar(5L)).thenReturn(Optional.of(resgate));
+        when(veterinarioRepository.findById(3L)).thenReturn(Optional.of(vet));
+        when(resgateRepository.save(any(Resgate.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        assertThat(recompensaService.validar(5L, 3L, false).getDsStatus()).isEqualTo(StatusResgate.NEGADO);
+    }
+
+    @Test
+    @DisplayName("Não valida resgate que já foi decidido")
+    void validar_JaDecidido() {
+        Resgate resgate = resgatePendente(clinica, clinica);
+        resgate.setDsStatus(StatusResgate.VALIDADO);
+        when(resgateRepository.findByIdParaAtualizar(5L)).thenReturn(Optional.of(resgate));
+
+        assertThatThrownBy(() -> recompensaService.validar(5L, 3L, true))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("já foi");
+        verify(resgateRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("Não valida resgate sem clínica (não haveria saldo a debitar)")
+    void validar_ResgateSemClinica() {
+        Resgate resgate = resgatePendente(null, clinica);
+        Veterinario vet = Veterinario.builder().idVeterinario(3L).clinica(clinica).build();
+        when(resgateRepository.findByIdParaAtualizar(5L)).thenReturn(Optional.of(resgate));
+        when(veterinarioRepository.findById(3L)).thenReturn(Optional.of(vet));
+
+        assertThatThrownBy(() -> recompensaService.validar(5L, 3L, true))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("não está associado a nenhuma clínica");
+        verify(resgateRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("Não valida quando a clínica do resgate difere da clínica da recompensa")
+    void validar_ClinicaDoResgateDiferenteDaRecompensa() {
+        Clinica outra = Clinica.builder().idClinica(8L).nmClinica("Clínica Norte").build();
+        Resgate resgate = resgatePendente(clinica, outra);
+        Veterinario vet = Veterinario.builder().idVeterinario(3L).clinica(clinica).build();
+        when(resgateRepository.findByIdParaAtualizar(5L)).thenReturn(Optional.of(resgate));
+        when(veterinarioRepository.findById(3L)).thenReturn(Optional.of(vet));
+
+        assertThatThrownBy(() -> recompensaService.validar(5L, 3L, true))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("não corresponde à clínica da recompensa");
+        verify(resgateRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("Não valida quando a recompensa do resgate não tem clínica")
+    void validar_RecompensaSemClinica() {
+        Resgate resgate = resgatePendente(clinica, null);
+        Veterinario vet = Veterinario.builder().idVeterinario(3L).clinica(clinica).build();
+        when(resgateRepository.findByIdParaAtualizar(5L)).thenReturn(Optional.of(resgate));
+        when(veterinarioRepository.findById(3L)).thenReturn(Optional.of(vet));
+
+        assertThatThrownBy(() -> recompensaService.validar(5L, 3L, true))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("não corresponde à clínica da recompensa");
+        verify(resgateRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("Veterinário sem clínica não valida resgate")
+    void validar_VeterinarioSemClinica() {
+        Resgate resgate = resgatePendente(clinica, clinica);
+        Veterinario vet = Veterinario.builder().idVeterinario(3L).build();
+        when(resgateRepository.findByIdParaAtualizar(5L)).thenReturn(Optional.of(resgate));
+        when(veterinarioRepository.findById(3L)).thenReturn(Optional.of(vet));
+
+        assertThatThrownBy(() -> recompensaService.validar(5L, 3L, true))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("outra clínica");
+        verify(resgateRepository, never()).save(any());
     }
 
     @Test
@@ -206,14 +293,13 @@ class RecompensaServiceTest {
     }
 
     @Test
-    @DisplayName("Veterinário não valida resgate de recompensa de outra clínica")
+    @DisplayName("Veterinário não valida resgate de outra clínica")
     void validar_OutraClinica() {
         Clinica outra = Clinica.builder().idClinica(8L).nmClinica("Clínica Norte").build();
-        Recompensa rec = Recompensa.builder().idRecompensa(10L).clinica(outra).build();
-        Resgate resgate = Resgate.builder().idResgate(5L).dsStatus(StatusResgate.PENDENTE).recompensa(rec).build();
+        Resgate resgate = resgatePendente(outra, outra);
         Veterinario vet = Veterinario.builder().idVeterinario(3L).clinica(clinica).build();
 
-        when(resgateRepository.findById(5L)).thenReturn(Optional.of(resgate));
+        when(resgateRepository.findByIdParaAtualizar(5L)).thenReturn(Optional.of(resgate));
         when(veterinarioRepository.findById(3L)).thenReturn(Optional.of(vet));
 
         assertThatThrownBy(() -> recompensaService.validar(5L, 3L, true))

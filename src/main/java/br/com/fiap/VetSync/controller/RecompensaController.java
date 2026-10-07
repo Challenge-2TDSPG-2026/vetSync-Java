@@ -256,7 +256,10 @@ public class RecompensaController {
     }
 
     @GetMapping("/resgates")
-    @Operation(summary = "Listar resgates", description = "Tutor vê os próprios; veterinário vê todos os pendentes de validação.")
+    @PreAuthorize("hasAnyRole('TUTOR','VETERINARIO')")
+    @Operation(summary = "Listar resgates",
+            description = "Tutor vê os próprios; veterinário vê os pendentes de validação da própria clínica. "
+                    + "O ADMIN não acompanha nem aprova resgates por este endpoint.")
     public List<ResgateResponse> listarResgates(Authentication authentication) {
         boolean ehVeterinario = authentication.getAuthorities().stream()
                 .anyMatch(a -> a.getAuthority().equals("ROLE_VETERINARIO"));
@@ -268,7 +271,9 @@ public class RecompensaController {
 
     @PatchMapping("/resgates/{idResgate}/validar")
     @PreAuthorize("hasRole('VETERINARIO')")
-    @Operation(summary = "Validar ou negar um resgate pendente. Somente VETERINARIO.")
+    @Operation(summary = "Validar ou negar um resgate pendente. Somente VETERINARIO.",
+            description = "O veterinário é o autenticado (não há id no corpo) e precisa ser da clínica do resgate. "
+                    + "Os pontos saem da clínica do resgate, que deve ser a mesma da recompensa. ADMIN não valida em nome da clínica.")
     public ResgateResponse validar(@PathVariable Long idResgate, Authentication authentication,
                                    @Valid @RequestBody ValidarResgateRequest request) {
         return toResponse(recompensaService.validar(idResgate, idVeterinarioAutenticado(authentication), request.aprovado()));

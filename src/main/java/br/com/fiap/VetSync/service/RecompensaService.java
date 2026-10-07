@@ -222,17 +222,23 @@ public class RecompensaService {
         return resgateRepository.findByTutor_IdTutorOrderByDtResgateDesc(idTutor);
     }
 
-    public List<Resgate> listarPendentes() {
-        return resgateRepository.findByDsStatusOrderByDtResgateAsc(StatusResgate.PENDENTE);
-    }
-
     /** Fila de validação do veterinário: só resgates de recompensas da clínica dele. */
     public List<Resgate> listarPendentesDaClinica(Long idClinica) {
         return resgateRepository.findByDsStatusAndClinica_IdClinicaOrderByDtResgateAsc(StatusResgate.PENDENTE, idClinica);
     }
 
+    /**
+     * Valida ou nega um resgate PENDENTE. Regras de escopo (a API não confia em IDs enviados pelo aplicativo):
+     * <ul>
+     *   <li>o veterinário vem do token (nunca do corpo da requisição) e precisa pertencer à clínica do resgate;</li>
+     *   <li>a clínica do resgate (congelada na solicitação) precisa ser a mesma clínica da recompensa do catálogo;</li>
+     *   <li>os pontos são debitados da clínica do resgate: é por ela que {@link PontosService} calcula o saldo.</li>
+     * </ul>
+     * Resgate sem clínica (legado) não pode ser validado, pois não debitaria o saldo de nenhuma clínica.
+     */
+    @Transactional
     public Resgate validar(Long idResgate, Long idVeterinario, boolean aprovado) {
-        Resgate resgate = resgateRepository.findById(idResgate).orElseThrow(
+        Resgate resgate = resgateRepository.findByIdParaAtualizar(idResgate).orElseThrow(
                 () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Resgate não encontrado")
         );
         if (resgate.getDsStatus() != StatusResgate.PENDENTE) {
@@ -242,12 +248,33 @@ public class RecompensaService {
         Veterinario vet = veterinarioRepository.findById(idVeterinario).orElseThrow(
                 () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Veterinário não encontrado")
         );
-        Clinica clinicaRecompensa = resgate.clinicaOrigem(); // clínica congelada no resgate
-        if (clinicaRecompensa != null && !clinicaRecompensa.getIdClinica().equals(vet.getClinica().getIdClinica())) {
+
+        Long idClinicaResgate = clinicaDoResgateConsistente(resgate);
+        Long idClinicaVeterinario = vet.getClinica() != null ? vet.getClinica().getIdClinica() : null;
+        if (idClinicaVeterinario == null || !idClinicaVeterinario.equals(idClinicaResgate)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Esse resgate pertence a outra clínica");
         }
+
         resgate.setVeterinarioValidador(vet);
         resgate.setDsStatus(aprovado ? StatusResgate.VALIDADO : StatusResgate.NEGADO);
         return resgateRepository.save(resgate);
+    }
+
+    /**
+     * Garante que o resgate, a recompensa do catálogo e (portanto) o saldo apontam para a MESMA clínica.
+     * Devolve o id dessa clínica; em caso de divergência recusa com 409 em vez de debitar de onde não deve.
+     */
+    private Long clinicaDoResgateConsistente(Resgate resgate) {
+        Clinica clinicaResgate = resgate.getClinica();
+        if (clinicaResgate == null) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Esse resgate não está associado a nenhuma clínica e não pode ser validado");
+        }
+        Clinica clinicaCatalogo = resgate.getRecompensa() != null ? resgate.getRecompensa().getClinica() : null;
+        if (clinicaCatalogo == null || !clinicaCatalogo.getIdClinica().equals(clinicaResgate.getIdClinica())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "A clínica do resgate não corresponde à clínica da recompensa. Os pontos não podem ser debitados");
+        }
+        return clinicaResgate.getIdClinica();
     }
 }

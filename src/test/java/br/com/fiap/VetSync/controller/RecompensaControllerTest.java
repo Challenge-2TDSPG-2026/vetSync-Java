@@ -21,8 +21,12 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
+import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -82,8 +86,7 @@ class RecompensaControllerTest {
                         .param("nome", "Desconto 20%")
                         .param("descricao", "Vale")
                         .param("custoPontos", "100")
-                        .param("tipo", "CUPOM_DESCONTO")
-                        .param("idClinica", "7"))
+                        .param("tipo", "CUPOM_DESCONTO"))
                 .andExpect(status().isForbidden());
     }
 
@@ -185,5 +188,90 @@ class RecompensaControllerTest {
                 .andExpect(jsonPath("$.idResgate").value(50))
                 .andExpect(jsonPath("$.status").value("VALIDADO"))
                 .andExpect(jsonPath("$.nmVeterinarioValidador").value("Dr. V"));
+    }
+
+    @Test
+    @DisplayName("PATCH /recompensas/resgates/{idResgate}/validar - ADMIN não aprova resgate em nome da clínica")
+    @WithMockUser(username = "admin@teste.com", roles = "ADMIN")
+    void validarResgate_AdminNegado() throws Exception {
+        var req = new RecompensaController.ValidarResgateRequest(true);
+
+        mockMvc.perform(patch("/recompensas/resgates/50/validar")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(req)))
+                .andExpect(status().isForbidden());
+
+        verify(recompensaService, never()).validar(anyLong(), anyLong(), anyBoolean());
+    }
+
+    @Test
+    @DisplayName("PATCH /recompensas/resgates/{idResgate}/validar - TUTOR não valida resgate")
+    @WithMockUser(username = "tutor@teste.com", roles = "TUTOR")
+    void validarResgate_TutorNegado() throws Exception {
+        var req = new RecompensaController.ValidarResgateRequest(true);
+
+        mockMvc.perform(patch("/recompensas/resgates/50/validar")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(req)))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @DisplayName("PATCH /recompensas/resgates/{idResgate}/validar - veterinário de outra clínica recebe 403 do serviço")
+    @WithMockUser(username = "vet@teste.com", roles = "VETERINARIO")
+    void validarResgate_VetOutraClinica() throws Exception {
+        Veterinario vet = Veterinario.builder().idVeterinario(3L).nmVeterinario("Dr. V").build();
+        when(veterinarioRepository.findByDsEmail("vet@teste.com")).thenReturn(Optional.of(vet));
+        when(recompensaService.validar(50L, 3L, true))
+                .thenThrow(new ResponseStatusException(HttpStatus.FORBIDDEN, "Esse resgate pertence a outra clínica"));
+
+        var req = new RecompensaController.ValidarResgateRequest(true);
+
+        mockMvc.perform(patch("/recompensas/resgates/50/validar")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(req)))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @DisplayName("PATCH /recompensas/resgates/{idResgate}/validar - ignora id de veterinário enviado no corpo")
+    @WithMockUser(username = "vet@teste.com", roles = "VETERINARIO")
+    void validarResgate_UsaVeterinarioDoToken() throws Exception {
+        Veterinario vet = Veterinario.builder().idVeterinario(3L).nmVeterinario("Dr. V").build();
+        when(veterinarioRepository.findByDsEmail("vet@teste.com")).thenReturn(Optional.of(vet));
+        Recompensa r = Recompensa.builder().nmRecompensa("Petisco").nrCustoPontos(30).dsTipo(TipoRecompensa.PRODUTO).build();
+        Resgate resgate = Resgate.builder().idResgate(50L).recompensa(r).veterinarioValidador(vet)
+                .dsStatus(StatusResgate.VALIDADO).dtResgate(LocalDateTime.now()).build();
+        when(recompensaService.validar(50L, 3L, true)).thenReturn(resgate);
+
+        mockMvc.perform(patch("/recompensas/resgates/50/validar")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"aprovado\":true,\"idVeterinario\":999,\"idClinica\":999}"))
+                .andExpect(status().isOk());
+
+        verify(recompensaService).validar(50L, 3L, true);
+    }
+
+    @Test
+    @DisplayName("GET /recompensas/resgates - ADMIN não acompanha resgates por este endpoint")
+    @WithMockUser(username = "admin@teste.com", roles = "ADMIN")
+    void listarResgates_AdminNegado() throws Exception {
+        mockMvc.perform(get("/recompensas/resgates"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @DisplayName("GET /recompensas/resgates - veterinário vê só a fila da própria clínica")
+    @WithMockUser(username = "vet@teste.com", roles = "VETERINARIO")
+    void listarResgates_VeterinarioSoDaPropriaClinica() throws Exception {
+        Clinica clinica = Clinica.builder().idClinica(7L).nmClinica("Clínica Centro").build();
+        Veterinario vet = Veterinario.builder().idVeterinario(3L).clinica(clinica).build();
+        when(veterinarioRepository.findByDsEmail("vet@teste.com")).thenReturn(Optional.of(vet));
+        when(recompensaService.listarPendentesDaClinica(7L)).thenReturn(List.of());
+
+        mockMvc.perform(get("/recompensas/resgates"))
+                .andExpect(status().isOk());
+
+        verify(recompensaService).listarPendentesDaClinica(7L);
     }
 }
