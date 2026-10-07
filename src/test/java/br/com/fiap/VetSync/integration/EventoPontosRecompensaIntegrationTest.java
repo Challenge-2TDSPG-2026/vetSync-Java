@@ -89,20 +89,28 @@ class EventoPontosRecompensaIntegrationTest {
                 .andReturn();
         String vetToken = objectMapper.readTree(vetLoginRes.getResponse().getContentAsString()).get("token").asText();
 
-        var recompensaReq = new RecompensaController.RecompensaRequest(
-                "Guia Passeio",
-                "Guia de alta durabilidade",
-                30,
-                TipoRecompensa.PRODUTO,
-                clinica.getIdClinica()
-        );
-        MvcResult recRes = mockMvc.perform(post("/recompensas")
-                        .header("Authorization", "Bearer " + vetToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(recompensaReq)))
+        MvcResult recRes = mockMvc.perform(multipart("/recompensas")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .param("nome", "Guia Passeio")
+                        .param("descricao", "Guia de alta durabilidade")
+                        .param("custoPontos", "30")
+                        .param("tipo", TipoRecompensa.PRODUTO.name())
+                        .param("idClinica", clinica.getIdClinica().toString()))
                 .andExpect(status().isCreated())
                 .andReturn();
         Long idRecompensa = objectMapper.readTree(recRes.getResponse().getContentAsString()).get("idRecompensa").asLong();
+
+        MvcResult codigoRes = mockMvc.perform(post("/vinculos-clinica/clinicas/" + clinica.getIdClinica() + "/codigo")
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isCreated())
+                .andReturn();
+        String codigo = objectMapper.readTree(codigoRes.getResponse().getContentAsString()).get("codigo").asText();
+        MvcResult sessaoRes = mockMvc.perform(post("/vinculos-clinica/validar-codigo")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new VinculoClinicaController.CodigoRequest(codigo))))
+                .andExpect(status().isOk())
+                .andReturn();
+        String sessaoVinculo = objectMapper.readTree(sessaoRes.getResponse().getContentAsString()).get("sessaoVinculo").asText();
 
         var tutorReq = new AuthController.RegistrarRequest(
                 "Camila Silva",
@@ -116,7 +124,8 @@ class EventoPontosRecompensaIntegrationTest {
                 null,
                 "Bela Vista",
                 "São Paulo",
-                "SP"
+                "SP",
+                sessaoVinculo
         );
         MvcResult tutorRes = mockMvc.perform(post("/auth/registrar")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -175,7 +184,8 @@ class EventoPontosRecompensaIntegrationTest {
         Long idLancamento = pontosArray.get(0).get("idLancamento").asLong();
 
         mockMvc.perform(patch("/pontos/" + idLancamento + "/liberar")
-                        .header("Authorization", "Bearer " + adminToken))
+                        .header("Authorization", "Bearer " + adminToken)
+                        .param("idClinica", clinica.getIdClinica().toString()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("LIBERADO"));
 

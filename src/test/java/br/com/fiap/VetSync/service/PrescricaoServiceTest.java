@@ -103,7 +103,7 @@ class PrescricaoServiceTest {
 
         assertThat(liberada.getDsStatus()).isEqualTo(StatusPrescricao.LIBERADO);
         assertThat(liberada.getAdminValidador()).isEqualTo(admin);
-        verify(emailService).enviar(eq("carlos@email.com"), anyString(), anyString());
+        verify(emailService).enviarComAnexo(eq("carlos@email.com"), anyString(), anyString(), any(), any(), any());
     }
 
     @Test

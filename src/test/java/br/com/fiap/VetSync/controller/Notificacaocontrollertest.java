@@ -13,6 +13,7 @@ import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Locale;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -39,7 +40,7 @@ class NotificacaoControllerTest {
         int n = SEQ.incrementAndGet();
         return tutorRepository.save(Tutor.builder()
                 .nmTutor("Tutor " + prefixo)
-                .dsEmail(prefixo + n + "@teste.com")
+                .dsEmail((prefixo + n + "@teste.com").toLowerCase(Locale.ROOT))
                 .dsCpf(String.format("%011d", n))
                 .dsSenha("senha-hash")
                 .build());

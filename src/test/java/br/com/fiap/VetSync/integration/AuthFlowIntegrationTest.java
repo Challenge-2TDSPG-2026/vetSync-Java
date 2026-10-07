@@ -1,6 +1,10 @@
 package br.com.fiap.VetSync.integration;
 
 import br.com.fiap.VetSync.controller.AuthController;
+import br.com.fiap.VetSync.controller.AdminController;
+import br.com.fiap.VetSync.controller.VinculoClinicaController;
+import br.com.fiap.VetSync.entity.Clinica;
+import br.com.fiap.VetSync.repository.ClinicaRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
@@ -30,10 +34,43 @@ class AuthFlowIntegrationTest {
     @Autowired
     private ObjectMapper objectMapper;
 
+    @Autowired
+    private ClinicaRepository clinicaRepository;
+
     @Test
     @DisplayName("Fluxo completo de Auth: Registro -> Login -> Me -> Logout -> Me com token revogado (401)")
     void fluxoAutenticacaoCompleto() throws Exception {
-        // 1. Registro de novo tutor
+        Clinica clinica = clinicaRepository.save(Clinica.builder()
+                .nmClinica("Clínica Auth")
+                .dsCnpj("33445566000177")
+                .stContratante("A")
+                .build());
+
+        var adminReq = new AdminController.AdminBootstrapRequest("Admin Auth", "admin.auth@vetsync.com", "boot-secret-test-key-12345");
+        MvcResult adminRes = mockMvc.perform(post("/admins/bootstrap").contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(adminReq)))
+                .andExpect(status().isCreated())
+                .andReturn();
+        String adminPwd = objectMapper.readTree(adminRes.getResponse().getContentAsString()).get("senhaTemporaria").asText();
+        MvcResult adminLogin = mockMvc.perform(post("/auth/login").contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new AuthController.LoginRequest("admin.auth@vetsync.com", adminPwd))))
+                .andExpect(status().isOk())
+                .andReturn();
+        String adminToken = objectMapper.readTree(adminLogin.getResponse().getContentAsString()).get("token").asText();
+
+        MvcResult codigoRes = mockMvc.perform(post("/vinculos-clinica/clinicas/" + clinica.getIdClinica() + "/codigo")
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isCreated())
+                .andReturn();
+        String codigo = objectMapper.readTree(codigoRes.getResponse().getContentAsString()).get("codigo").asText();
+        MvcResult sessaoRes = mockMvc.perform(post("/vinculos-clinica/validar-codigo")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new VinculoClinicaController.CodigoRequest(codigo))))
+                .andExpect(status().isOk())
+                .andReturn();
+        String sessaoVinculo = objectMapper.readTree(sessaoRes.getResponse().getContentAsString()).get("sessaoVinculo").asText();
+
+        // 1. Registro de tutor com vínculo confirmado à clínica
         var registrarReq = new AuthController.RegistrarRequest(
                 "Lucas Ferreira",
                 "lucas.integ@teste.com",
@@ -46,7 +83,8 @@ class AuthFlowIntegrationTest {
                 null,
                 "Bela Vista",
                 "São Paulo",
-                "SP"
+                "SP",
+                sessaoVinculo
         );
 
         mockMvc.perform(post("/auth/registrar")

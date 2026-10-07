@@ -6,6 +6,7 @@ import br.com.fiap.VetSync.repository.TutorRepository;
 import br.com.fiap.VetSync.repository.VeterinarioRepository;
 import br.com.fiap.VetSync.security.TokenBlacklist;
 import br.com.fiap.VetSync.service.JwtService;
+import br.com.fiap.VetSync.service.VinculoClinicaService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -24,6 +25,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.util.Optional;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -61,6 +63,9 @@ class AuthControllerTest {
     @MockBean
     private TokenBlacklist tokenBlacklist;
 
+    @MockBean
+    private VinculoClinicaService vinculoClinicaService;
+
     @Test
     @DisplayName("POST /auth/login - Sucesso")
     void login_Sucesso() throws Exception {
@@ -97,11 +102,11 @@ class AuthControllerTest {
     @Test
     @DisplayName("POST /auth/registrar - Sucesso")
     void registrar_Sucesso() throws Exception {
-        var req = new AuthController.RegistrarRequest("Novo Tutor", "novo@teste.com", "senha123", "12345678901", "11999990000", "01310100", "Avenida Paulista", "1000", "Apto 10", "Bela Vista", "São Paulo", "SP");
+        var req = new AuthController.RegistrarRequest("Novo Tutor", "novo@teste.com", "senha123", "12345678901", "11999990000", "01310100", "Avenida Paulista", "1000", "Apto 10", "Bela Vista", "São Paulo", "SP", "sessao-valida");
 
         when(tutorRepository.existsByDsEmail("novo@teste.com")).thenReturn(false);
         when(passwordEncoder.encode("senha123")).thenReturn("hashed-pwd");
-        when(tutorRepository.save(any(Tutor.class))).thenAnswer(inv -> {
+        when(vinculoClinicaService.criarTutorComVinculo(any(Tutor.class), eq("sessao-valida"))).thenAnswer(inv -> {
             Tutor t = inv.getArgument(0);
             t.setIdTutor(10L);
             return t;
@@ -133,7 +138,7 @@ class AuthControllerTest {
     @Test
     @DisplayName("POST /auth/registrar - E-mail Duplicado -> 409 Conflict")
     void registrar_EmailDuplicado() throws Exception {
-        var req = new AuthController.RegistrarRequest("Novo", "existe@teste.com", "senha123", "12345678901", "11999990000", "01310100", "Avenida Paulista", "1000", null, "Bela Vista", "São Paulo", "SP");
+        var req = new AuthController.RegistrarRequest("Novo", "existe@teste.com", "senha123", "12345678901", "11999990000", "01310100", "Avenida Paulista", "1000", null, "Bela Vista", "São Paulo", "SP", "sessao-valida");
         when(tutorRepository.existsByDsEmail("existe@teste.com")).thenReturn(true);
 
         mockMvc.perform(post("/auth/registrar")

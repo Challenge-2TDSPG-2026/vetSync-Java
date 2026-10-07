@@ -59,6 +59,19 @@ class PlanoTratamentoFlowIntegrationTest {
                 .content(objectMapper.writeValueAsString(new AuthController.LoginRequest("admin.p@vetsync.com", adminPwd)))).andReturn();
         String adminToken = objectMapper.readTree(adminLogin.getResponse().getContentAsString()).get("token").asText();
 
+        MvcResult codigoClinicaRes = mockMvc.perform(post("/vinculos-clinica/clinicas/" + clinica.getIdClinica() + "/codigo")
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isCreated())
+                .andReturn();
+        String codigoClinica = objectMapper.readTree(codigoClinicaRes.getResponse().getContentAsString()).get("codigo").asText();
+
+        MvcResult sessaoVinculoRes = mockMvc.perform(post("/vinculos-clinica/validar-codigo")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new VinculoClinicaController.CodigoRequest(codigoClinica))))
+                .andExpect(status().isOk())
+                .andReturn();
+        String sessaoVinculo = objectMapper.readTree(sessaoVinculoRes.getResponse().getContentAsString()).get("sessaoVinculo").asText();
+
         MvcResult vetRes = mockMvc.perform(post("/veterinarios")
                 .header("Authorization", "Bearer " + adminToken)
                 .contentType(MediaType.APPLICATION_JSON)
@@ -72,7 +85,9 @@ class PlanoTratamentoFlowIntegrationTest {
         String vetToken = objectMapper.readTree(vetLogin.getResponse().getContentAsString()).get("token").asText();
 
         MvcResult tutorRes = mockMvc.perform(post("/auth/registrar").contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(new AuthController.RegistrarRequest("Tatiana", "tatiana@teste.com", "senha123", "99988811122", "11988882222", "01310100", "Avenida Paulista", "1000", null, "Bela Vista", "São Paulo", "SP")))).andReturn();
+                        .content(objectMapper.writeValueAsString(new AuthController.RegistrarRequest("Tatiana", "tatiana@teste.com", "senha123", "99988811122", "11988882222", "01310100", "Avenida Paulista", "1000", null, "Bela Vista", "São Paulo", "SP", sessaoVinculo))))
+                .andExpect(status().isCreated())
+                .andReturn();
         String tutorToken = objectMapper.readTree(tutorRes.getResponse().getContentAsString()).get("token").asText();
 
         MvcResult petRes = mockMvc.perform(post("/pets")

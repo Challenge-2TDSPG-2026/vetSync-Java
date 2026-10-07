@@ -21,6 +21,7 @@ import java.util.Optional;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -61,14 +62,15 @@ class PrescricaoControllerTest {
                 .qtDosesDia(1)
                 .build();
 
-        when(prescricaoService.solicitar(eq(10L), eq(20L), eq("1 comp/dia"), any(), any(), eq(1), eq(3L)))
+        when(prescricaoService.solicitar(eq(10L), eq(20L), eq("1 comp/dia"), any(), isNull(), eq(1), eq(3L), isNull()))
                 .thenReturn(p);
 
-        var req = new PrescricaoController.PrescricaoRequest(10L, 20L, "1 comp/dia", LocalDate.now(), null, 1);
-
-        mockMvc.perform(post("/prescricoes")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(req)))
+        mockMvc.perform(multipart("/prescricoes")
+                        .param("idEvento", "10")
+                        .param("idMedicamento", "20")
+                        .param("dsPosologia", "1 comp/dia")
+                        .param("dtInicio", LocalDate.now().toString())
+                        .param("qtDosesDia", "1"))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.idPrescricao").value(1))
                 .andExpect(jsonPath("$.status").value("SOLICITADO"))
@@ -79,11 +81,12 @@ class PrescricaoControllerTest {
     @DisplayName("POST /prescricoes - Falha 403 para TUTOR")
     @WithMockUser(roles = "TUTOR")
     void solicitar_TutorNegado() throws Exception {
-        var req = new PrescricaoController.PrescricaoRequest(10L, 20L, "1 comp/dia", LocalDate.now(), null, 1);
-
-        mockMvc.perform(post("/prescricoes")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(req)))
+        mockMvc.perform(multipart("/prescricoes")
+                        .param("idEvento", "10")
+                        .param("idMedicamento", "20")
+                        .param("dsPosologia", "1 comp/dia")
+                        .param("dtInicio", LocalDate.now().toString())
+                        .param("qtDosesDia", "1"))
                 .andExpect(status().isForbidden());
     }
 

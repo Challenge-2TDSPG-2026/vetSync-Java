@@ -82,7 +82,8 @@ class RecompensaControllerTest {
                         .param("nome", "Desconto 20%")
                         .param("descricao", "Vale")
                         .param("custoPontos", "100")
-                        .param("tipo", "CUPOM_DESCONTO"))
+                        .param("tipo", "CUPOM_DESCONTO")
+                        .param("idClinica", "7"))
                 .andExpect(status().isForbidden());
     }
 

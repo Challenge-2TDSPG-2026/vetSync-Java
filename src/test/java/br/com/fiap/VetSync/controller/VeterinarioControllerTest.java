@@ -51,7 +51,7 @@ class VeterinarioControllerTest {
     @WithMockUser
     void listar_Sucesso() throws Exception {
         Veterinario vet = Veterinario.builder().idVeterinario(1L).nmVeterinario("Dr. Pedro").nrCrmv("123456").build();
-        when(veterinarioService.listarTodos()).thenReturn(List.of(vet));
+        when(veterinarioService.listarTodos(any())).thenReturn(List.of(vet));
 
         mockMvc.perform(get("/veterinarios"))
                 .andExpect(status().isOk())
@@ -64,7 +64,7 @@ class VeterinarioControllerTest {
     @WithMockUser(roles = "ADMIN")
     void cadastrar_AdminSucesso() throws Exception {
         Veterinario vet = Veterinario.builder().idVeterinario(10L).nmVeterinario("Dr. Lucas").dsEmail("lucas@vet.com").nrCrmv("654321").build();
-        when(veterinarioService.cadastrar("Dr. Lucas", "lucas@vet.com", 1L))
+        when(veterinarioService.cadastrar("Dr. Lucas", "lucas@vet.com", 1L, null))
                 .thenReturn(new VeterinarioService.NovoVeterinario(vet, "TempPwd123"));
 
         var req = new VeterinarioController.VeterinarioRequest("Dr. Lucas", "lucas@vet.com", 1L);
