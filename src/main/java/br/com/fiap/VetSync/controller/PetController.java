@@ -66,6 +66,9 @@ public class PetController {
             BigDecimal peso,
             String sexo,
             Long idTutor,
+            String nmTutor,
+            String emailTutor,
+            String telefoneTutor,
             String fotoUrl
     ) {}
 
@@ -83,6 +86,9 @@ public class PetController {
                 pet.getNrPesoKg(),
                 pet.getDsSexo(),
                 pet.getTutor() != null ? pet.getTutor().getIdTutor() : null,
+                pet.getTutor() != null ? pet.getTutor().getNmTutor() : null,
+                pet.getTutor() != null ? pet.getTutor().getDsEmail() : null,
+                pet.getTutor() != null ? pet.getTutor().getNrTelefone() : null,
                 pet.getDsFoto() != null ? "/pets/" + pet.getIdPet() + "/foto" : null
         );
     }

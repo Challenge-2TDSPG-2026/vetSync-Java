@@ -56,7 +56,8 @@ class PetControllerTest {
     @DisplayName("POST /pets - Cadastrar pet com sucesso pelo TUTOR")
     @WithMockUser(username = "tutor@teste.com", roles = "TUTOR")
     void cadastrar_Sucesso() throws Exception {
-        Tutor tutor = Tutor.builder().idTutor(1L).dsEmail("tutor@teste.com").build();
+        Tutor tutor = Tutor.builder().idTutor(1L).nmTutor("Maria Silva").dsEmail("tutor@teste.com")
+                .nrTelefone("11988887777").build();
         when(tutorService.buscarPorEmail("tutor@teste.com")).thenReturn(Optional.of(tutor));
 
         Especie esp = Especie.builder().nmEspecie("Cão").build();
@@ -75,7 +76,11 @@ class PetControllerTest {
                 .andExpect(jsonPath("$.idPet").value(10))
                 .andExpect(jsonPath("$.nmPet").value("Frank"))
                 .andExpect(jsonPath("$.idadeAnos").value(2))
-                .andExpect(jsonPath("$.especie").value("Cão"));
+                .andExpect(jsonPath("$.especie").value("Cão"))
+                .andExpect(jsonPath("$.idTutor").value(1))
+                .andExpect(jsonPath("$.nmTutor").value("Maria Silva"))
+                .andExpect(jsonPath("$.emailTutor").value("tutor@teste.com"))
+                .andExpect(jsonPath("$.telefoneTutor").value("11988887777"));
     }
 
     @Test
