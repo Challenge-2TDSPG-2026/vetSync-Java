@@ -243,8 +243,9 @@ public class EventoService {
 
     private void auditar(EventoSaude evento, String acao, String anterior, String novo, String ator) {
         if (auditoriaService != null && evento != null && evento.getIdEvento() != null) {
-            auditoriaService.registrar("EVENTO", evento.getIdEvento(), acao,
-                    ator == null ? "SISTEMA" : ator, "SISTEMA", evento.getClinica(), anterior, novo, null);
+            // Quem agiu (e o perfil/IP) vem da requisição autenticada; "ator" só vale como reserva fora de uma requisição.
+            auditoriaService.registrarAcao(AuditoriaTipos.EVENTO, evento.getIdEvento(), acao,
+                    evento.getClinica(), anterior, novo, ator, null);
         }
     }
 

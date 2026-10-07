@@ -15,9 +15,10 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.HexFormat;
 import java.util.List;
-import java.util.Set;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -37,13 +38,15 @@ public class VinculoClinicaService {
 
     public record CodigoEmitido(String codigo, Clinica clinica) {}
     public record CodigoValidado(String sessaoVinculo, Clinica clinica, LocalDateTime expiraEm) {}
-    public record ClinicaListada(Clinica clinica, boolean codigoAtivo) {}
+    public record ClinicaListada(Clinica clinica, boolean codigoAtivo, LocalDateTime codigoEmitidoEm) {}
     private record SessaoConsumida(Clinica clinica, CodigoVinculoClinica codigo) {}
 
     public List<ClinicaListada> listarClinicas() {
-        Set<Long> comCodigoAtivo = codigoRepository.findIdsClinicasComCodigoAtivo();
+        Map<Long, LocalDateTime> emissaoPorClinica = new HashMap<>();
+        codigoRepository.findCodigosAtivos().forEach(v -> emissaoPorClinica.put(v.getIdClinica(), v.getDtCriacao()));
         return clinicaRepository.findAll(Sort.by(Sort.Direction.ASC, "nmClinica")).stream()
-                .map(c -> new ClinicaListada(c, comCodigoAtivo.contains(c.getIdClinica())))
+                .map(c -> new ClinicaListada(c, emissaoPorClinica.containsKey(c.getIdClinica()),
+                        emissaoPorClinica.get(c.getIdClinica())))
                 .toList();
     }
 

@@ -31,6 +31,14 @@ public class TutorService {
     }
 
     @Cacheable(value = "tutores", key = "#id")
+    /** Igual a {@link #buscarPorId}, mas trava o tutor até o fim da transação (use dentro de @Transactional). */
+    public Tutor buscarParaAtualizar(Long id) {
+        return tutorRepository.findByIdParaAtualizar(id).orElseThrow(
+                () -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                        "Tutor não encontrado com id: " + id)
+        );
+    }
+
     public Tutor buscarPorId(Long id) {
         return tutorRepository.findById(id).orElseThrow(
                 () -> new ResponseStatusException(HttpStatus.NOT_FOUND,

@@ -82,7 +82,8 @@ public class RecompensaController {
 
     public record RecompensaResponse(
             Long idRecompensa, String nome, String descricao, Integer custoPontos, String tipo, boolean ativa,
-            String imagemUrl, Long idClinica, String nmClinica
+            String imagemUrl, Long idClinica, String nmClinica,
+            boolean semClinica
     ) {}
 
     public record ExclusaoResponse(boolean excluidoDefinitivamente, String mensagem) {}
@@ -104,7 +105,31 @@ public class RecompensaController {
         return new RecompensaResponse(r.getIdRecompensa(), r.getNmRecompensa(), r.getDsDescricao(),
                 r.getNrCustoPontos(), r.getDsTipo().name(), Boolean.TRUE.equals(r.getFlAtivo()), imagemUrl,
                 r.getClinica() != null ? r.getClinica().getIdClinica() : null,
-                r.getClinica() != null ? r.getClinica().getNmClinica() : null);
+                r.getClinica() != null ? r.getClinica().getNmClinica() : null,
+                r.getClinica() == null);
+    }
+
+    /**
+     * Quem pode ler uma recompensa isolada: admin lê qualquer uma; veterinário só as da própria clínica;
+     * tutor só as da clínica em que está vinculado (com contrato ativo). Fora disso responde 404,
+     * para não revelar que o item existe em outra clínica.
+     */
+    private Recompensa exigirAcesso(Recompensa recompensa, Authentication authentication) {
+        if (PerfilUtils.isAdmin(authentication)) return recompensa;
+        Long idClinicaDoItem = recompensa.getClinica() != null ? recompensa.getClinica().getIdClinica() : null;
+        Long idClinicaDoUsuario = null;
+        if (PerfilUtils.isVeterinario(authentication)) {
+            idClinicaDoUsuario = idClinicaDoVeterinario(authentication);
+        } else if (PerfilUtils.isTutor(authentication)) {
+            VinculoTutorClinica vinculo = vinculoClinicaService.buscarVinculoAtivo(idTutorAutenticado(authentication));
+            if (vinculo != null && vinculo.getClinica().estaContratanteAtiva()) {
+                idClinicaDoUsuario = vinculo.getClinica().getIdClinica();
+            }
+        }
+        if (idClinicaDoItem == null || !idClinicaDoItem.equals(idClinicaDoUsuario)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Recompensa não encontrada com id: " + recompensa.getIdRecompensa());
+        }
+        return recompensa;
     }
 
     private ResgateResponse toResponse(Resgate r) {
@@ -148,7 +173,7 @@ public class RecompensaController {
         List<Recompensa> recompensas;
         if (PerfilUtils.isTutor(authentication)) {
             VinculoTutorClinica vinculo = vinculoClinicaService.buscarVinculoAtivo(idTutorAutenticado(authentication));
-            recompensas = vinculo == null ? List.of()
+            recompensas = vinculo == null || !vinculo.getClinica().estaContratanteAtiva() ? List.of()
                     : recompensaService.listarAtivasDaClinica(vinculo.getClinica().getIdClinica());
         } else if (PerfilUtils.isVeterinario(authentication)) {
             recompensas = recompensaService.listarAtivasDaClinica(idClinicaDoVeterinario(authentication));
@@ -163,16 +188,19 @@ public class RecompensaController {
     @GetMapping("/todas")
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Listar todo o catálogo, inclusive inativos. Somente ADMIN.",
-            description = "Cada item traz a clínica de origem. Use ?idClinica= para filtrar por clínica.")
-    public List<RecompensaResponse> listarTodas(@RequestParam(value = "idClinica", required = false) Long idClinica) {
-        return recompensaService.listarTodas(idClinica).stream().map(this::toResponse).toList();
+            description = "Cada item traz a clínica de origem. Use ?idClinica= para filtrar por clínica, ou ?semClinica=true "
+                    + "para ver só os itens legados que ainda precisam de uma clínica (edite-os para atribuir).")
+    public List<RecompensaResponse> listarTodas(@RequestParam(value = "idClinica", required = false) Long idClinica,
+                                                @RequestParam(value = "semClinica", defaultValue = "false") boolean semClinica) {
+        return recompensaService.listarTodas(idClinica, semClinica).stream().map(this::toResponse).toList();
     }
 
     // NOVO
     @GetMapping("/{id}")
-    @Operation(summary = "Buscar recompensa/produto por ID")
-    public RecompensaResponse buscarPorId(@PathVariable Long id) {
-        return toResponse(recompensaService.buscarPorId(id));
+    @Operation(summary = "Buscar recompensa/produto por ID",
+            description = "Admin lê qualquer uma; veterinário e tutor só as da própria clínica (senão 404).")
+    public RecompensaResponse buscarPorId(@PathVariable Long id, Authentication authentication) {
+        return toResponse(exigirAcesso(recompensaService.buscarPorId(id), authentication));
     }
 
     // ALTERADO: cadastro restrito ao ADMIN
@@ -225,8 +253,8 @@ public class RecompensaController {
 
     @GetMapping("/{id}/imagem")
     @Operation(summary = "Obter a imagem cadastrada de uma recompensa/produto do catálogo")
-    public ResponseEntity<byte[]> obterImagem(@PathVariable Long id) {
-        Recompensa recompensa = recompensaService.buscarPorId(id);
+    public ResponseEntity<byte[]> obterImagem(@PathVariable Long id, Authentication authentication) {
+        Recompensa recompensa = exigirAcesso(recompensaService.buscarPorId(id), authentication);
         if (recompensa.getDsImagem() == null) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Essa recompensa não possui imagem cadastrada");
         }

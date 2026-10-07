@@ -16,6 +16,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -83,5 +84,27 @@ class VinculoClinicaServiceTest {
         assertThat(emitido.codigo()).hasSize(18).matches("[A-HJ-NP-Z2-9]+");
         assertThat(emitido.clinica()).isEqualTo(ativa);
         verify(codigoRepository).saveAndFlush(any());
+    }
+
+    @Test
+    @DisplayName("Lista as clínicas com a data de emissão do código ativo (nula quando não há código)")
+    void listarClinicas_TrazDataDeEmissaoDoCodigoAtivo() {
+        Clinica comCodigo = Clinica.builder().idClinica(1L).nmClinica("A").stContratante("A").build();
+        Clinica semCodigo = Clinica.builder().idClinica(2L).nmClinica("B").stContratante("A").build();
+        LocalDateTime emitidoEm = LocalDateTime.of(2026, 10, 1, 9, 30);
+        CodigoVinculoClinicaRepository.CodigoAtivoView view = new CodigoVinculoClinicaRepository.CodigoAtivoView() {
+            public Long getIdClinica() { return 1L; }
+            public LocalDateTime getDtCriacao() { return emitidoEm; }
+        };
+        when(clinicaRepository.findAll(any(org.springframework.data.domain.Sort.class))).thenReturn(List.of(comCodigo, semCodigo));
+        when(codigoRepository.findCodigosAtivos()).thenReturn(List.of(view));
+
+        var lista = vinculoService.listarClinicas();
+
+        assertThat(lista).hasSize(2);
+        assertThat(lista.get(0).codigoAtivo()).isTrue();
+        assertThat(lista.get(0).codigoEmitidoEm()).isEqualTo(emitidoEm);
+        assertThat(lista.get(1).codigoAtivo()).isFalse();
+        assertThat(lista.get(1).codigoEmitidoEm()).isNull();
     }
 }

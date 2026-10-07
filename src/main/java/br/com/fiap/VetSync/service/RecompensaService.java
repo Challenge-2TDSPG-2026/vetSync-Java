@@ -174,6 +174,18 @@ public class RecompensaService {
 
     /** Catálogo completo (ativos e inativos) para a tela administrativa; filtra por clínica quando informada. */
     public List<Recompensa> listarTodas(Long idClinica) {
+        return listarTodas(idClinica, false);
+    }
+
+    /** Com {@code semClinica} devolve só os itens legados, que ainda não têm clínica. Não combina com {@code idClinica}. */
+    public List<Recompensa> listarTodas(Long idClinica, boolean semClinica) {
+        if (semClinica) {
+            if (idClinica != null) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "Use idClinica ou semClinica, não os dois ao mesmo tempo");
+            }
+            return recompensaRepository.findAllByClinicaIsNullOrderByIdRecompensaAsc();
+        }
         return idClinica == null
                 ? recompensaRepository.findAllByOrderByIdRecompensaAsc()
                 : recompensaRepository.findAllByClinica_IdClinicaOrderByIdRecompensaAsc(idClinica);
@@ -217,13 +229,19 @@ public class RecompensaService {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN,
                     "Essa recompensa pertence a outra clínica. Os pontos só valem na clínica em que foram ganhos");
         }
+        if (!vinculo.getClinica().estaContratanteAtiva()) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "A clínica não está com contrato ativo");
+        }
+        // Serializa os resgates do mesmo tutor: sem esta trava, duas solicitações simultâneas leem o mesmo saldo
+        // e as duas passam. A segunda espera a primeira confirmar e então enxerga o ponto já reservado.
+        Tutor tutor = tutorService.buscarParaAtualizar(idTutor);
         int saldo = calcularSaldo(idTutor, idClinica);
         if (saldo < recompensa.getNrCustoPontos()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                     "Saldo insuficiente: você tem " + saldo + " pontos, precisa de " + recompensa.getNrCustoPontos());
         }
         Resgate resgate = Resgate.builder()
-                .tutor(tutorService.buscarPorId(idTutor))
+                .tutor(tutor)
                 .recompensa(recompensa)
                 // cópia congelada: editar a recompensa depois não altera este resgate nem o saldo
                 .nmRecompensa(recompensa.getNmRecompensa())

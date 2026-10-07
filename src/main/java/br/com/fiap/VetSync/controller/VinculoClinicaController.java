@@ -32,7 +32,8 @@ public class VinculoClinicaController {
     public record ContratoRequest(@NotNull(message = "ativo é obrigatório") Boolean ativo) {}
     public record CodigoEmitidoResponse(Long idClinica, String nomeClinica, String codigo) {}
     public record ClinicaResumoResponse(Long idClinica, String nomeClinica, boolean contratanteAtiva,
-                                        String statusContrato, boolean codigoAtivo) {}
+                                        String statusContrato, boolean codigoAtivo,
+                                        LocalDateTime codigoEmitidoEm) {}
 
     @PostMapping("/validar-codigo")
     public SessaoResponse validarCodigo(@Valid @RequestBody CodigoRequest request) {
@@ -65,7 +66,7 @@ public class VinculoClinicaController {
                         item.clinica().getIdClinica(), item.clinica().getNmClinica(),
                         item.clinica().estaContratanteAtiva(),
                         item.clinica().estaContratanteAtiva() ? "ATIVO" : "INATIVO",
-                        item.codigoAtivo()))
+                        item.codigoAtivo(), item.codigoEmitidoEm()))
                 .toList();
     }
 

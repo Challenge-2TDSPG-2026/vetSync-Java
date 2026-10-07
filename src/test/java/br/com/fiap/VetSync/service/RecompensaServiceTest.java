@@ -45,7 +45,7 @@ class RecompensaServiceTest {
     @InjectMocks
     private RecompensaService recompensaService;
 
-    private final Clinica clinica = Clinica.builder().idClinica(7L).nmClinica("Clínica Centro").build();
+    private final Clinica clinica = Clinica.builder().idClinica(7L).nmClinica("Clínica Centro").stContratante("A").build();
 
     private VinculoTutorClinica vinculoEm(Clinica c) {
         return VinculoTutorClinica.builder().clinica(c).build();
@@ -90,13 +90,45 @@ class RecompensaServiceTest {
         when(recompensaRepository.findById(10L)).thenReturn(Optional.of(rec));
         when(vinculoClinicaService.buscarVinculoAtivo(1L)).thenReturn(vinculoEm(clinica));
         when(pontosService.calcularSaldo(1L, 7L)).thenReturn(saldoDisponivel(100));
-        when(tutorService.buscarPorId(1L)).thenReturn(tutor);
+        when(tutorService.buscarParaAtualizar(1L)).thenReturn(tutor);
         when(resgateRepository.save(any(Resgate.class))).thenAnswer(inv -> inv.getArgument(0));
 
         Resgate resgate = recompensaService.solicitarResgate(1L, 10L);
+        // o tutor é travado ANTES de calcular o saldo, para serializar resgates simultâneos
+        var ordem = inOrder(tutorService, pontosService);
+        ordem.verify(tutorService).buscarParaAtualizar(1L);
+        ordem.verify(pontosService).calcularSaldo(1L, 7L);
         assertThat(resgate.getDsStatus()).isEqualTo(StatusResgate.PENDENTE);
         assertThat(resgate.getTutor()).isEqualTo(tutor);
         assertThat(resgate.getRecompensa()).isEqualTo(rec);
+    }
+
+    @Test
+    @DisplayName("Não resgata quando o contrato da clínica está inativo")
+    void solicitarResgate_ContratoInativo() {
+        Clinica inativa = Clinica.builder().idClinica(7L).nmClinica("Clínica Centro").stContratante("I").build();
+        Recompensa rec = Recompensa.builder().idRecompensa(10L).nrCustoPontos(50).flAtivo(true).clinica(inativa).build();
+
+        when(recompensaRepository.findById(10L)).thenReturn(Optional.of(rec));
+        when(vinculoClinicaService.buscarVinculoAtivo(1L)).thenReturn(vinculoEm(inativa));
+
+        assertThatThrownBy(() -> recompensaService.solicitarResgate(1L, 10L))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("contrato ativo");
+
+        verify(tutorService, never()).buscarParaAtualizar(anyLong());
+        verify(resgateRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("Lista só os itens legados (sem clínica) e recusa combinar com idClinica")
+    void listarTodas_SemClinica() {
+        Recompensa legado = Recompensa.builder().idRecompensa(3L).build();
+        when(recompensaRepository.findAllByClinicaIsNullOrderByIdRecompensaAsc()).thenReturn(List.of(legado));
+
+        assertThat(recompensaService.listarTodas(null, true)).containsExactly(legado);
+        assertThatThrownBy(() -> recompensaService.listarTodas(7L, true))
+                .isInstanceOf(ResponseStatusException.class);
     }
 
     @Test

@@ -1,12 +1,15 @@
 package br.com.fiap.VetSync.service;
 
+import br.com.fiap.VetSync.entity.Clinica;
 import br.com.fiap.VetSync.entity.Pet;
 import br.com.fiap.VetSync.entity.PetAcesso;
 import br.com.fiap.VetSync.entity.PermissaoPet;
 import br.com.fiap.VetSync.entity.RelacaoPet;
 import br.com.fiap.VetSync.entity.StatusAcessoPet;
 import br.com.fiap.VetSync.entity.Tutor;
+import br.com.fiap.VetSync.entity.VinculoTutorClinica;
 import br.com.fiap.VetSync.repository.PetAcessoRepository;
+import br.com.fiap.VetSync.repository.VinculoTutorClinicaRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -21,6 +24,7 @@ import java.util.List;
 public class PetAcessoService {
 
     private final PetAcessoRepository petAcessoRepository;
+    private final VinculoTutorClinicaRepository vinculoRepository;
     @Autowired(required = false)
     private AuditoriaService auditoriaService;
 
@@ -69,9 +73,9 @@ public class PetAcessoService {
         acesso.setDtRevogado(LocalDateTime.now());
         petAcessoRepository.save(acesso);
         if (auditoriaService != null) {
-            auditoriaService.registrar("ACESSO_PET", acesso.getIdAcesso(), "ACESSO_REVOGADO",
-                    acesso.getTutor() == null ? "SISTEMA" : acesso.getTutor().getDsEmail(), "TUTOR",
-                    StatusAcessoPet.ATIVO.name(), StatusAcessoPet.REVOGADO.name(), null);
+            auditoriaService.registrarAcao(AuditoriaTipos.ACESSO_PET, acesso.getIdAcesso(), "ACESSO_REVOGADO",
+                    clinicaDoPet(acesso.getPet()), StatusAcessoPet.ATIVO.name(), StatusAcessoPet.REVOGADO.name(),
+                    emailDe(acesso.getTutor()), "TUTOR");
         }
     }
 
@@ -100,10 +104,21 @@ public class PetAcessoService {
         if (permissao != null) acesso.setDsPermissao(permissao);
         PetAcesso atualizado = petAcessoRepository.save(acesso);
         if (auditoriaService != null) {
-            auditoriaService.registrar("ACESSO_PET", atualizado.getIdAcesso(), "ACESSO_ATUALIZADO",
-                    atualizado.getTutor() == null ? "SISTEMA" : atualizado.getTutor().getDsEmail(), "TUTOR",
-                    null, atualizado.getDsPermissao().name(), null);
+            auditoriaService.registrarAcao(AuditoriaTipos.ACESSO_PET, atualizado.getIdAcesso(), "ACESSO_ATUALIZADO",
+                    clinicaDoPet(atualizado.getPet()), null, atualizado.getDsPermissao().name(),
+                    emailDe(atualizado.getTutor()), "TUTOR");
         }
         return atualizado;
+    }
+
+    /** Clínica em cujo contexto o acesso foi mexido: a do vínculo ativo do tutor dono do pet (nula se não houver). */
+    private Clinica clinicaDoPet(Pet pet) {
+        if (pet == null || pet.getTutor() == null || vinculoRepository == null) return null;
+        return vinculoRepository.findByTutor_IdTutorAndDtEncerramentoIsNull(pet.getTutor().getIdTutor())
+                .map(VinculoTutorClinica::getClinica).orElse(null);
+    }
+
+    private static String emailDe(Tutor tutor) {
+        return tutor == null ? null : tutor.getDsEmail();
     }
 }

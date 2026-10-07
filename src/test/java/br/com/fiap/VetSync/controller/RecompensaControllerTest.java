@@ -274,4 +274,61 @@ class RecompensaControllerTest {
 
         verify(recompensaService).listarPendentesDaClinica(7L);
     }
+
+    private Recompensa recompensaDaClinica(long idClinica) {
+        Clinica c = Clinica.builder().idClinica(idClinica).nmClinica("Clínica " + idClinica).stContratante("A").build();
+        return Recompensa.builder().idRecompensa(1L).nmRecompensa("Petisco").nrCustoPontos(50)
+                .dsTipo(TipoRecompensa.PRODUTO).flAtivo(true).clinica(c).build();
+    }
+
+    @Test
+    @DisplayName("GET /recompensas/{id} - veterinário lê recompensa da própria clínica")
+    @WithMockUser(username = "vet@teste.com", roles = "VETERINARIO")
+    void buscarPorId_VeterinarioMesmaClinica() throws Exception {
+        Clinica clinica = Clinica.builder().idClinica(7L).nmClinica("Clínica 7").build();
+        Veterinario vet = Veterinario.builder().idVeterinario(3L).clinica(clinica).build();
+        when(veterinarioRepository.findByDsEmail("vet@teste.com")).thenReturn(Optional.of(vet));
+        when(recompensaService.buscarPorId(1L)).thenReturn(recompensaDaClinica(7L));
+
+        mockMvc.perform(get("/recompensas/1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.idClinica").value(7))
+                .andExpect(jsonPath("$.semClinica").value(false));
+    }
+
+    @Test
+    @DisplayName("GET /recompensas/{id} - veterinário de outra clínica recebe 404")
+    @WithMockUser(username = "vet@teste.com", roles = "VETERINARIO")
+    void buscarPorId_VeterinarioOutraClinica() throws Exception {
+        Clinica clinica = Clinica.builder().idClinica(7L).nmClinica("Clínica 7").build();
+        Veterinario vet = Veterinario.builder().idVeterinario(3L).clinica(clinica).build();
+        when(veterinarioRepository.findByDsEmail("vet@teste.com")).thenReturn(Optional.of(vet));
+        when(recompensaService.buscarPorId(1L)).thenReturn(recompensaDaClinica(8L));
+
+        mockMvc.perform(get("/recompensas/1")).andExpect(status().isNotFound());
+        mockMvc.perform(get("/recompensas/1/imagem")).andExpect(status().isNotFound());
+    }
+
+    @Test
+    @DisplayName("GET /recompensas/{id} - ADMIN lê recompensa de qualquer clínica")
+    @WithMockUser(username = "admin@teste.com", roles = "ADMIN")
+    void buscarPorId_AdminQualquerClinica() throws Exception {
+        when(recompensaService.buscarPorId(1L)).thenReturn(recompensaDaClinica(8L));
+
+        mockMvc.perform(get("/recompensas/1")).andExpect(status().isOk());
+    }
+
+    @Test
+    @DisplayName("GET /recompensas/todas?semClinica=true - ADMIN lista só os itens legados")
+    @WithMockUser(username = "admin@teste.com", roles = "ADMIN")
+    void listarTodas_SemClinica() throws Exception {
+        Recompensa legado = Recompensa.builder().idRecompensa(4L).nmRecompensa("Antigo").nrCustoPontos(10)
+                .dsTipo(TipoRecompensa.PRODUTO).flAtivo(true).build();
+        when(recompensaService.listarTodas(isNull(), eq(true))).thenReturn(List.of(legado));
+
+        mockMvc.perform(get("/recompensas/todas").param("semClinica", "true"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].semClinica").value(true))
+                .andExpect(jsonPath("$[0].idClinica").doesNotExist());
+    }
 }
