@@ -47,7 +47,9 @@ public class AppUserDetailsService implements UserDetailsService {
                         .map(admin -> User.builder()
                                 .username(admin.getDsEmail())
                                 .password(admin.getDsSenha() != null ? admin.getDsSenha() : "")
-                                .roles("ADMIN")
+                                .disabled(!Boolean.TRUE.equals(admin.getAtivo())
+                                        || !admin.ehGlobal() && !admin.getClinica().estaContratanteAtiva())
+                                .roles(admin.ehGlobal() ? "ADMIN" : "ADMIN_CLINICA")
                                 .build()))
                 .orElseThrow(() -> new UsernameNotFoundException("Usuário não encontrado: " + email));
     }

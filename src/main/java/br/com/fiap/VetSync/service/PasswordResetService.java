@@ -123,7 +123,8 @@ public class PasswordResetService {
         }
         if (!atualizado) {
             atualizado = adminRepository.findByDsEmail(emailNormalizado)
-                    .map(a -> { a.setDsSenha(senhaCodificada); a.setDtSenhaAlteradaEm(senhaAlteradaEm); adminRepository.save(a); return true; })
+                    .map(a -> { a.setDsSenha(senhaCodificada); a.setDtSenhaAlteradaEm(senhaAlteradaEm);
+                        a.setTrocaSenhaObrigatoria(false); adminRepository.save(a); return true; })
                     .orElse(false);
         }
 

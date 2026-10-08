@@ -28,6 +28,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.util.Locale;
 import java.util.Map;
+import java.time.LocalDateTime;
 
 @RestController
 @RequestMapping("/auth")
@@ -107,8 +108,25 @@ public class AuthController {
         }
     }
 
-    public record AuthResponse(String token, Long idUsuario, String email, String nome, String perfil, boolean temVinculoAtivo) {}
-    public record MeResponse(Long idUsuario, String email, String nome, String perfil, boolean temVinculoAtivo) {}
+    public record AuthResponse(String token, Long idUsuario, String email, String nome, String perfil,
+                               boolean temVinculoAtivo, Long idClinica, String cargo,
+                               java.util.Set<String> permissoes, boolean trocaSenhaObrigatoria) {
+        public AuthResponse(String token, Long idUsuario, String email, String nome, String perfil, boolean temVinculoAtivo) {
+            this(token, idUsuario, email, nome, perfil, temVinculoAtivo, null, null, java.util.Set.of(), false);
+        }
+    }
+    public record MeResponse(Long idUsuario, String email, String nome, String perfil,
+                             boolean temVinculoAtivo, Long idClinica, String cargo,
+                             java.util.Set<String> permissoes, boolean trocaSenhaObrigatoria) {
+        public MeResponse(Long idUsuario, String email, String nome, String perfil, boolean temVinculoAtivo) {
+            this(idUsuario, email, nome, perfil, temVinculoAtivo, null, null, java.util.Set.of(), false);
+        }
+    }
+
+    public record TrocarSenhaInicialRequest(
+            @NotBlank String senhaAtual,
+            @NotBlank String novaSenha
+    ) {}
 
     public record EsqueciSenhaRequest(
             @NotBlank(message = "E-mail é obrigatório")
@@ -176,7 +194,9 @@ public class AuthController {
         if (emailNormalizado == null || emailNormalizado.isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "E-mail é obrigatório");
         }
-        if (tutorRepository.existsByDsEmail(emailNormalizado)) {
+        if (tutorRepository.existsByDsEmail(emailNormalizado) || veterinarioRepository.existsByDsEmail(emailNormalizado)
+                || profissionalEsteticaRepository.existsByDsEmail(emailNormalizado)
+                || adminRepository.findByDsEmail(emailNormalizado).isPresent()) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "E-mail já cadastrado");
         }
         var tutor = Tutor.builder()
@@ -234,6 +254,30 @@ public class AuthController {
         return ResponseEntity.noContent().build();
     }
 
+    @PostMapping("/trocar-senha-inicial")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @Operation(summary = "Trocar a senha temporária da conta de clínica no primeiro acesso")
+    public void trocarSenhaInicial(@Valid @RequestBody TrocarSenhaInicialRequest req, Authentication authentication) {
+        if (authentication == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Autenticação necessária");
+        }
+        var admin = adminRepository.findByDsEmail(authentication.getName()).orElseThrow(
+                () -> new ResponseStatusException(HttpStatus.FORBIDDEN, "Conta de administrador necessária"));
+        if (admin.ehGlobal() || !Boolean.TRUE.equals(admin.getTrocaSenhaObrigatoria())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Não há troca inicial pendente");
+        }
+        if (!passwordEncoder.matches(req.senhaAtual(), admin.getDsSenha())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Senha atual inválida");
+        }
+        if (req.novaSenha().length() < SENHA_MIN_LENGTH || req.novaSenha().equals(req.senhaAtual())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Informe uma senha nova com pelo menos 6 caracteres");
+        }
+        admin.setDsSenha(passwordEncoder.encode(req.novaSenha()));
+        admin.setTrocaSenhaObrigatoria(false);
+        admin.setDtSenhaAlteradaEm(LocalDateTime.now(java.time.ZoneOffset.UTC));
+        adminRepository.save(admin);
+    }
+
     @GetMapping("/me")
     @Operation(summary = "Dados do usuário autenticado (para restaurar a sessão no app)")
     public MeResponse me(Authentication authentication) {
@@ -255,7 +299,12 @@ public class AuthController {
         }
         var admin = adminRepository.findByDsEmail(email);
         if (admin.isPresent()) {
-            return new MeResponse(admin.get().getIdAdmin(), email, admin.get().getNmAdmin(), "ADMIN", true);
+            var a = admin.get();
+            return new MeResponse(a.getIdAdmin(), email, a.getNmAdmin(), a.ehGlobal() ? "ADMIN" : "ADMIN_CLINICA", true,
+                    a.ehGlobal() ? null : a.getClinica().getIdClinica(),
+                    a.getCargo() == null ? (Boolean.TRUE.equals(a.getDono()) ? "Dono" : null) : a.getCargo().getNmCargo(),
+                    a.getCargo() == null ? java.util.Set.of() : a.getCargo().getPermissoes(),
+                    Boolean.TRUE.equals(a.getTrocaSenhaObrigatoria()));
         }
         throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuário não encontrado");
     }
@@ -277,7 +326,12 @@ public class AuthController {
         }
         var admin = adminRepository.findByDsEmail(email);
         if (admin.isPresent()) {
-            return new AuthResponse(token, admin.get().getIdAdmin(), email, admin.get().getNmAdmin(), "ADMIN", true);
+            var a = admin.get();
+            return new AuthResponse(token, a.getIdAdmin(), email, a.getNmAdmin(), a.ehGlobal() ? "ADMIN" : "ADMIN_CLINICA", true,
+                    a.ehGlobal() ? null : a.getClinica().getIdClinica(),
+                    a.getCargo() == null ? (Boolean.TRUE.equals(a.getDono()) ? "Dono" : null) : a.getCargo().getNmCargo(),
+                    a.getCargo() == null ? java.util.Set.of() : a.getCargo().getPermissoes(),
+                    Boolean.TRUE.equals(a.getTrocaSenhaObrigatoria()));
         }
         throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuário não encontrado");
     }
