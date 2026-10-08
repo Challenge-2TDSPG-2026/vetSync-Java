@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import jakarta.persistence.LockModeType;
 import java.util.Optional;
+import java.util.List;
 
 public interface VinculoTutorClinicaRepository extends JpaRepository<VinculoTutorClinica, Long> {
     Optional<VinculoTutorClinica> findByTutor_IdTutorAndDtEncerramentoIsNull(Long idTutor);
@@ -17,4 +18,7 @@ public interface VinculoTutorClinicaRepository extends JpaRepository<VinculoTuto
 
     @Query("select count(v) > 0 from VinculoTutorClinica v where v.tutor.idTutor = :idTutor and v.dtEncerramento is null and v.clinica.stContratante = 'A'")
     boolean existsAtivoEmClinicaContratante(@Param("idTutor") Long idTutor);
+
+    boolean existsByTutor_IdTutorAndClinica_IdClinicaAndDtEncerramentoIsNull(Long idTutor, Long idClinica);
+    List<VinculoTutorClinica> findByClinica_IdClinicaAndDtEncerramentoIsNull(Long idClinica);
 }

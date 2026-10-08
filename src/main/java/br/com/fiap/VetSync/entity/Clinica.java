@@ -33,6 +33,21 @@ public class Clinica {
     @Column(name = "ds_uf", length = 2)
     private String dsUf;
 
+    @Column(name = "ds_endereco", length = 240)
+    private String dsEndereco;
+
+    @Column(name = "ds_telefone", length = 20)
+    private String dsTelefone;
+
+    @Column(name = "ds_logo_mime", length = 80)
+    private String dsLogoMime;
+
+    @Lob
+    @Column(name = "ds_logo")
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    private byte[] dsLogo;
+
     /** 'A' = contrato ativo, 'I' = inativo. Clínica nova nasce inativa até o Admin confirmar o contrato. */
     @Builder.Default
     @Column(name = "st_contratante", nullable = false, length = 1)

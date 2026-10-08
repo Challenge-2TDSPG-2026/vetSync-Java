@@ -36,7 +36,29 @@ public class Admin {
     @Column(name = "dt_senha_alterada_em")
     private LocalDateTime dtSenhaAlteradaEm;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_clinica")
+    private Clinica clinica;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_cargo")
+    private CargoClinica cargo;
+
+    @Builder.Default
+    @Column(name = "fl_dono", nullable = false)
+    private Boolean dono = false;
+
+    @Builder.Default
+    @Column(name = "fl_ativo", nullable = false)
+    private Boolean ativo = true;
+
+    @Builder.Default
+    @Column(name = "fl_troca_senha", nullable = false)
+    private Boolean trocaSenhaObrigatoria = false;
+
     @Builder.Default
     @Column(name = "dt_cadastro", nullable = false)
     private LocalDate dtCadastro = LocalDate.now();
+
+    public boolean ehGlobal() { return clinica == null; }
 }

@@ -21,6 +21,10 @@ public class TipoEvento {
     @Column(name = "nm_tipo_evento", nullable = false, length = 80)
     private String nmTipoEvento;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_clinica")
+    private Clinica clinica;
+
     @Column(name = "ds_categoria", length = 30)
     private String dsCategoria;
 

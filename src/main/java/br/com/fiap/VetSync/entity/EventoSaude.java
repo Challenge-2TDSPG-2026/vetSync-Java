@@ -32,6 +32,10 @@ public class EventoSaude {
     private TipoEvento tipoEvento;
 
     @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_servico_clinica")
+    private ServicoClinica servicoClinica;
+
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_veterinario")
     private Veterinario veterinario;
 

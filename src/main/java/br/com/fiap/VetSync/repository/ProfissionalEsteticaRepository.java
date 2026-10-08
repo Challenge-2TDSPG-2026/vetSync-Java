@@ -12,6 +12,7 @@ public interface ProfissionalEsteticaRepository extends JpaRepository<Profission
     Optional<ProfissionalEstetica> findByDsEmail(String dsEmail);
     boolean existsByDsEmail(String dsEmail);
     boolean existsByNrRegistro(String nrRegistro);
+    List<ProfissionalEstetica> findByClinica_IdClinicaOrderByNmProfissionalEstetica(Long idClinica);
 
     @Query("""
             SELECT p FROM ProfissionalEstetica p

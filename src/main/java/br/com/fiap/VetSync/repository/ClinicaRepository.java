@@ -11,6 +11,8 @@ import java.util.Optional;
 
 public interface ClinicaRepository extends JpaRepository<Clinica, Long> {
 
+    boolean existsByDsCnpj(String dsCnpj);
+
     /** Bloqueia a linha da clínica para serializar emissão/revogação de códigos e mudanças de contrato. */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select c from Clinica c where c.idClinica = :idClinica")

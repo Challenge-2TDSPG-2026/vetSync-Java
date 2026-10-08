@@ -76,4 +76,6 @@ public interface EventoSaudeRepository extends JpaRepository<EventoSaude, Long> 
             where e.dtEvento = :data
             """)
     List<EventoSaude> findAgendaDoDia(@Param("data") LocalDate data);
+
+    List<EventoSaude> findByClinica_IdClinicaAndDtEvento(Long idClinica, LocalDate data);
 }

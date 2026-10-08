@@ -8,5 +8,7 @@ import java.util.Optional;
 
 public interface TipoEventoRepository extends JpaRepository<TipoEvento, Long> {
     Optional<TipoEvento> findFirstByNmTipoEventoIgnoreCase(String nmTipoEvento);
+    Optional<TipoEvento> findFirstByNmTipoEventoIgnoreCaseAndClinicaIsNull(String nmTipoEvento);
+    List<TipoEvento> findByClinicaIsNull();
     List<TipoEvento> findByDsModalidadeAgendamentoIgnoreCase(String dsModalidadeAgendamento);
 }
