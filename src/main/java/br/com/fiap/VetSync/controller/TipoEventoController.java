@@ -42,6 +42,6 @@ public class TipoEventoController {
     @GetMapping
     @Operation(summary = "Listar catálogo de tipos de evento", description = "Usado pelo app para popular o seletor de tipo ao solicitar um evento de saúde.")
     public List<TipoEventoResponse> listar() {
-        return tipoEventoRepository.findAll().stream().map(this::toResponse).toList();
+        return tipoEventoRepository.findByClinicaIsNull().stream().map(this::toResponse).toList();
     }
 }
