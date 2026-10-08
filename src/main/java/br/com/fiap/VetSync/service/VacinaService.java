@@ -10,7 +10,12 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.IdentityHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -67,5 +72,42 @@ public class VacinaService {
             return StatusVacina.EM_DIA;
         }
         return vacina.getDtProximaDose().isBefore(hoje) ? StatusVacina.ATRASADA : StatusVacina.VENCENDO;
+    }
+
+    /**
+     * Status considerando reaplicações. Uma dose já substituída por outra mais recente do mesmo tipo
+     * é apenas histórico: seu prazo vencido não pode gerar atraso. Nesse caso retorna EM_DIA.
+     */
+    public StatusVacina status(VacinaPet vacina, LocalDate hoje, Set<VacinaPet> substituidas) {
+        return substituidas.contains(vacina) ? StatusVacina.EM_DIA : status(vacina, hoje);
+    }
+
+    /**
+     * Doses já aplicadas que foram substituídas por uma aplicação mais recente do mesmo tipo de vacina
+     * (mesmo pet). Doses futuras (dtAplicacao &gt; hoje) nunca substituem nem são substituídas.
+     * O conjunto usa identidade de objeto, pois a lista recebida vem de uma única consulta.
+     */
+    public Set<VacinaPet> substituidas(List<VacinaPet> vacinas, LocalDate hoje) {
+        Map<Long, VacinaPet> vigentePorTipo = new HashMap<>();
+        for (VacinaPet v : vacinas) {
+            if (v.getDtAplicacao().isAfter(hoje)) continue;
+            Long tipo = v.getTipoVacina().getIdTipoVacina();
+            VacinaPet atual = vigentePorTipo.get(tipo);
+            if (atual == null || maisRecente(v, atual)) vigentePorTipo.put(tipo, v);
+        }
+        Set<VacinaPet> resultado = Collections.newSetFromMap(new IdentityHashMap<>());
+        for (VacinaPet v : vacinas) {
+            if (v.getDtAplicacao().isAfter(hoje)) continue;
+            if (vigentePorTipo.get(v.getTipoVacina().getIdTipoVacina()) != v) resultado.add(v);
+        }
+        return resultado;
+    }
+
+    private boolean maisRecente(VacinaPet candidata, VacinaPet atual) {
+        int porData = candidata.getDtAplicacao().compareTo(atual.getDtAplicacao());
+        if (porData != 0) return porData > 0;
+        Long a = candidata.getIdVacina();
+        Long b = atual.getIdVacina();
+        return a != null && (b == null || a > b);
     }
 }

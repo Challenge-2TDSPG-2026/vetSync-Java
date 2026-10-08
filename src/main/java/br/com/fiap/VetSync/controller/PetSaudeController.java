@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.*;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Set;
 
 @RestController
 @RequestMapping("/pets")
@@ -33,7 +34,8 @@ public class PetSaudeController {
     public record VacinaRequest(@NotNull Long tipoVacinaId, Long eventoId, @NotNull LocalDate aplicadaEm,
                                 LocalDate proximaDoseEm, String comprovanteUrl) {}
     public record VacinaResponse(Long id, String nome, LocalDate aplicadaEm, LocalDate proximaDoseEm,
-                                 String status, Long eventoId, String veterinario, String comprovanteUrl) {}
+                                 String status, Long eventoId, String veterinario, String comprovanteUrl,
+                                 Long tipoVacinaId, boolean substituida) {}
     public record ResumoVacinasResponse(int emDia, int vencendo, int atrasadas, int futuras) {}
     public record CarteiraResponse(Long petId, List<VacinaResponse> vacinas, ResumoVacinasResponse resumo) {}
 
@@ -71,19 +73,26 @@ public class PetSaudeController {
     @PreAuthorize("hasAnyRole('ADMIN','VETERINARIO') or @petAccessSecurity.canView(#id, authentication)")
     public CarteiraResponse carteira(@PathVariable Long id) {
         List<VacinaPet> vacinas = vacinaService.listar(id);
+        LocalDate hoje = LocalDate.now();
+        Set<VacinaPet> substituidas = vacinaService.substituidas(vacinas, hoje);
         int emDia = 0, vencendo = 0, atrasadas = 0, futuras = 0;
         List<VacinaResponse> respostas = new java.util.ArrayList<>();
         for (VacinaPet vacina : vacinas) {
-            StatusVacina status = vacinaService.status(vacina, LocalDate.now());
-            if (status == StatusVacina.EM_DIA) emDia++;
-            if (status == StatusVacina.VENCENDO) vencendo++;
-            if (status == StatusVacina.ATRASADA) atrasadas++;
-            if (status == StatusVacina.FUTURA) futuras++;
+            boolean substituida = substituidas.contains(vacina);
+            StatusVacina status = vacinaService.status(vacina, hoje, substituidas);
+            // O resumo conta apenas doses vigentes; doses substituídas são histórico.
+            if (!substituida) {
+                if (status == StatusVacina.EM_DIA) emDia++;
+                if (status == StatusVacina.VENCENDO) vencendo++;
+                if (status == StatusVacina.ATRASADA) atrasadas++;
+                if (status == StatusVacina.FUTURA) futuras++;
+            }
             respostas.add(new VacinaResponse(vacina.getIdVacina(), vacina.getTipoVacina().getNmTipoVacina(),
                     vacina.getDtAplicacao(), vacina.getDtProximaDose(), status.name(),
                     vacina.getEvento() == null ? null : vacina.getEvento().getIdEvento(),
                     vacina.getEvento() == null || vacina.getEvento().getVeterinario() == null ? null
-                            : vacina.getEvento().getVeterinario().getNmVeterinario(), vacina.getComprovanteUrl()));
+                            : vacina.getEvento().getVeterinario().getNmVeterinario(), vacina.getComprovanteUrl(),
+                    vacina.getTipoVacina().getIdTipoVacina(), substituida));
         }
         return new CarteiraResponse(id, respostas, new ResumoVacinasResponse(emDia, vencendo, atrasadas, futuras));
     }
@@ -97,7 +106,8 @@ public class PetSaudeController {
         return new VacinaResponse(vacina.getIdVacina(), vacina.getTipoVacina().getNmTipoVacina(),
                 vacina.getDtAplicacao(), vacina.getDtProximaDose(), vacinaService.status(vacina, LocalDate.now()).name(),
                 request.eventoId(), vacina.getEvento() == null || vacina.getEvento().getVeterinario() == null ? null
-                : vacina.getEvento().getVeterinario().getNmVeterinario(), vacina.getComprovanteUrl());
+                : vacina.getEvento().getVeterinario().getNmVeterinario(), vacina.getComprovanteUrl(),
+                vacina.getTipoVacina().getIdTipoVacina(), false);
     }
 
     @GetMapping("/{id:\\d+}/perfil-saude")

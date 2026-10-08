@@ -10,6 +10,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -33,7 +34,9 @@ public class ProximaAcaoService {
                             "O evento deveria ter sido realizado em " + e.getDtEvento() + ".",
                             e.getIdEvento(), e.getDtEvento(), true));
                 });
-        vacinaService.listar(idPet).forEach(v -> {
+        List<VacinaPet> vacinas = vacinaService.listar(idPet);
+        Set<VacinaPet> substituidas = vacinaService.substituidas(vacinas, hoje);
+        vacinas.stream().filter(v -> !substituidas.contains(v)).forEach(v -> {
             StatusVacina status = vacinaService.status(v, hoje);
             if (status == StatusVacina.ATRASADA || status == StatusVacina.VENCENDO) {
                 boolean atrasada = status == StatusVacina.ATRASADA;
