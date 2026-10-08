@@ -43,7 +43,7 @@ public class LinkAgendamentoVetService {
         LinkAgendamentoVet link = buscarLinkValido(token);
         Pet pet = link.getRelatorioEstetica().getEvento().getPet();
 
-        TipoEvento tipoRetorno = tipoEventoRepository.findFirstByNmTipoEventoIgnoreCase(NOME_TIPO_EVENTO_RETORNO)
+        TipoEvento tipoRetorno = tipoEventoRepository.findFirstByNmTipoEventoIgnoreCaseAndClinicaIsNull(NOME_TIPO_EVENTO_RETORNO)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
                         "Tipo de evento \"" + NOME_TIPO_EVENTO_RETORNO + "\" não está cadastrado"));
 

@@ -9,12 +9,14 @@ import br.com.fiap.VetSync.repository.PlanoItemRepository;
 import br.com.fiap.VetSync.repository.PlanoTratamentoRepository;
 import br.com.fiap.VetSync.repository.TipoEventoRepository;
 import br.com.fiap.VetSync.repository.VeterinarioRepository;
+import br.com.fiap.VetSync.repository.ServicoClinicaRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -38,6 +40,8 @@ public class EventoService {
     private final AgendaService agendaService;
     private final ServicoEsteticaService servicoEsteticaService;
     private final VinculoClinicaService vinculoClinicaService;
+    private final ServicoClinicaRepository servicoClinicaRepository;
+    private final AgendaServicoClinicaService agendaServicoClinicaService;
 
     @Autowired
     private EventoHistoricoRepository eventoHistoricoRepository;
@@ -67,6 +71,18 @@ public class EventoService {
 
         vinculoClinicaService.exigirClinicaAtivaDoTutor(pet.getTutor().getIdTutor(), vet.getClinica().getIdClinica());
         evento.setClinica(vet.getClinica());
+
+        ServicoClinica oferta = servicoClinicaRepository.findByClinica_IdClinicaAndTipoEvento_IdTipoEventoAndAtivoTrue(
+                        vet.getClinica().getIdClinica(), idTipoEvento).stream()
+                .filter(s -> {
+                    try {
+                        agendaServicoClinicaService.validarReserva(s.getIdServicoClinica(), vet.getClinica().getIdClinica(),
+                                idVeterinario, null, evento.getDtEvento(), evento.getHrEvento(), null);
+                        return true;
+                    } catch (ResponseStatusException e) { return false; }
+                }).findFirst().orElseThrow(() -> new ResponseStatusException(HttpStatus.CONFLICT,
+                        "Serviço não oferecido pela clínica ou horário indisponível"));
+        evento.setServicoClinica(oferta);
 
         validarHorarioLivre(idVeterinario, evento.getDtEvento(), evento.getHrEvento(), null);
 
@@ -100,6 +116,19 @@ public class EventoService {
         vinculoClinicaService.exigirClinicaAtivaDoTutor(pet.getTutor().getIdTutor(), profissional.getClinica().getIdClinica());
         evento.setClinica(profissional.getClinica());
 
+        ServicoClinica oferta = servicoClinicaRepository.findByClinica_IdClinicaAndTipoEvento_IdTipoEventoAndAtivoTrue(
+                        profissional.getClinica().getIdClinica(), idTipoEvento).stream()
+                .filter(s -> s.getBaseEstetica() == null || idsServico.contains(s.getBaseEstetica().getIdServico()))
+                .filter(s -> {
+                    try {
+                        agendaServicoClinicaService.validarReserva(s.getIdServicoClinica(), profissional.getClinica().getIdClinica(),
+                                null, idProfissionalEstetica, evento.getDtEvento(), evento.getHrEvento(), null);
+                        return true;
+                    } catch (ResponseStatusException e) { return false; }
+                }).findFirst().orElseThrow(() -> new ResponseStatusException(HttpStatus.CONFLICT,
+                        "Serviço não oferecido pela clínica ou horário indisponível"));
+        evento.setServicoClinica(oferta);
+
         Set<ServicoEstetica> servicos = servicoEsteticaService.buscarVarios(idsServico);
         if (servicos.isEmpty()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Selecione ao menos o serviço base (banho)");
@@ -119,6 +148,36 @@ public class EventoService {
         evento.setDsStatus(StatusEvento.AGENDADO);
         EventoSaude salvo = eventoSaudeRepository.save(evento);
         salvarHistorico(salvo, "CRIACAO", null, salvo.getDsStatus(), null, salvo.getDtEvento(), null, salvo.getHrEvento(), null, salvo.getDsObservacao(), null, salvo.getVlCusto());
+        auditar(salvo, "CRIADO", null, salvo.getDsObservacao(), null);
+        return salvo;
+    }
+
+    @Transactional
+    public EventoSaude agendarServico(EventoSaude evento, Long idPet, Long idServico,
+                                       Long idVeterinario, Long idProfissionalEstetica) {
+        ServicoClinica oferta = servicoClinicaRepository.findById(idServico).orElseThrow(
+                () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Serviço não encontrado"));
+        Pet pet = petService.buscarPorId(idPet);
+        Long idClinica = oferta.getClinica().getIdClinica();
+        vinculoClinicaService.exigirClinicaAtivaDoTutor(pet.getTutor().getIdTutor(), idClinica);
+        agendaServicoClinicaService.validarReserva(idServico, idClinica, idVeterinario, idProfissionalEstetica,
+                evento.getDtEvento(), evento.getHrEvento(), null);
+        evento.setPet(pet);
+        evento.setClinica(oferta.getClinica());
+        evento.setTipoEvento(oferta.getTipoEvento());
+        evento.setServicoClinica(oferta);
+        if (idVeterinario != null) {
+            evento.setVeterinario(veterinarioRepository.findById(idVeterinario).orElseThrow());
+        } else {
+            evento.setProfissionalEstetica(profissionalEsteticaRepository.findById(idProfissionalEstetica).orElseThrow());
+            if (oferta.getBaseEstetica() != null) {
+                evento.setServicos(Set.of(oferta.getBaseEstetica()));
+            }
+        }
+        evento.setDsStatus(StatusEvento.AGENDADO);
+        EventoSaude salvo = eventoSaudeRepository.save(evento);
+        salvarHistorico(salvo, "CRIACAO", null, salvo.getDsStatus(), null, salvo.getDtEvento(), null,
+                salvo.getHrEvento(), null, salvo.getDsObservacao(), null, salvo.getVlCusto());
         auditar(salvo, "CRIADO", null, salvo.getDsObservacao(), null);
         return salvo;
     }
@@ -174,6 +233,13 @@ public class EventoService {
         exigirStatus(evento, StatusEvento.AGENDADO, "reagendar");
         if (data == null || hora == null || hora.isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Data e hora são obrigatórias");
+        }
+        if (evento.getServicoClinica() != null) {
+            agendaServicoClinicaService.validarReserva(evento.getServicoClinica().getIdServicoClinica(),
+                    evento.getClinica().getIdClinica(),
+                    evento.getVeterinario() == null ? null : evento.getVeterinario().getIdVeterinario(),
+                    evento.getProfissionalEstetica() == null ? null : evento.getProfissionalEstetica().getIdProfissionalEstetica(),
+                    data, hora, id);
         }
         if (evento.getVeterinario() != null) {
             validarHorarioLivre(evento.getVeterinario().getIdVeterinario(), data, hora, id);
@@ -312,6 +378,7 @@ public class EventoService {
         });
     }
 
+    @Transactional
     public ResultadoCancelamento cancelar(Long id, String motivo, LocalDate reagendarPara, String horaReagendarPara) {
         if (motivo == null || motivo.isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Motivo do cancelamento é obrigatório");
@@ -326,7 +393,18 @@ public class EventoService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "horaReagendarPara é obrigatória quando reagendarPara é informado");
         }
         if (reagendarPara != null) {
-            validarHorarioLivre(evento.getVeterinario().getIdVeterinario(), reagendarPara, horaReagendarPara, evento.getIdEvento());
+            if (evento.getServicoClinica() != null) {
+                agendaServicoClinicaService.validarReserva(evento.getServicoClinica().getIdServicoClinica(),
+                        evento.getClinica().getIdClinica(),
+                        evento.getVeterinario() == null ? null : evento.getVeterinario().getIdVeterinario(),
+                        evento.getProfissionalEstetica() == null ? null : evento.getProfissionalEstetica().getIdProfissionalEstetica(),
+                        reagendarPara, horaReagendarPara, evento.getIdEvento());
+            } else if (evento.getVeterinario() != null) {
+                validarHorarioLivre(evento.getVeterinario().getIdVeterinario(), reagendarPara, horaReagendarPara, evento.getIdEvento());
+            } else if (evento.getProfissionalEstetica() != null) {
+                validarHorarioLivreEstetica(evento.getProfissionalEstetica().getIdProfissionalEstetica(),
+                        reagendarPara, horaReagendarPara, evento.getIdEvento());
+            }
         }
 
         evento.setDsStatus(StatusEvento.CANCELADO);
@@ -344,6 +422,9 @@ public class EventoService {
                     .pet(cancelado.getPet())
                     .tipoEvento(cancelado.getTipoEvento())
                     .veterinario(cancelado.getVeterinario())
+                    .profissionalEstetica(cancelado.getProfissionalEstetica())
+                    .servicoClinica(cancelado.getServicoClinica())
+                    .servicos(cancelado.getServicos())
                     .clinica(cancelado.getClinica())
                     .dtEvento(reagendarPara)
                     .hrEvento(horaReagendarPara)
