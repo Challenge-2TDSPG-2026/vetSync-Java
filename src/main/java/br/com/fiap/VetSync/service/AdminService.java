@@ -2,6 +2,9 @@ package br.com.fiap.VetSync.service;
 
 import br.com.fiap.VetSync.entity.Admin;
 import br.com.fiap.VetSync.repository.AdminRepository;
+import br.com.fiap.VetSync.repository.TutorRepository;
+import br.com.fiap.VetSync.repository.VeterinarioRepository;
+import br.com.fiap.VetSync.repository.ProfissionalEsteticaRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
@@ -10,12 +13,16 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.security.SecureRandom;
+import java.util.Locale;
 
 @Service
 @RequiredArgsConstructor
 public class AdminService {
 
     private final AdminRepository adminRepository;
+    private final TutorRepository tutorRepository;
+    private final VeterinarioRepository veterinarioRepository;
+    private final ProfissionalEsteticaRepository esteticaRepository;
     private final PasswordEncoder passwordEncoder;
     private final EmailService emailService;
 
@@ -44,7 +51,9 @@ public class AdminService {
     }
 
     private NovoAdmin criarInterno(String nome, String email) {
-        if (adminRepository.findByDsEmail(email).isPresent()) {
+        email = email.trim().toLowerCase(Locale.ROOT);
+        if (adminRepository.findByDsEmail(email).isPresent() || tutorRepository.existsByDsEmail(email)
+                || veterinarioRepository.existsByDsEmail(email) || esteticaRepository.existsByDsEmail(email)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "E-mail já cadastrado");
         }
         String senhaTemporaria = gerarSenhaTemporaria();

@@ -35,6 +35,16 @@ public class EmailService {
         }
     }
 
+    /** Convites de acesso não podem ser confirmados sem entregar a credencial. */
+    public void enviarObrigatorio(String destinatario, String assunto, String corpo) {
+        SimpleMailMessage mensagem = new SimpleMailMessage();
+        mensagem.setFrom(remetente);
+        mensagem.setTo(destinatario);
+        mensagem.setSubject(assunto);
+        mensagem.setText(corpo);
+        mailSender.send(mensagem);
+    }
+
     /**
      * Envia um e-mail com um único anexo binário (ex.: PDF da prescrição).
      * Se o anexo vier nulo/vazio, cai no envio simples (sem anexo).

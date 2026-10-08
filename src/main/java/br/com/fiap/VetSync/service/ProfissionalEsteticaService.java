@@ -4,6 +4,9 @@ import br.com.fiap.VetSync.entity.Clinica;
 import br.com.fiap.VetSync.entity.ProfissionalEstetica;
 import br.com.fiap.VetSync.repository.ClinicaRepository;
 import br.com.fiap.VetSync.repository.ProfissionalEsteticaRepository;
+import br.com.fiap.VetSync.repository.AdminRepository;
+import br.com.fiap.VetSync.repository.TutorRepository;
+import br.com.fiap.VetSync.repository.VeterinarioRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
@@ -13,12 +16,16 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.security.SecureRandom;
 import java.util.List;
+import java.util.Locale;
 
 @Service
 @RequiredArgsConstructor
 public class ProfissionalEsteticaService {
 
     private final ProfissionalEsteticaRepository profissionalEsteticaRepository;
+    private final AdminRepository adminRepository;
+    private final TutorRepository tutorRepository;
+    private final VeterinarioRepository veterinarioRepository;
     private final ClinicaRepository clinicaRepository;
     private final PasswordEncoder passwordEncoder;
     private final EmailService emailService;
@@ -31,7 +38,9 @@ public class ProfissionalEsteticaService {
     public record NovoProfissionalEstetica(ProfissionalEstetica profissional, String senhaTemporaria) {}
 
     public NovoProfissionalEstetica cadastrar(String nome, String email, Long idClinica) {
-        if (profissionalEsteticaRepository.existsByDsEmail(email)) {
+        email = email.trim().toLowerCase(Locale.ROOT);
+        if (profissionalEsteticaRepository.existsByDsEmail(email) || tutorRepository.existsByDsEmail(email)
+                || veterinarioRepository.existsByDsEmail(email) || adminRepository.findByDsEmail(email).isPresent()) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "E-mail já cadastrado");
         }
         Clinica clinica = clinicaRepository.findById(idClinica)
