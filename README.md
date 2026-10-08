@@ -1,476 +1,253 @@
-# VetSync
+# 💎 Projeto Diamante 02 — Delivery com microsserviços
 
-> **API REST + console web para continuidade do cuidado e engajamento na jornada de saúde do pet**
-> FIAP Challenge 2026 — Parceria com **Clyvo Vet** | Java Advanced | 2º Ano ADS
-
----
+Monorepo **delivery-system** (Gradle) — Java Advanced, 2º semestre.
 
 ## Integrantes
 
 | Nome | RM |
-|---|---|
-| Arthur Brito da Silva| RM 562085 |
-| Luiz Felipe Flosi dos Santos| RM 563197 |
-| Pedro Henrique Brum Lopes | RM 561780 |
+|------|----|
+| Arthur Brito da Silva | 562085 |
+| Luiz Felipe Flosi dos Santos | 563197 |
+| Pedro Henrique Brum Lopes | 561780 |
 
----
+## Stack
 
-## Link do vídeo de apresentação
-
-https://youtu.be/uW6jSxBvBPk
-
----
-
-## Descrição do projeto
-
-O **VetSync** é uma API backend em **Spring Boot** que resolve um problema real identificado em parceria com a **Clyvo Vet**: tutores de pets esquecem ou negligenciam eventos preventivos de saúde (vacinas, vermifugações, consultas, banhos), o que gera visitas de emergência evitáveis e agrava condições tratáveis.
-
-A aplicação cobre três perfis de usuário — **Tutor**, **Veterinário** e **Admin** — e oferece:
-
-- **Cadastro e gestão de pets e tutores**, com espécie, raça e idade calculada automaticamente.
-- **Agendamento de eventos de saúde** (vacina, consulta, banho, cirurgia etc.) com validação de conflito de horário e de bloqueios de agenda do veterinário.
-- **Conclusão e cancelamento de eventos**, com reagendamento automático opcional e histórico de motivo de cancelamento.
-- **Planos de tratamento**: o veterinário define uma sequência de eventos futuros para o pet; o tutor agenda um item de cada vez e recebe um bônus de pontos ao concluir todos em ordem.
-- **Prescrição de medicamentos**: o veterinário solicita, o admin libera ou nega, e o tutor é avisado por e-mail quando aprovado.
-- **Programa de pontos e recompensas**: eventos concluídos e bônus de plano geram pontos (que ficam pendentes até o admin liberar); o tutor troca pontos por recompensas no catálogo, validadas por um veterinário.
-- **Agenda do veterinário**: horários fixos de disponibilidade por dia da semana e bloqueios pontuais (férias, compromissos).
-- **Autenticação JWT** stateless com autorização granular por perfil e por dono do recurso.
-- **Console web integrado** (API tester), servido pelo próprio Spring Boot, para testar todos os fluxos sem precisar do Postman.
-
----
-
-## Benefícios para o negócio
-
-| Benefício | Impacto |
-|---|---|
-| Redução de emergências veterinárias | Tutores recebem alertas de eventos pendentes/atrasados, antecipando cuidados |
-| Fidelização do cliente | Programa de pontos e recompensas cria vínculo contínuo entre tutor, pet e clínica |
-| Adesão a tratamentos longos | Planos de tratamento guiam o tutor por uma sequência de cuidados, com bônus ao concluir |
-| Histórico clínico centralizado | Eventos, prescrições e custos ficam registrados e consultáveis |
-| Escalabilidade da solução | Arquitetura REST + Oracle + Flyway suporta crescimento e evolução do schema |
-| Diferencial competitivo | Clyvo Vet entra no mercado digital com solução de acompanhamento contínuo |
-
----
+Java 25 · Spring Boot 4.0.8 · Spring Cloud 2025.1.2 (Eureka, LoadBalancer) · Spring Framework 7 (`@Retryable`) · Spring AMQP + RabbitMQ 4 · Spring Data JPA + H2 · Spring AI 2.0.1
 
 ## Arquitetura
 
 ```
-+-----------------------------------------------------------------------+
-|                          CLIENTE / FRONTEND                           |
-|        Console web embutido (/index.html) - Postman - Swagger UI      |
-+-------------------------------------+-----------------------------------+
-                                      | HTTP/REST (JSON)
-                                      v
-+-----------------------------------------------------------------------+
-|                        SPRING BOOT APPLICATION                        |
-|  +-------------------------------------------------------------------+|
-|  |            Security Layer - JwtFilter + Spring Security           ||
-|  |    AppUserDetailsService (busca em Tutor/Veterinario/Admin)        ||
-|  |    @PreAuthorize por role + Security beans de posse do recurso     ||
-|  +---------------------------------+-----------------------------------+|
-|                                    |                                    |
-|  +----------+  +-----------+  +---v-------+  +-----------+  +----------+|
-|  |AuthCtrl  |  |PetCtrl    |  |EventoCtrl |  |PlanoCtrl  |  |Prescricao||
-|  |/auth/**  |  |/pets/**   |  |/eventos/**|  |/planos/** |  |Ctrl      ||
-|  +----+-----+  +-----+-----+  +-----+-----+  +-----+-----+  +----+-----+|
-|       |              |              |              |              |     |
-|  +----v--------------v--------------v--------------v--------------v---+|
-|  |                 Service layer - regras de negocio                  ||
-|  | EventoService - PlanoTratamentoService - PontosService -           ||
-|  | PrescricaoService - RecompensaService - AgendaService - ...        ||
-|  +---------------------------------+-----------------------------------+|
-|  +---------------------------------v-----------------------------------+|
-|  |              Spring Data JPA / Repositories                         ||
-|  +---------------------------------+-----------------------------------+|
-+--------------------------------------+---------------------------------+
-                                       | JDBC (ojdbc11) - versionado por Flyway
-                                       v
-+-----------------------------------------------------------------------+
-|                    ORACLE XE 21c (Docker) ou Oracle FIAP               |
-|                Schema: APP_USER - DB: XEPDB1 - Port: 1521              |
-+-----------------------------------------------------------------------+
+App React Native ──REST──▶ order-service :8080 ──registro──▶ eureka-server :8761
+ (usa :8080 e :8083)         │  cardápio · pedidos com lock    ▲   ▲
+                             │  publica avaliações · IA        │   │ (todos se registram)
+                             ├─ LB + retry ─▶ payment-service :8081 / :8082  (falha em ~50%)
+                             ├─ AMQP ─▶ RabbitMQ: delivery.exchange ─(reviews.new)─▶ reviews.queue
+                             │                                                    │
+                             └─ ChatClient ─▶ Groq / OpenAI / LM Studio / Ollama         ▼
+                                                              review-service :8083
+                                                              buffer + flush a cada 5 s · ranking
 ```
 
-### Camadas da aplicação
-
-| Camada | Responsabilidade |
-|---|---|
-| **Controller** | Recebe requisições HTTP, valida entrada com Bean Validation, delega ao Service, retorna DTOs (Java `record`) |
-| **Service** | Regras de negócio: validação de conflito de horário, progressão de plano de tratamento, cálculo de saldo de pontos, aprovação de prescrições, envio de e-mail |
-| **Repository** | Acesso a dados via Spring Data JPA |
-| **Security** | `JwtFilter` stateless, `BCryptPasswordEncoder`, `@PreAuthorize` por perfil (`hasRole`) combinado com beans de posse do recurso (`isOwner`, `isSelf`, `isRelacionado`) |
-| **Entity** | Mapeamento JPA das tabelas `TB_*`, com enums de status e validações |
-
-### Perfis de usuário
-
-| Perfil | Como é criado | O que pode fazer |
+| Serviço | Porta | Responsabilidade |
 |---|---|---|
-| **TUTOR** | Autocadastro em `POST /auth/registrar` | Gerencia os próprios pets, agenda/cancela eventos, acompanha planos de tratamento, pontos e recompensas |
-| **VETERINARIO** | Cadastrado por um ADMIN em `POST /veterinarios` (recebe CRM e senha temporária por e-mail) | Conclui eventos, prescreve planos de tratamento e medicamentos, gerencia a própria agenda, valida resgates de recompensa |
-| **ADMIN** | O primeiro é criado via `POST /admins/bootstrap` (chave secreta); os demais são criados por um ADMIN autenticado | Cadastra veterinários e outros admins, libera/nega prescrições e lançamentos de pontos pendentes |
+| `eureka-server` | 8761 | Service discovery |
+| `order-service` | 8080 | Cardápio, pedidos (lock pessimista), publicação de avaliações, assistente de IA |
+| `payment-service` | 8081 / 8082 | Pagamento simulado, instável (500 em ~50% das chamadas) |
+| `review-service` | 8083 | Consome avaliações, acumula em memória, grava a cada 5 s, ranking |
 
-### Modelo de domínio (simplificado)
+## Como rodar (passo a passo)
 
-```
-Tutor (1)--<Pet (N)--<EventoSaude (N)--<Prescricao (0..1)
-                |               |
-                |               +--<LancamentoPontos (0..1)
-                |
-                +--<PlanoTratamento (N)--<PlanoItem (N)--1:1 EventoSaude
+### 0. Pré-requisitos
 
-Tutor--<Resgate (N)>--1 Recompensa
-Veterinario (1)--<Disponibilidade (N)
-Veterinario (1)--<BloqueioAgenda (N)
-Veterinario (1)--1 Clinica
-```
+| Ferramenta | Versão | Como conferir |
+|---|---|---|
+| JDK | **25** | `java -version` |
+| Docker Desktop | qualquer recente (precisa estar **aberto**) | `docker --version` |
+| Git | qualquer | `git --version` |
 
----
+Não precisa instalar Gradle: o projeto usa o wrapper (`gradlew`).
 
-## Estrutura do projeto
-
-```
-vetSync-java-main/
-├── documentos/
-│   ├── JornadaPet_Postman_Collection.json   (collection do Postman)
-│   └── cronograma-sprint1.md
-├── src/
-│   ├── main/
-│   │   ├── java/br/com/fiap/VetSync/
-│   │   │   ├── config/         SecurityConfig, SwaggerConfig
-│   │   │   ├── controller/     Auth, Tutor, Pet, Evento, Plano, Prescricao,
-│   │   │   │                   Pontos, Recompensa, Medicamento, TipoEvento,
-│   │   │   │                   Veterinario, Admin
-│   │   │   ├── entity/         Tutor, Pet, EventoSaude, PlanoTratamento,
-│   │   │   │                   PlanoItem, Prescricao, LancamentoPontos,
-│   │   │   │                   Recompensa, Resgate, Veterinario, Admin, ...
-│   │   │   ├── repository/     Spring Data JPA repositories
-│   │   │   ├── service/        Regras de negócio de cada domínio
-│   │   │   ├── security/       JwtFilter, AppUserDetailsService, TokenBlacklist,
-│   │   │   │                   PetSecurity, TutorSecurity, EventoSecurity, ...
-│   │   │   ├── exception/      GlobalExceptionHandler
-│   │   │   └── data/           MockData (seed de exemplo)
-│   │   └── resources/
-│   │       ├── application.properties
-│   │       ├── db/migration/   V1 a V10 (Flyway)
-│   │       └── static/index.html   (console web / API tester embutido)
-│   └── test/                   41 arquivos: unitários, integração e segurança
-├── Dockerfile
-├── docker-compose.yml           (sobe Oracle XE local + a aplicação)
-├── deploy.sh                    (script de deploy via Azure CLI)
-└── pom.xml
-```
-
----
-
-## Stack técnica
-
-- **Java 17** + **Spring Boot 3.3.5**
-- Spring Web, Spring Data JPA, Spring Security, Bean Validation
-- **JWT** (`jjwt`) para autenticação stateless
-- **Flyway** (`flyway-core` + `flyway-database-oracle`) para versionamento de schema
-- **Oracle** (`ojdbc11`) em produção/dev · **H2** em modo compatibilidade Oracle nos testes
-- **Springdoc OpenAPI** (Swagger UI)
-- **Spring Mail** para notificação de senha temporária e liberação de prescrição
-- **JUnit 5 + Spring Security Test + JaCoCo** (cobertura de testes)
-- **Lombok**
-
----
-
-## Como rodar
-
-### Pré-requisitos
-
-- Java 17+
-- Maven 3.8+ (ou use o `./mvnw` incluso)
-- Docker e Docker Compose (para subir o Oracle localmente)
-
-### Opção 1 — Docker Compose (recomendado)
-
-Sobe o Oracle XE 21c e a aplicação em containers, sem precisar de nenhuma instalação local de banco:
+### 1. Clonar o projeto
 
 ```bash
-git clone https://github.com/<seu-usuario>/vetSync-java.git
-cd vetSync-java
-
-docker compose up --build
+git clone https://github.com/PedroBrum-DEV/diamante-delivery.git
+cd diamante-delivery
 ```
 
-Aguarde o Oracle inicializar (o `healthcheck` do compose já garante que a aplicação só sobe depois que o banco estiver pronto — leva cerca de 60-90s na primeira vez). Ao final, o Flyway aplica todas as migrations automaticamente.
+### 2. Subir o RabbitMQ
 
-| Recurso | URL |
-|---|---|
-| API | http://localhost:8080 |
-| Console web (frontend/API tester) | http://localhost:8080/index.html |
-| Swagger UI | http://localhost:8080/swagger-ui.html |
-| Health check | http://localhost:8080/actuator/health |
-
-### Opção 2 — Maven, com Oracle próprio (ex: Oracle FIAP)
+Com o Docker Desktop aberto, na raiz do projeto:
 
 ```bash
-export SPRING_DATASOURCE_URL=jdbc:oracle:thin:@<host>:1521:<SID_ou_SERVICE>
-export SPRING_DATASOURCE_USERNAME=<usuario>
-export DB_PASSWORD=<senha>
-
-./mvnw spring-boot:run
+docker compose up -d
 ```
 
-Por padrão, `application.properties` já aponta para o Oracle da FIAP (`oracle.fiap.com.br`) caso nenhuma variável seja exportada — ajuste conforme o ambiente disponível.
+Confirme em <http://localhost:15672> (usuário `guest`, senha `guest`).
 
-### Variáveis de ambiente
+### 3. Configurar o assistente de IA (Groq, gratuito)
 
-| Variável | Padrão (compose) | Descrição |
-|---|---|---|
-| `SPRING_DATASOURCE_URL` | `jdbc:oracle:thin:@oracle-db:1521/XEPDB1` | URL JDBC do Oracle |
-| `SPRING_DATASOURCE_USERNAME` | `APP_USER` | Usuário do banco |
-| `SPRING_DATASOURCE_PASSWORD` / `DB_PASSWORD` | `AppPassword123` | Senha do banco |
-| `SPRING_FLYWAY_ENABLED` | `true` | Liga/desliga o Flyway |
-| `JWT_SECRET` | chave dev incluída | Chave de assinatura do JWT (troque em produção) |
-| `ADMIN_BOOTSTRAP_KEY` | `boot-secret-dev-12345` | Chave exigida para criar o primeiro admin |
-| `MAIL_HOST` / `MAIL_PORT` / `MAIL_USERNAME` / `MAIL_PASSWORD` | SMTP Gmail (dev) | Envio de e-mails (senha temporária, liberação de prescrição) |
+O assistente usa uma API compatível com a OpenAI. Recomendamos a **Groq**, que tem camada gratuita.
 
-> Sem configurar um servidor SMTP válido, os envios de e-mail falham silenciosamente em dev — o fluxo principal da API continua funcionando normalmente (a senha temporária também é retornada na resposta do endpoint).
+1. Crie uma chave em <https://console.groq.com/keys> (ela começa com `gsk_`).
+2. Copie o arquivo de exemplo:
 
----
+   ```bash
+   cp .env.example .env          # Windows PowerShell: Copy-Item .env.example .env
+   ```
 
-## Como acessar / dados de teste
+3. Edite o `.env` (ele está no `.gitignore`, **nunca** vai para o repositório) deixando assim:
 
-Ao subir a aplicação **sem** um admin ainda cadastrado, siga esta ordem:
+   ```properties
+   OPENAI_BASE_URL=https://api.groq.com/openai/v1
+   OPENAI_API_KEY=gsk_sua_chave_aqui
+   OPENAI_MODEL=openai/gpt-oss-20b
+   ```
 
-**1. Existem usuários de exemplo pré-cadastrados (seed automático em `MockData`, ativo por padrão):**
+   O nome do modelo pode mudar com o tempo. Confira a lista atual em <https://console.groq.com/docs/models>.
 
-| Perfil | E-mail | Senha |
-|---|---|---|
-| Veterinário | `ana.vet@clyvovet.com` | `senha123` |
-| Tutor | `maria@email.com` | `senha123` |
-| Tutor | `joao@email.com` | `senha123` |
+4. **Importante:** o perfil `local` (que aplica o `OPENAI_BASE_URL`) precisa ser ativado como **variável de ambiente do terminal**. Colocar `SPRING_PROFILES_ACTIVE` dentro do `.env` **não funciona**. Isso é feito no passo 4, no terminal do `order-service`.
 
-O seed roda apenas se as tabelas estiverem vazias, e pode ser desligado com `app.mockdata.enabled=false`.
+> Sem chave configurada, todo o resto funciona normalmente. Apenas `POST /assistant` responde `503 {"error": "..."}`.
 
-**2. Não existe admin pré-cadastrado.** Crie o primeiro com a chave de bootstrap:
+### 4. Subir os serviços (um terminal para cada)
+
+Abra **cinco terminais** na raiz do projeto e rode nesta ordem. Espere cada serviço terminar de subir (aparece `Started ...` no log) antes de passar ao próximo.
+
+| Terminal | Serviço | Comando (Linux/macOS) | Comando (Windows PowerShell) |
+|---|---|---|---|
+| 1 | Eureka | `./gradlew :eureka-server:bootRun` | `.\gradlew.bat :eureka-server:bootRun` |
+| 2 | Pagamento (8081) | `./gradlew :payment-service:bootRun` | `.\gradlew.bat :payment-service:bootRun` |
+| 3 | Pagamento (8082) | `./gradlew :payment-service:bootRun --args='--server.port=8082'` | `.\gradlew.bat :payment-service:bootRun --args="--server.port=8082"` |
+| 4 | Avaliações | `./gradlew :review-service:bootRun` | `.\gradlew.bat :review-service:bootRun` |
+| 5 | Pedidos + IA | veja abaixo | veja abaixo |
+
+**Terminal 5 (order-service) com a IA da Groq:**
+
+Linux/macOS:
 
 ```bash
-curl -X POST http://localhost:8080/admins/bootstrap \
+export SPRING_PROFILES_ACTIVE=local
+./gradlew :order-service:bootRun
+```
+
+Windows PowerShell:
+
+```powershell
+$env:SPRING_PROFILES_ACTIVE = "local"
+.\gradlew.bat :order-service:bootRun
+```
+
+No log de inicialização deve aparecer `The following 1 profile is active: "local"`. Se aparecer `No active profile set`, o perfil não foi ativado e a chamada irá para a OpenAI (erro 401).
+
+Se quiser usar a OpenAI de verdade em vez da Groq, remova `OPENAI_BASE_URL` do `.env`, coloque sua chave `sk-...` em `OPENAI_API_KEY` e **não** ative o perfil `local`.
+
+### 5. Conferir que está tudo no ar
+
+Abra o Eureka em <http://localhost:8761>. Devem aparecer:
+
+- `ORDER-SERVICE`
+- `PAYMENT-SERVICE` (2 instâncias: 8081 e 8082)
+- `REVIEW-SERVICE`
+
+### 6. Testar o assistente
+
+Linux/macOS/Git Bash:
+
+```bash
+curl -X POST http://localhost:8080/assistant \
   -H "Content-Type: application/json" \
-  -d '{"nome":"Admin Geral","email":"admin@vetsync.com","chave":"boot-secret-dev-12345"}'
+  -d '{"question": "O que vocês têm no cardápio?"}'
 ```
 
-Esse endpoint só funciona **uma vez** — depois do primeiro admin, sempre retorna `409 Conflict`. A senha temporária vem na resposta.
+Windows PowerShell (o corpo é enviado em UTF-8 para os acentos funcionarem):
 
-**3. Login (funciona para qualquer perfil):**
+```powershell
+$body = '{"question": "O que vocês têm no cardápio?"}'
+Invoke-RestMethod -Method Post -Uri http://localhost:8080/assistant -ContentType "application/json; charset=utf-8" -Body ([System.Text.Encoding]::UTF8.GetBytes($body))
+```
+
+O PowerShell 5.1 pode exibir os acentos da resposta quebrados (`OpÃ§Ãµes`). É só a exibição no terminal: a API envia o texto correto. No app e no `requests.http` isso não acontece.
+
+Outros exemplos prontos estão em [`requests.http`](requests.http) (extensão REST Client no VS Code ou o HTTP Client do IntelliJ).
+
+### 7. Parar tudo
+
+`Ctrl+C` em cada terminal de serviço e, para o RabbitMQ:
 
 ```bash
-curl -X POST http://localhost:8080/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"email":"maria@email.com","senha":"senha123"}'
+docker compose down
 ```
 
-Resposta:
-```json
-{
-  "token": "eyJhbGciOi...",
-  "idUsuario": 1,
-  "email": "maria@email.com",
-  "nome": "Maria Silva",
-  "perfil": "TUTOR"
-}
-```
+### Problemas comuns
 
-**4. Use o token nas próximas requisições:**
-
-```bash
-curl http://localhost:8080/pets \
-  -H "Authorization: Bearer eyJhbGciOi..."
-```
-
-**5. Ou use o console web** em `http://localhost:8080/index.html`: faça login pela aba "Autenticação" e as demais abas são liberadas automaticamente de acordo com o perfil logado (tutor, veterinário ou admin).
-
----
-
-## Rotas da API
-
-Rotas marcadas como **pública** não exigem token. As demais exigem `Authorization: Bearer <token>`, e as com **perfil** indicado exigem também aquele papel.
-
-### Auth (`/auth`)
-
-| Método | Rota | Descrição | Acesso |
-|---|---|---|---|
-| POST | `/auth/registrar` | Cadastra um novo **tutor** e já retorna o token | Pública |
-| POST | `/auth/login` | Login por e-mail/senha (tutor, veterinário ou admin) | Pública |
-| POST | `/auth/logout` | Invalida o token atual (blacklist) | Autenticado |
-| GET | `/auth/me` | Dados do usuário autenticado, para restaurar sessão | Autenticado |
-
-### Tutores (`/tutores`)
-
-| Método | Rota | Descrição | Acesso |
-|---|---|---|---|
-| GET | `/tutores` | Lista todos os tutores | VETERINARIO |
-| GET | `/tutores/{id}` | Busca tutor por ID | VETERINARIO ou o próprio tutor |
-| PUT | `/tutores/{id}` | Atualiza nome/telefone | O próprio tutor |
-| DELETE | `/tutores/{id}` | Remove o cadastro | O próprio tutor |
-
-### Pets (`/pets`)
-
-| Método | Rota | Descrição | Acesso |
-|---|---|---|---|
-| POST | `/pets` | Cadastra pet (tutor vem do token) | TUTOR |
-| GET | `/pets` | Lista os pets do tutor autenticado | TUTOR |
-| GET | `/pets/{id}` | Busca pet por ID | VETERINARIO ou dono do pet |
-| GET | `/pets/tutor/{idTutor}` | Lista pets de um tutor específico | VETERINARIO |
-| PUT | `/pets/{id}` | Atualiza dados do pet | Dono do pet |
-| DELETE | `/pets/{id}` | Remove o pet (409 se houver eventos vinculados) | Dono do pet |
-
-### Eventos de saúde (`/eventos`)
-
-Fluxo: **AGENDADO → CONCLUIDO** ou **AGENDADO → CANCELADO** (com reagendamento automático opcional).
-
-| Método | Rota | Descrição | Acesso |
-|---|---|---|---|
-| POST | `/eventos` | Tutor agenda evento (valida conflito de horário/bloqueio) | TUTOR |
-| GET | `/eventos` | Lista eventos do tutor ou do veterinário autenticado | Autenticado |
-| GET | `/eventos/{id}` | Busca evento por ID | Tutor dono ou vet responsável |
-| PATCH | `/eventos/{id}/concluir` | Veterinário conclui, informa custo, gera pontos e avança plano | VETERINARIO responsável |
-| PATCH | `/eventos/{id}/cancelar` | Tutor cancela (motivo obrigatório), pode reagendar direto | TUTOR dono |
-| DELETE | `/eventos/{id}` | Remove evento | Vet sempre; tutor só se AGENDADO |
-| GET | `/eventos/pet/{idPet}/gasto-total` | Soma custos de eventos CONCLUIDOS | Autenticado |
-| GET | `/eventos/pet/{idPet}/alertas` | Histórico + alerta de atraso por tipo de evento | Autenticado |
-
-### Planos de tratamento (`/planos`)
-
-| Método | Rota | Descrição | Acesso |
-|---|---|---|---|
-| POST | `/planos` | Veterinário cria plano com sequência de eventos (mín. 2 itens) | VETERINARIO |
-| GET | `/planos` | Lista planos do tutor ou do veterinário | Autenticado |
-| GET | `/planos/{id}` | Detalha plano e seus itens | Tutor dono ou vet que prescreveu |
-| PATCH | `/planos/itens/{idItem}/agendar` | Tutor agenda o próximo item pendente | TUTOR dono do item |
-
-### Prescrições (`/prescricoes`)
-
-Fluxo: **SOLICITADO → LIBERADO** ou **SOLICITADO → NEGADO**.
-
-| Método | Rota | Descrição | Acesso |
-|---|---|---|---|
-| POST | `/prescricoes` | Veterinário solicita medicamento para um evento | VETERINARIO |
-| GET | `/prescricoes` | Tutor vê as dos próprios pets; vet vê as suas; admin vê a fila pendente | Autenticado |
-| GET | `/prescricoes/{id}` | Busca por ID | Tutor dono, vet responsável ou admin |
-| PATCH | `/prescricoes/{id}/liberar` | Admin aprova/nega (dispara e-mail se aprovado) | ADMIN |
-
-### Pontos (`/pontos`)
-
-| Método | Rota | Descrição | Acesso |
-|---|---|---|---|
-| GET | `/pontos` | Tutor vê seus lançamentos; admin vê a fila pendente | Autenticado |
-| PATCH | `/pontos/{id}/liberar` | Admin libera lançamento pendente (entra no saldo do tutor) | ADMIN |
-
-### Recompensas (`/recompensas`)
-
-Fluxo de resgate: **PENDENTE → VALIDADO** ou **PENDENTE → NEGADO**.
-
-| Método | Rota | Descrição | Acesso |
-|---|---|---|---|
-| GET | `/recompensas` | Lista recompensas ativas do catálogo | Autenticado |
-| POST | `/recompensas` | Cadastra recompensa | VETERINARIO |
-| GET | `/recompensas/saldo` | Saldo de pontos do tutor autenticado | TUTOR |
-| PATCH | `/recompensas/{id}/resgatar` | Resgata recompensa (debita saldo, cria resgate pendente) | TUTOR |
-| GET | `/recompensas/resgates` | Tutor vê os próprios; vet vê os pendentes | Autenticado |
-| PATCH | `/recompensas/resgates/{idResgate}/validar` | Veterinário valida/nega resgate | VETERINARIO |
-
-### Medicamentos (`/medicamentos`)
-
-| Método | Rota | Descrição | Acesso |
-|---|---|---|---|
-| POST | `/medicamentos` | Cadastra medicamento no catálogo | ADMIN ou VETERINARIO |
-| GET | `/medicamentos` | Lista catálogo | Autenticado |
-| GET | `/medicamentos/{id}` | Busca por ID | Autenticado |
-| PUT | `/medicamentos/{id}` | Atualiza | ADMIN ou VETERINARIO |
-| DELETE | `/medicamentos/{id}` | Remove | ADMIN |
-
-### Tipos de evento (`/tipos-evento`)
-
-| Método | Rota | Descrição | Acesso |
-|---|---|---|---|
-| GET | `/tipos-evento` | Lista catálogo (nome, categoria, pontos) | Autenticado |
-
-### Veterinários e agenda (`/veterinarios`)
-
-| Método | Rota | Descrição | Acesso |
-|---|---|---|---|
-| GET | `/veterinarios` | Lista veterinários | Autenticado |
-| GET | `/veterinarios/{id}` | Busca por ID | Autenticado |
-| POST | `/veterinarios` | Cadastra veterinário (gera CRM + senha temporária por e-mail) | ADMIN |
-| PUT | `/veterinarios/{id}` | Atualiza dados | O próprio veterinário |
-| GET/POST/DELETE | `/veterinarios/{id}/disponibilidade[/{idDisponibilidade}]` | Horários fixos de atendimento por dia da semana | Leitura livre; escrita só o próprio |
-| GET/POST/DELETE | `/veterinarios/{id}/bloqueios[/{idBloqueio}]` | Bloqueios de agenda (férias, compromissos) | Leitura livre; escrita só o próprio |
-
-### Admin (`/admins`)
-
-| Método | Rota | Descrição | Acesso |
-|---|---|---|---|
-| POST | `/admins/bootstrap` | Cria o **primeiro** admin do sistema, exige `ADMIN_BOOTSTRAP_KEY` | Pública (só funciona uma vez) |
-| POST | `/admins` | Admin autenticado cria outro admin | ADMIN |
-
-### Utilitários
-
-| Método | Rota | Descrição |
+| Sintoma | Causa provável | Solução |
 |---|---|---|
-| GET | `/actuator/health` | Health check |
-| GET | `/swagger-ui.html` | Documentação interativa (Swagger UI) |
-| GET | `/index.html` | Console web / API tester |
+| `POST /assistant` retorna **400** no PowerShell | Acentos enviados fora de UTF-8 | Use o comando do passo 6 com `GetBytes` |
+| `POST /assistant` retorna **503** | A chamada à IA falhou | Veja o `Caused by:` no log do `order-service` |
+| `401 Incorrect API key ... platform.openai.com` | Perfil `local` não ativado, a chave da Groq foi para a OpenAI | `SPRING_PROFILES_ACTIVE=local` no terminal (passo 4) |
+| `429 ... no credits remaining` | Conta da OpenAI sem crédito | Adicione crédito ou use a Groq |
+| `429` da Groq | Limite da camada gratuita | Aguarde alguns instantes |
+| `404` / `model_not_found` | Nome do modelo inválido | Confira `OPENAI_MODEL` na lista da Groq |
+| `SSLHandshakeException: PKIX path building failed` | Rede (escola, empresa ou antivírus) intercepta o HTTPS e o Java não confia no certificado | Veja abaixo |
+| Log com `localhost:8761 Connection refused` | Eureka não está rodando | Suba o `eureka-server` (terminal 1) |
+| `Connection refused` na porta 5672 | RabbitMQ parado | `docker compose up -d` com o Docker Desktop aberto |
 
----
+**Erro de certificado (PKIX):** faça o Java usar os certificados do Windows, no mesmo terminal do `order-service`, antes do `bootRun`:
 
-## Testes
-
-O projeto tem **41 classes de teste** cobrindo unidade, repositório, controller (`@WebMvcTest`), integração ponta-a-ponta e regras de segurança, usando H2 em memória em modo de compatibilidade Oracle (Flyway desabilitado nos testes).
-
-```bash
-./mvnw test
+```powershell
+.\gradlew.bat --stop
+$env:JAVA_TOOL_OPTIONS = "-Djavax.net.ssl.trustStoreType=WINDOWS-ROOT"
 ```
 
-Relatório de cobertura (JaCoCo):
+Se persistir, teste em outra rede (por exemplo, o hotspot do celular).
 
-```bash
-./mvnw test jacoco:report
-# abrir target/site/jacoco/index.html
+### Alternativa: modelo local (LM Studio / Ollama)
+
+Sem internet e sem chave. Suba o servidor local, ajuste o `.env` e ative o perfil `local`:
+
+```properties
+OPENAI_BASE_URL=http://localhost:11434/v1     # Ollama (LM Studio: http://localhost:1234/v1)
+OPENAI_MODEL=nome-do-modelo-carregado
 ```
 
-Principais suítes de integração:
-- `AuthFlowIntegrationTest` — registro, login, logout e `/me`
-- `AdminBootstrapIntegrationTest` — bootstrap do primeiro admin
-- `EventoPontosRecompensaIntegrationTest` — agendar, concluir, gerar pontos, liberar, trocar por recompensa
-- `PlanoTratamentoFlowIntegrationTest` — criação de plano, agendamento sequencial dos itens, conclusão, bônus
-- `PrescricaoFlowIntegrationTest` — solicitação, liberação/negação, notificação
+### Variáveis opcionais
 
----
+| Variável | Para quê |
+|---|---|
+| `EUREKA_CLIENT_SERVICEURL_DEFAULTZONE` | Endereço do Eureka, se não estiver na mesma máquina |
+| `SPRING_RABBITMQ_HOST` | Endereço do RabbitMQ |
+| `DELIVERY_RATE_LIMIT_ORDERS_PER_SECOND` | Limite do bônus (padrão 20; `0` desliga) |
 
-## Coleção Postman
+Nenhum serviço chama outro por `localhost`: o pagamento é chamado por `http://PAYMENT-SERVICE/payments`, resolvido pelo Eureka.
 
-Uma collection pronta está em [`documentos/JornadaPet_Postman_Collection.json`](./documentos/JornadaPet_Postman_Collection.json) — importe no Postman e configure a variável de ambiente `token` após o login.
+## Contrato da API
 
-Atenção: a collection ainda usa o nome legado `JornadaPet`; as rotas nela podem estar desatualizadas em relação à tabela acima — use a tabela de rotas deste README ou o Swagger UI (`/swagger-ui.html`) como fonte da verdade.
+Todos os erros têm o formato `{"error": "mensagem"}`.
 
----
+| Método | Rota | Corpo | Respostas |
+|---|---|---|---|
+| GET | `/dishes` | — | 200 lista de Dish |
+| GET | `/dishes/{id}` | — | 200 Dish · 404 |
+| POST | `/orders` | `{"dishId":1,"quantity":2}` | 201 Order · 400 · 404 · 409 · 502 · 429 (bônus) |
+| GET | `/orders/{id}` | — | 200 Order · 404 |
+| POST | `/reviews` | `{"dishId":1,"rating":5,"comment":"Great"}` | 202 sem corpo · 400 · 404 |
+| POST | `/assistant` | `{"question":"..."}` | 200 `{"answer":"..."}` |
+| GET | `:8083/reviews/ranking` | — | 200 `[{dishId,dishName,average,count}]` |
+| POST | `:8081/:8082/payments` (interno) | `{"amount":79.80}` | 200 `{"status":"APPROVED","instance":8081}` · 500 |
 
-## Deploy
+Exemplos prontos em [`requests.http`](requests.http).
 
-O deploy oficial usa Azure App Service com Oracle FIAP. O workflow
-`.github/workflows/deploy-azure.yml` executa `./mvnw clean verify` em pull requests e
-pushes para `main`. Em um push para `main`, o mesmo JAR validado é publicado no App
-Service e o endpoint `/actuator/health` é verificado.
+## Como cada requisito foi atendido
 
-O acesso do GitHub Actions ao Azure usa OIDC, sem senha ou publish profile. Os recursos,
-o Key Vault, a identidade federada e os identificadores `AZURE_CLIENT_ID`,
-`AZURE_TENANT_ID` e `AZURE_SUBSCRIPTION_ID` são configurados pelos scripts do
-repositório [vetSync-DevOps](https://github.com/Challenge-2TDSPG-2026/vetSync-DevOps).
+| Tema | Onde / como |
+|---|---|
+| **Eureka** | `eureka-server`; os três serviços usam `spring.application.name` e `eureka-client`. Instâncias do pagamento têm `instance-id` com a porta |
+| **Load balance** | `RestClientConfig`: `RestTemplate` com `@LoadBalanced`; `PaymentClient` chama `http://PAYMENT-SERVICE/payments`. Os logs mostram `[payment-service:8081]` / `[payment-service:8082]` alternando |
+| **Retry** | `PaymentClient` (bean separado) com `@Retryable` (`maxRetries=4`, `delay=200`, `multiplier=2`, `jitter=100`, `maxDelay=2000`) e `@EnableResilientMethods`. Esgotadas as tentativas: rollback, estoque intacto, **502** |
+| **Race condition** | `DishRepository.findByIdForUpdate` com `@Lock(PESSIMISTIC_WRITE)` + `@Transactional` em `OrderService.createOrder`. 50 requisições simultâneas → exatamente 10 confirmados, stock 0 |
+| **Mensageria** | `RabbitConfig`: `TopicExchange delivery.exchange`, fila durável `reviews.queue`, routing key `reviews.new` e `Binding` explícitos; JSON via `JacksonJsonMessageConverter`. `POST /reviews` valida (1–5), publica e responde **202** sem gravar no banco |
+| **Backpressure** | `review-service`: `@RabbitListener` → `ConcurrentHashMap` (soma + quantidade por prato) → `@Scheduled` a cada 5 s grava em `ReviewSummary` (H2) e limpa o buffer. `GET /reviews/ranking` lê do banco |
+| **Spring AI** | `ChatService`: `ChatClient` criado do `ChatClient.Builder`, system message (atendente, respostas curtas em PT-BR, recusa fora do tema) e cardápio (nome, preço, estoque) lido do banco a cada pergunta |
+| **Bônus rate limit** | `TokenBucket` + `RateLimitInterceptor`: 20 req/s em `POST /orders`, excedente recebe **429** `{"error": ...}` |
+| **CORS** | Liberado em 8080 e 8083 (o app roda no navegador via Expo web) |
 
-Antes de enviar uma alteração para `main`, valide localmente:
+### Decisão de projeto: pagamento dentro da transação
+
+O estoque é reservado, o pagamento é cobrado e o pedido é confirmado numa **única transação**, com a linha do prato bloqueada. Isso garante a regra "pagamento falhou ⇒ estoque intacto" por simples rollback. O custo: pedidos do mesmo prato ficam em fila enquanto o pagamento (com retries) responde. Para este cenário (10 unidades) é o comportamento desejado; em produção real, o usual seria reservar → cobrar fora do lock → compensar em caso de falha.
+
+## Testando
 
 ```bash
-./mvnw clean verify
+# 50 pedidos simultâneos no prato da promoção (id 1, stock 10)
+# (script em bash: no Windows, rode pelo Git Bash)
+./scripts/concurrency-test.sh
+
+# Teste automatizado (pagamento mockado): 50 threads => 10 pedidos, stock 0; falha de pagamento => rollback
+./gradlew :order-service:test
 ```
 
-O histórico aplicado no Oracle é controlado pelo Flyway. Não altere migrations que já
-tenham sido executadas; mudanças de schema devem receber uma nova versão.
+Para ver apenas o par 201/409 sem o rate limit: `./gradlew :order-service:bootRun --args='--delivery.rate-limit.orders-per-second=0'`.
 
----
+## App React Native
 
-*VetSync — FIAP 2026 | Challenge Clyvo Vet | 2º Ano ADS*
+Use o app do professor ([joaocarloslima/diamante-delivery](https://github.com/joaocarloslima/diamante-delivery)) apontando para o IP da máquina que roda os serviços. Ele usa `:8080` (order-service) e `:8083` (review-service).
