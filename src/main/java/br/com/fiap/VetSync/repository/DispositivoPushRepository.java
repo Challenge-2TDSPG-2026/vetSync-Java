@@ -17,6 +17,9 @@ public interface DispositivoPushRepository extends JpaRepository<DispositivoPush
     /** Lista: a unicidade é (tutor, token, plataforma), então o mesmo token pode ter mais de uma linha. */
     List<DispositivoPush> findByTutorAndToken(Tutor tutor, String token);
 
+    /** Aparelhos que podem receber push agora. */
+    List<DispositivoPush> findByTutorAndAtivoTrue(Tutor tutor);
+
     /** Mesmo aparelho logado antes em outra conta: essas linhas não podem continuar recebendo push. */
     @Query("""
             select d from DispositivoPush d

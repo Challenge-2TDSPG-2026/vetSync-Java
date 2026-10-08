@@ -6,5 +6,8 @@ public enum TipoNotificacao {
     RETORNO_PENDENTE,
     CONVITE_ACESSO,
     RESGATE,
-    SISTEMA
+    SISTEMA,
+    VAGA_DISPONIVEL,
+    EVENTO_CONFIRMADO,
+    EVENTO_RECUSADO
 }

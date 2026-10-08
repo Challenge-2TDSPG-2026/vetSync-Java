@@ -103,7 +103,8 @@ public class EventoController {
             Long idPet,
             List<ServicoResumoResponse> servicos,
             String observacaoTutor, String observacaoClinica, String diagnostico, String conduta,
-            java.time.LocalDateTime criadoEm
+            java.time.LocalDateTime criadoEm,
+            String statusConfirmacao
     ) {}
 
     private EventoResponse toResponse(EventoSaude evento) {
@@ -127,7 +128,8 @@ public class EventoController {
                 evento.getVlCusto(),
                 evento.getPet() != null ? evento.getPet().getIdPet() : null,
                 servicos, evento.getDsObservacaoTutor(), evento.getDsObservacaoClinica(),
-                evento.getDsDiagnostico(), evento.getDsConduta(), evento.getDtCriacao()
+                evento.getDsDiagnostico(), evento.getDsConduta(), evento.getDtCriacao(),
+                evento.getDsConfirmacao() != null ? evento.getDsConfirmacao().name() : null
         );
     }
 

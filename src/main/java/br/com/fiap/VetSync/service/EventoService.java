@@ -49,6 +49,14 @@ public class EventoService {
     private EventoAnexoRepository eventoAnexoRepository;
     @Autowired(required = false)
     private AuditoriaService auditoriaService;
+    @Autowired(required = false)
+    private ListaEsperaService listaEsperaService;
+    @Autowired(required = false)
+    private NotificacaoEnvioService notificacaoEnvioService;
+
+    /** true = todo agendamento novo nasce PENDENTE até a clínica confirmar. Padrão: false (comportamento atual). */
+    @org.springframework.beans.factory.annotation.Value("${app.agenda.exige-confirmacao:false}")
+    private boolean exigeConfirmacao;
 
 
     private static final long MESES_LIMITE_ATRASO = 12;
@@ -90,6 +98,7 @@ public class EventoService {
         evento.setTipoEvento(tipoEvento);
         evento.setVeterinario(vet);
         evento.setDsStatus(StatusEvento.AGENDADO);
+        evento.setDsConfirmacao(confirmacaoInicial());
         EventoSaude salvo = eventoSaudeRepository.save(evento);
         salvarHistorico(salvo, "CRIACAO", null, salvo.getDsStatus(), null, salvo.getDtEvento(), null, salvo.getHrEvento(), null, salvo.getDsObservacao(), null, salvo.getVlCusto());
         auditar(salvo, "CRIADO", null, salvo.getDsObservacao(), null);
@@ -146,6 +155,7 @@ public class EventoService {
         evento.setProfissionalEstetica(profissional);
         evento.setServicos(servicos);
         evento.setDsStatus(StatusEvento.AGENDADO);
+        evento.setDsConfirmacao(confirmacaoInicial());
         EventoSaude salvo = eventoSaudeRepository.save(evento);
         salvarHistorico(salvo, "CRIACAO", null, salvo.getDsStatus(), null, salvo.getDtEvento(), null, salvo.getHrEvento(), null, salvo.getDsObservacao(), null, salvo.getVlCusto());
         auditar(salvo, "CRIADO", null, salvo.getDsObservacao(), null);
@@ -154,7 +164,7 @@ public class EventoService {
 
     @Transactional
     public EventoSaude agendarServico(EventoSaude evento, Long idPet, Long idServico,
-                                       Long idVeterinario, Long idProfissionalEstetica) {
+                                      Long idVeterinario, Long idProfissionalEstetica) {
         ServicoClinica oferta = servicoClinicaRepository.findById(idServico).orElseThrow(
                 () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Serviço não encontrado"));
         Pet pet = petService.buscarPorId(idPet);
@@ -175,6 +185,7 @@ public class EventoService {
             }
         }
         evento.setDsStatus(StatusEvento.AGENDADO);
+        evento.setDsConfirmacao(confirmacaoInicial());
         EventoSaude salvo = eventoSaudeRepository.save(evento);
         salvarHistorico(salvo, "CRIACAO", null, salvo.getDsStatus(), null, salvo.getDtEvento(), null,
                 salvo.getHrEvento(), null, salvo.getDsObservacao(), null, salvo.getVlCusto());
@@ -246,11 +257,18 @@ public class EventoService {
         } else if (evento.getProfissionalEstetica() != null) {
             validarHorarioLivreEstetica(evento.getProfissionalEstetica().getIdProfissionalEstetica(), data, hora, id);
         }
+        LocalDate dataAnterior = evento.getDtEvento();
+        String horaAnterior = evento.getHrEvento();
         salvarHistorico(evento, "REAGENDAMENTO", evento.getDsStatus(), evento.getDsStatus(),
                 evento.getDtEvento(), data, evento.getHrEvento(), hora, null, null, null, null);
         evento.setDtEvento(data);
         evento.setHrEvento(hora);
-        return eventoSaudeRepository.save(evento);
+        // Novo horário: se a clínica exige confirmação, ela precisa confirmar de novo.
+        evento.setDsConfirmacao(confirmacaoInicial());
+        evento.setDtConfirmacao(null);
+        EventoSaude salvo = eventoSaudeRepository.save(evento);
+        liberarVaga(salvo, dataAnterior, horaAnterior);
+        return salvo;
     }
 
     public List<EventoHistorico> historico(Long id) {
@@ -430,11 +448,99 @@ public class EventoService {
                     .hrEvento(horaReagendarPara)
                     .dsObservacao("Reagendado do evento #" + cancelado.getIdEvento())
                     .dsStatus(StatusEvento.AGENDADO)
+                    .dsConfirmacao(confirmacaoInicial())
                     .build();
             novoEvento = eventoSaudeRepository.save(novo);
 
         }
+        liberarVaga(cancelado, cancelado.getDtEvento(), cancelado.getHrEvento());
         return new ResultadoCancelamento(cancelado, novoEvento);
+    }
+
+    // ───────────────────────── Confirmação pela clínica ─────────────────────────
+
+    /** Estado inicial de um agendamento novo: PENDENTE se a clínica exige confirmação, senão já CONFIRMADO. */
+    private StatusConfirmacao confirmacaoInicial() {
+        return exigeConfirmacao ? StatusConfirmacao.PENDENTE : StatusConfirmacao.CONFIRMADO;
+    }
+
+    @Transactional
+    public EventoSaude confirmar(Long id) {
+        EventoSaude evento = buscarPorId(id);
+        exigirStatus(evento, StatusEvento.AGENDADO, "confirmar");
+        exigirConfirmacaoPendente(evento);
+        evento.setDsConfirmacao(StatusConfirmacao.CONFIRMADO);
+        evento.setDtConfirmacao(java.time.LocalDateTime.now());
+        EventoSaude salvo = eventoSaudeRepository.save(evento);
+        salvarHistorico(salvo, "CONFIRMACAO", StatusEvento.AGENDADO, StatusEvento.AGENDADO,
+                salvo.getDtEvento(), salvo.getDtEvento(), salvo.getHrEvento(), salvo.getHrEvento(), null, null, null, null);
+        auditar(salvo, "CONFIRMADO", StatusConfirmacao.PENDENTE.name(), StatusConfirmacao.CONFIRMADO.name(), null);
+        avisarTutor(salvo, TipoNotificacao.EVENTO_CONFIRMADO, "Agendamento confirmado",
+                "Seu agendamento de " + nomeDoPet(salvo) + " em " + quando(salvo) + " foi confirmado pela clínica.");
+        return salvo;
+    }
+
+    @Transactional
+    public EventoSaude recusar(Long id, String motivo) {
+        if (motivo == null || motivo.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Motivo da recusa é obrigatório");
+        }
+        EventoSaude evento = buscarPorId(id);
+        exigirStatus(evento, StatusEvento.AGENDADO, "recusar");
+        exigirConfirmacaoPendente(evento);
+        evento.setDsConfirmacao(StatusConfirmacao.RECUSADO);
+        evento.setDtConfirmacao(java.time.LocalDateTime.now());
+        eventoSaudeRepository.save(evento);
+        // Recusar = cancelar com o motivo: libera o horário, avisa a lista de espera e registra histórico.
+        EventoSaude cancelado = cancelar(id, motivo, null, null).eventoCancelado();
+        avisarTutor(cancelado, TipoNotificacao.EVENTO_RECUSADO, "Agendamento não confirmado",
+                "A clínica não pôde confirmar o agendamento de " + nomeDoPet(cancelado) + " em " + quando(cancelado)
+                        + ". Motivo: " + motivo + ". Escolha outro horário.");
+        return cancelado;
+    }
+
+    private void exigirConfirmacaoPendente(EventoSaude evento) {
+        if (evento.getDsConfirmacao() != StatusConfirmacao.PENDENTE) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Esse agendamento não está aguardando confirmação (situação atual: " + evento.getDsConfirmacao() + ")");
+        }
+    }
+
+    private String nomeDoPet(EventoSaude evento) {
+        return evento.getPet() != null ? evento.getPet().getNmPet() : "seu pet";
+    }
+
+    private String quando(EventoSaude evento) {
+        String data = evento.getDtEvento().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM"));
+        return evento.getHrEvento() == null ? data : data + " às " + evento.getHrEvento();
+    }
+
+    private void avisarTutor(EventoSaude evento, TipoNotificacao tipo, String titulo, String mensagem) {
+        if (notificacaoEnvioService == null || evento.getPet() == null || evento.getPet().getTutor() == null) return;
+        try {
+            notificacaoEnvioService.notificar(evento.getPet().getTutor(), tipo, titulo, mensagem,
+                    "EVENTO", evento.getIdEvento(), Map.of("rota", "/evento/" + evento.getIdEvento()));
+        } catch (Exception ignorada) {
+            // Aviso é complementar: não pode desfazer a confirmação/recusa.
+        }
+    }
+
+    // ───────────────────────── Lista de espera ─────────────────────────
+
+    /** O horário (data/hora) acabou de ficar livre: avisa quem espera uma vaga desse serviço. */
+    private void liberarVaga(EventoSaude evento, LocalDate data, String hora) {
+        if (listaEsperaService == null || evento.getServicoClinica() == null || data == null || hora == null) return;
+        try {
+            listaEsperaService.notificarVagaLiberada(new ListaEsperaService.VagaLiberada(
+                    evento.getServicoClinica().getIdServicoClinica(),
+                    evento.getVeterinario() != null ? evento.getVeterinario().getIdVeterinario() : null,
+                    evento.getProfissionalEstetica() != null ? evento.getProfissionalEstetica().getIdProfissionalEstetica() : null,
+                    evento.getPet() != null ? evento.getPet().getIdPet() : null,
+                    data,
+                    hora));
+        } catch (Exception ignorada) {
+            // A fila de espera é complementar: não pode atrapalhar cancelar/reagendar.
+        }
     }
 
 

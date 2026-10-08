@@ -81,6 +81,15 @@ public class EventoSaude {
     @Column(name = "ds_motivo_cancelamento", length = 300)
     private String dsMotivoCancelamento;
 
+    /** Etapa de confirmação da clínica; não altera dsStatus (um PENDENTE continua AGENDADO e ocupa o horário). */
+    @Enumerated(EnumType.STRING)
+    @Builder.Default
+    @Column(name = "ds_confirmacao", nullable = false, length = 20)
+    private StatusConfirmacao dsConfirmacao = StatusConfirmacao.CONFIRMADO;
+
+    @Column(name = "dt_confirmacao")
+    private LocalDateTime dtConfirmacao;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_profissional_estetica")
     private ProfissionalEstetica profissionalEstetica;
