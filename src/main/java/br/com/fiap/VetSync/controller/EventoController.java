@@ -110,8 +110,8 @@ public class EventoController {
     private EventoResponse toResponse(EventoSaude evento) {
         List<ServicoResumoResponse> servicos = evento.getServicos() == null ? List.of()
                 : evento.getServicos().stream()
-                .map(s -> new ServicoResumoResponse(s.getIdServico(), s.getNmServico()))
-                .toList();
+                  .map(s -> new ServicoResumoResponse(s.getIdServico(), s.getNmServico()))
+                  .toList();
         return new EventoResponse(
                 evento.getIdEvento(),
                 evento.getDsStatus().name(),
