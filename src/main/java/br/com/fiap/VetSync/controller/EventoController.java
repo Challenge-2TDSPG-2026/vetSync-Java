@@ -104,14 +104,16 @@ public class EventoController {
             List<ServicoResumoResponse> servicos,
             String observacaoTutor, String observacaoClinica, String diagnostico, String conduta,
             java.time.LocalDateTime criadoEm,
-            String statusConfirmacao
+            String statusConfirmacao,
+            Long idServicoClinica,
+            Long idProfissionalEstetica
     ) {}
 
     private EventoResponse toResponse(EventoSaude evento) {
         List<ServicoResumoResponse> servicos = evento.getServicos() == null ? List.of()
                 : evento.getServicos().stream()
-                  .map(s -> new ServicoResumoResponse(s.getIdServico(), s.getNmServico()))
-                  .toList();
+                .map(s -> new ServicoResumoResponse(s.getIdServico(), s.getNmServico()))
+                .toList();
         return new EventoResponse(
                 evento.getIdEvento(),
                 evento.getDsStatus().name(),
@@ -129,7 +131,9 @@ public class EventoController {
                 evento.getPet() != null ? evento.getPet().getIdPet() : null,
                 servicos, evento.getDsObservacaoTutor(), evento.getDsObservacaoClinica(),
                 evento.getDsDiagnostico(), evento.getDsConduta(), evento.getDtCriacao(),
-                evento.getDsConfirmacao() != null ? evento.getDsConfirmacao().name() : null
+                evento.getDsConfirmacao() != null ? evento.getDsConfirmacao().name() : null,
+                evento.getServicoClinica() != null ? evento.getServicoClinica().getIdServicoClinica() : null,
+                evento.getProfissionalEstetica() != null ? evento.getProfissionalEstetica().getIdProfissionalEstetica() : null
         );
     }
 
