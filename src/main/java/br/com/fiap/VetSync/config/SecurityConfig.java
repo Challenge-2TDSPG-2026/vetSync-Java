@@ -51,6 +51,7 @@ public class SecurityConfig {
                         .requestMatchers(
                                 "/", "/index.html", "/*.html", "/*.js", "/*.css",
                                 "/auth/login", "/auth/registrar",
+                                "/auth/social-login", "/auth/social-registrar", "/auth/social-vincular",
                                 "/auth/esqueci-senha", "/auth/validar-codigo", "/auth/redefinir-senha",
                                 "/auth/convites/**", "/auth/registrar-convite",
                                 "/vinculos-clinica/validar-codigo",
