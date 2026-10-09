@@ -34,7 +34,7 @@ public class PetAcesso {
 
     @NotNull
     @Enumerated(EnumType.STRING)
-    @Column(name = "ds_permissao", nullable = false, length = 10)
+    @Column(name = "ds_permissao", nullable = false, length = 30)
     private PermissaoPet dsPermissao;
 
     @NotNull

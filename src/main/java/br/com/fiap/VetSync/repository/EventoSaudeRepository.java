@@ -35,6 +35,8 @@ public interface EventoSaudeRepository extends JpaRepository<EventoSaude, Long> 
     );
 
     List<EventoSaude> findByPet_IdPet(Long idPet);
+    boolean existsByPet_IdPetAndVeterinario_DsEmailIgnoreCase(Long idPet, String email);
+    List<EventoSaude> findByPet_IdPetAndDsStatusOrderByDtEventoDescIdEventoDesc(Long idPet, StatusEvento status);
     List<EventoSaude> findByPet_Tutor_DsEmailOrderByDtEventoDesc(String email);
 
     /**

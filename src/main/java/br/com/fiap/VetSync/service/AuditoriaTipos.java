@@ -15,9 +15,11 @@ public final class AuditoriaTipos {
     public static final String PONTOS = "PONTOS";
     public static final String CATALOGO = "CATALOGO";
     public static final String RESGATE = "RESGATE";
+    /** Prontuário clínico; {@code idEntidade} é o id do pet. */
+    public static final String PRONTUARIO = "PRONTUARIO";
 
     public static final List<String> ENTIDADES = List.of(EVENTO, ACESSO_PET, VINCULO, CONTRATO,
-            CODIGO_VINCULO, PONTOS, CATALOGO, RESGATE);
+            CODIGO_VINCULO, PONTOS, CATALOGO, RESGATE, PRONTUARIO);
 
     /** Entidades que o fluxo legado (qualquer usuário autenticado, por entidade+id) continua podendo consultar. */
     public static final List<String> ENTIDADES_LEGADO = List.of(EVENTO, ACESSO_PET);
@@ -29,5 +31,8 @@ public final class AuditoriaTipos {
             "CODIGO_EMITIDO", "CODIGO_REVOGADO",
             "PONTOS_LANCADOS", "PONTOS_LIBERADOS", "PONTOS_BLOQUEADOS", "PONTOS_DESBLOQUEADOS",
             "CATALOGO_ITEM_CRIADO", "CATALOGO_ITEM_ATUALIZADO", "CATALOGO_ITEM_INATIVADO", "CATALOGO_ITEM_EXCLUIDO",
-            "RESGATE_SOLICITADO", "RESGATE_VALIDADO", "RESGATE_NEGADO");
+            "RESGATE_SOLICITADO", "RESGATE_VALIDADO", "RESGATE_NEGADO",
+            "ORIENTACAO_CRIADA", "ORIENTACAO_REMOVIDA", "EXAME_REGISTRADO", "EXAME_ARQUIVO_ANEXADO", "EXAME_REMOVIDO",
+            "PRONTUARIO_COMPARTILHADO", "PRONTUARIO_COMPARTILHAMENTO_REVOGADO", "PRONTUARIO_ACESSADO_POR_LINK",
+            "PRONTUARIO_ARQUIVO_ACESSADO_POR_LINK", "PRONTUARIO_EXPORTADO");
 }

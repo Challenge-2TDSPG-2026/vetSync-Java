@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title th:text="'Prontuário de ' + ${prontuario.pet.nome}">Prontuário</title>
+    <style>
+        :root { color-scheme: light; }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            padding: 24px 16px 48px;
+            background: #f2f5f3;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            color: #1f2a24;
+        }
+        .doc { max-width: 760px; margin: 0 auto; }
+        .card {
+            background: #ffffff;
+            border-radius: 16px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+            overflow: hidden;
+            margin-bottom: 16px;
+        }
+        .card__header { background: #1f7a4d; color: #ffffff; padding: 24px 20px; }
+        .card__header .selo { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; opacity: .85; margin: 0 0 6px; }
+        .card__header h1 { margin: 0; font-size: 24px; }
+        .card__header p { margin: 6px 0 0; font-size: 14px; opacity: .9; }
+        .card__body { padding: 20px; }
+        h2.secao { font-size: 15px; margin: 0 0 12px; }
+        .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .info-grid div { font-size: 14px; }
+        .label { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: #6b756f; margin-bottom: 2px; }
+        .item { padding: 12px 0; border-bottom: 1px solid #eef1ef; font-size: 14px; line-height: 1.5; }
+        .item:last-child { border-bottom: 0; }
+        .item__titulo { font-weight: 600; }
+        .item__meta { font-size: 12px; color: #6b756f; margin-top: 2px; }
+        .texto { white-space: pre-wrap; margin: 6px 0 0; }
+        .tag { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; background: #e8f0fe; color: #1a56db; }
+        .vazio { font-size: 14px; color: #6b756f; margin: 0; }
+        a.arquivo { font-size: 13px; color: #1a56db; }
+        .rodape { font-size: 12px; color: #8a938d; text-align: center; line-height: 1.5; margin-top: 8px; }
+        @media print {
+            body { background: #fff; padding: 0; }
+            .card { box-shadow: none; border: 1px solid #ccd3ce; break-inside: avoid-page; }
+            a.arquivo { display: none; }
+        }
+    </style>
+</head>
+<body>
+<div class="doc">
+    <div class="card">
+        <div class="card__header">
+            <p class="selo">Prontuário clínico</p>
+            <h1 th:text="${prontuario.pet.nome}">Nome do pet</h1>
+            <p>
+                <span th:if="${prontuario.pet.numero != null}" th:text="'Nº ' + ${prontuario.pet.numero}">Nº 0001</span>
+                <span th:if="${prontuario.pet.especie != null}"> · <span th:text="${prontuario.pet.especie}">Espécie</span></span>
+                <span th:if="${prontuario.pet.raca != null}"> · <span th:text="${prontuario.pet.raca}">Raça</span></span>
+            </p>
+        </div>
+        <div class="card__body">
+            <div class="info-grid">
+                <div th:if="${prontuario.pet.sexo != null}">
+                    <span class="label">Sexo</span>
+                    <span th:text="${prontuario.pet.sexo == 'M'} ? 'Macho' : 'Fêmea'">Macho</span>
+                </div>
+                <div th:if="${prontuario.pet.nascimento != null}">
+                    <span class="label">Nascimento</span>
+                    <span th:text="${#temporals.format(prontuario.pet.nascimento, 'dd/MM/yyyy')}">--/--/----</span>
+                </div>
+                <div>
+                    <span class="label">Gerado em</span>
+                    <span th:text="${#temporals.format(prontuario.geradoEm, 'dd/MM/yyyy HH:mm')}">--/--/---- --:--</span>
+                </div>
+                <div th:if="${prontuario.periodoInicio != null or prontuario.periodoFim != null}">
+                    <span class="label">Período</span>
+                    <span>
+                        <span th:text="${prontuario.periodoInicio != null} ? ${#temporals.format(prontuario.periodoInicio, 'dd/MM/yyyy')} : 'início'">início</span>
+                        a
+                        <span th:text="${prontuario.periodoFim != null} ? ${#temporals.format(prontuario.periodoFim, 'dd/MM/yyyy')} : 'hoje'">hoje</span>
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card" th:if="${mostrarPerfil}">
+        <div class="card__body">
+            <h2 class="secao">Perfil de saúde</h2>
+            <p class="vazio" th:if="${prontuario.perfilSaude == null}">Nenhuma informação registrada.</p>
+            <div class="info-grid" th:if="${prontuario.perfilSaude != null}">
+                <div th:if="${prontuario.perfilSaude.pesoAtual != null}">
+                    <span class="label">Peso atual</span>
+                    <span th:text="${prontuario.perfilSaude.pesoAtual} + ' kg'">0 kg</span>
+                </div>
+                <div th:if="${prontuario.perfilSaude.alergias != null}">
+                    <span class="label">Alergias</span>
+                    <span class="texto" th:text="${prontuario.perfilSaude.alergias}">-</span>
+                </div>
+                <div th:if="${prontuario.perfilSaude.medicamentosContinuos != null}">
+                    <span class="label">Medicamentos contínuos</span>
+                    <span class="texto" th:text="${prontuario.perfilSaude.medicamentosContinuos}">-</span>
+                </div>
+                <div th:if="${prontuario.perfilSaude.condicoesPreExistentes != null}">
+                    <span class="label">Condições pré-existentes</span>
+                    <span class="texto" th:text="${prontuario.perfilSaude.condicoesPreExistentes}">-</span>
+                </div>
+                <div th:if="${prontuario.perfilSaude.restricoesAlimentares != null}">
+                    <span class="label">Restrições alimentares</span>
+                    <span class="texto" th:text="${prontuario.perfilSaude.restricoesAlimentares}">-</span>
+                </div>
+                <div th:if="${prontuario.perfilSaude.observacoesImportantes != null}">
+                    <span class="label">Observações importantes</span>
+                    <span class="texto" th:text="${prontuario.perfilSaude.observacoesImportantes}">-</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card" th:if="${mostrarAtendimentos}">
+        <div class="card__body">
+            <h2 class="secao">Atendimentos</h2>
+            <p class="vazio" th:if="${#lists.isEmpty(prontuario.atendimentos)}">Nenhum atendimento concluído no período.</p>
+            <div class="item" th:each="a : ${prontuario.atendimentos}">
+                <div class="item__titulo" th:text="${a.tipo}">Consulta</div>
+                <div class="item__meta">
+                    <span th:text="${#temporals.format(a.data, 'dd/MM/yyyy')}">--/--/----</span>
+                    <span th:if="${a.hora != null}" th:text="'às ' + ${a.hora}"></span>
+                    <span th:if="${a.veterinario != null}"> · <span th:text="${a.veterinario}">Vet</span><span th:if="${a.crmv != null}" th:text="' (CRMV ' + ${a.crmv} + ')'"></span></span>
+                    <span th:if="${a.clinica != null}"> · <span th:text="${a.clinica}">Clínica</span></span>
+                </div>
+                <div th:if="${a.diagnostico != null}"><span class="label">Diagnóstico</span><p class="texto" th:text="${a.diagnostico}"></p></div>
+                <div th:if="${a.conduta != null}"><span class="label">Conduta</span><p class="texto" th:text="${a.conduta}"></p></div>
+                <div th:if="${a.observacaoClinica != null}"><span class="label">Observações clínicas</span><p class="texto" th:text="${a.observacaoClinica}"></p></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card" th:if="${mostrarOrientacoes}">
+        <div class="card__body">
+            <h2 class="secao">Orientações</h2>
+            <p class="vazio" th:if="${#lists.isEmpty(prontuario.orientacoes)}">Nenhuma orientação registrada no período.</p>
+            <div class="item" th:each="o : ${prontuario.orientacoes}">
+                <div class="item__titulo" th:text="${o.titulo}">Título</div>
+                <div class="item__meta">
+                    <span th:text="${#temporals.format(o.criadaEm, 'dd/MM/yyyy')}">--/--/----</span>
+                    <span th:if="${o.autor != null}"> · <span th:text="${o.autor}">Autor</span></span>
+                </div>
+                <p class="texto" th:text="${o.texto}"></p>
+            </div>
+        </div>
+    </div>
+
+    <div class="card" th:if="${mostrarReceitas}">
+        <div class="card__body">
+            <h2 class="secao">Receitas</h2>
+            <p class="vazio" th:if="${#lists.isEmpty(prontuario.receitas)}">Nenhuma receita no período.</p>
+            <div class="item" th:each="r : ${prontuario.receitas}">
+                <div class="item__titulo">
+                    <span th:text="${r.medicamento}">Medicamento</span>
+                    <span th:if="${r.principioAtivo != null}" th:text="' (' + ${r.principioAtivo} + ')'"></span>
+                </div>
+                <div class="item__meta">
+                    Início <span th:text="${#temporals.format(r.inicio, 'dd/MM/yyyy')}">--/--/----</span>
+                    <span th:if="${r.fim != null}"> · fim <span th:text="${#temporals.format(r.fim, 'dd/MM/yyyy')}">--/--/----</span></span>
+                    <span th:if="${r.dosesPorDia != null}" th:text="' · ' + ${r.dosesPorDia} + ' dose(s) por dia'"></span>
+                </div>
+                <p class="texto" th:text="${r.posologia}"></p>
+            </div>
+        </div>
+    </div>
+
+    <div class="card" th:if="${mostrarExames}">
+        <div class="card__body">
+            <h2 class="secao">Resultados de exames</h2>
+            <p class="vazio" th:if="${#lists.isEmpty(prontuario.exames)}">Nenhum exame no período.</p>
+            <div class="item" th:each="x : ${prontuario.exames}">
+                <div class="item__titulo" th:text="${x.nome}">Exame</div>
+                <div class="item__meta">
+                    Resultado em <span th:text="${#temporals.format(x.resultadoEm, 'dd/MM/yyyy')}">--/--/----</span>
+                    <span th:if="${x.coletadoEm != null}"> · coleta <span th:text="${#temporals.format(x.coletadoEm, 'dd/MM/yyyy')}">--/--/----</span></span>
+                    <span th:if="${x.laboratorio != null}"> · <span th:text="${x.laboratorio}">Lab</span></span>
+                </div>
+                <div th:if="${x.resultado != null}"><span class="label">Resultado</span><p class="texto" th:text="${x.resultado}"></p></div>
+                <div th:if="${x.interpretacao != null}"><span class="label">Interpretação</span><p class="texto" th:text="${x.interpretacao}"></p></div>
+                <a class="arquivo" th:if="${x.temArquivo and arquivoBaseUrl != null}"
+                   th:href="${arquivoBaseUrl} + ${x.id} + '/arquivo'">Baixar laudo (<span th:text="${x.arquivoNome}">arquivo</span>)</a>
+                <span class="tag" th:if="${x.temArquivo and arquivoBaseUrl == null}">Laudo em arquivo disponível no VetSync</span>
+            </div>
+        </div>
+    </div>
+
+    <p class="rodape">
+        Documento gerado pelo VetSync para apoio a outro atendimento. Não inclui custos nem dados pessoais do tutor.<br />
+        As informações são de caráter informativo e não substituem a avaliação do veterinário responsável.
+    </p>
+</div>
+</body>
+</html>

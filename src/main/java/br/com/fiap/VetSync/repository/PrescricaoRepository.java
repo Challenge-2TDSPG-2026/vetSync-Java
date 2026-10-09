@@ -10,6 +10,7 @@ import java.util.List;
 
 public interface PrescricaoRepository extends JpaRepository<Prescricao, Long> {
     List<Prescricao> findByEvento_IdEvento(Long idEvento);
+    List<Prescricao> findByEvento_Pet_IdPetOrderByDtInicioDescIdPrescricaoDesc(Long idPet);
     List<Prescricao> findByEvento_Pet_Tutor_DsEmailOrderByIdPrescricaoDesc(String email);
     List<Prescricao> findByEvento_Veterinario_DsEmailOrderByIdPrescricaoDesc(String email);
     List<Prescricao> findByDsStatusOrderByIdPrescricaoAsc(StatusPrescricao status);
