@@ -30,6 +30,16 @@ public class PetAcessoService {
 
 
     public PetAcesso conceder(Pet pet, Tutor tutor, RelacaoPet relacao, PermissaoPet permissao) {
+        PetAcesso concedido = concederSemAuditoria(pet, tutor, relacao, permissao);
+        if (auditoriaService != null && concedido != null && concedido.getIdAcesso() != null) {
+            // Quem aceitou o convite ainda não está autenticado: o ator cai no e-mail do próprio tutor.
+            auditoriaService.registrarAcao(AuditoriaTipos.ACESSO_PET, concedido.getIdAcesso(), "ACESSO_CONCEDIDO",
+                    clinicaDoPet(pet), null, permissao.name(), emailDe(tutor), "TUTOR");
+        }
+        return concedido;
+    }
+
+    private PetAcesso concederSemAuditoria(Pet pet, Tutor tutor, RelacaoPet relacao, PermissaoPet permissao) {
         return petAcessoRepository.findByPet_IdPetAndTutor_IdTutor(pet.getIdPet(), tutor.getIdTutor())
                 .map(acesso -> {
                     acesso.setDsRelacao(relacao);

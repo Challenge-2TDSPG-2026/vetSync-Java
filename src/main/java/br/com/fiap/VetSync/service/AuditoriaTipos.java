@@ -17,15 +17,18 @@ public final class AuditoriaTipos {
     public static final String RESGATE = "RESGATE";
     /** Prontuário clínico; {@code idEntidade} é o id do pet. */
     public static final String PRONTUARIO = "PRONTUARIO";
+    /** Convite de acesso a um pet; {@code idEntidade} é o id do pet. */
+    public static final String PET_CONVITE = "PET_CONVITE";
 
     public static final List<String> ENTIDADES = List.of(EVENTO, ACESSO_PET, VINCULO, CONTRATO,
-            CODIGO_VINCULO, PONTOS, CATALOGO, RESGATE, PRONTUARIO);
+            CODIGO_VINCULO, PONTOS, CATALOGO, RESGATE, PRONTUARIO, PET_CONVITE);
 
     /** Entidades que o fluxo legado (qualquer usuário autenticado, por entidade+id) continua podendo consultar. */
     public static final List<String> ENTIDADES_LEGADO = List.of(EVENTO, ACESSO_PET);
 
     public static final List<String> ACOES = List.of(
-            "CRIADO", "CONCLUIDO", "CANCELADO", "ACESSO_REVOGADO", "ACESSO_ATUALIZADO",
+            "CRIADO", "CONCLUIDO", "CANCELADO", "ACESSO_CONCEDIDO", "ACESSO_REVOGADO", "ACESSO_ATUALIZADO",
+            "CONVITE_ENVIADO", "CONVITE_ACEITO",
             "VINCULO_CRIADO", "VINCULO_TROCADO", "VINCULO_ENCERRADO",
             "CONTRATO_ATIVADO", "CONTRATO_DESATIVADO",
             "CODIGO_EMITIDO", "CODIGO_REVOGADO",

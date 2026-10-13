@@ -11,6 +11,9 @@ public interface PetAcessoRepository extends JpaRepository<PetAcesso, Long> {
 
     List<PetAcesso> findByPet_IdPetAndDsStatus(Long idPet, StatusAcessoPet dsStatus);
 
+    /** Todos os acessos do pet (inclusive revogados), para montar o histórico de atividade. */
+    List<PetAcesso> findByPet_IdPet(Long idPet);
+
     List<PetAcesso> findByTutor_IdTutorAndDsStatus(Long idTutor, StatusAcessoPet dsStatus);
 
     Optional<PetAcesso> findByPet_IdPetAndTutor_IdTutor(Long idPet, Long idTutor);

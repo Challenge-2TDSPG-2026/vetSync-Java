@@ -11,6 +11,7 @@ import br.com.fiap.VetSync.repository.PetRepository;
 import br.com.fiap.VetSync.repository.TutorRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -45,6 +46,8 @@ public class PetConviteService {
     private final EmailService emailService;
     private final PasswordEncoder passwordEncoder;
     private final SecureRandom secureRandom = new SecureRandom();
+    @Autowired(required = false)
+    private AuditoriaService auditoriaService;
 
     @Value("${app.convite.web-invite-url}")
     private String webInviteUrl;
@@ -107,8 +110,8 @@ public class PetConviteService {
     }
 
     private PetConvite criarConvite(Pet pet, Long idTutorOrigem, String email,
-                                     RelacaoPet relacao, PermissaoPet permissao,
-                                     boolean todosPets) {
+                                    RelacaoPet relacao, PermissaoPet permissao,
+                                    boolean todosPets) {
         String emailNormalizado = email.trim().toLowerCase(Locale.ROOT);
 
         if (tutorRepository.existsByDsEmail(emailNormalizado)) {
@@ -120,7 +123,7 @@ public class PetConviteService {
                 .findByTutorOrigem_IdTutorAndDsEmailDestinoIgnoreCaseAndDsStatusAndTodosPetsTrue(
                         idTutorOrigem, emailNormalizado, StatusConvitePet.PENDENTE)
                 : petConviteRepository.findByPet_IdPetAndDsEmailDestinoIgnoreCaseAndDsStatus(
-                        pet.getIdPet(), emailNormalizado, StatusConvitePet.PENDENTE);
+                pet.getIdPet(), emailNormalizado, StatusConvitePet.PENDENTE);
         pendentesAnteriores.forEach(c -> c.setDsStatus(StatusConvitePet.CANCELADO));
         if (!pendentesAnteriores.isEmpty()) {
             petConviteRepository.saveAll(pendentesAnteriores);
@@ -144,6 +147,10 @@ public class PetConviteService {
 
         convite = petConviteRepository.save(convite);
 
+        // Convite para todos os pets é gravado no primeiro pet por limitação do modelo: não entra no feed de um pet só.
+        if (!todosPets) {
+            auditarConvite(pet, "CONVITE_ENVIADO", null, emailNormalizado + " (" + permissao.name() + ")");
+        }
         enviarEmailConvite(convite, tokenPuro);
 
         return convite;
@@ -255,6 +262,10 @@ public class PetConviteService {
         convite.setTutorDestino(tutor);
         petConviteRepository.save(convite);
 
+        if (!convite.isTodosPets()) {
+            auditarConvite(convite.getPet(), "CONVITE_ACEITO", null, tutor.getNmTutor());
+        }
+
         log.info("Convite {} aceito; escopo de acesso: {}", convite.getIdConvite(),
                 convite.isTodosPets() ? "todos os pets do tutor" : "pet " + convite.getPet().getIdPet());
 
@@ -278,6 +289,13 @@ public class PetConviteService {
         }
         convite.setDsStatus(StatusConvitePet.CANCELADO);
         petConviteRepository.save(convite);
+    }
+
+    private void auditarConvite(Pet pet, String acao, String anterior, String novo) {
+        if (auditoriaService != null && pet != null && pet.getIdPet() != null) {
+            auditoriaService.registrarAcao(AuditoriaTipos.PET_CONVITE, pet.getIdPet(), acao, null, anterior, novo,
+                    pet.getTutor() != null ? pet.getTutor().getDsEmail() : null, "TUTOR");
+        }
     }
 
     // ---------------------------------------------------------------
