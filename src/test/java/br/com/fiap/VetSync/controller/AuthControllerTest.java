@@ -2,11 +2,13 @@ package br.com.fiap.VetSync.controller;
 
 import br.com.fiap.VetSync.entity.Tutor;
 import br.com.fiap.VetSync.repository.AdminRepository;
+import br.com.fiap.VetSync.repository.IdentidadeSocialRepository;
 import br.com.fiap.VetSync.repository.TutorRepository;
 import br.com.fiap.VetSync.repository.VeterinarioRepository;
 import br.com.fiap.VetSync.security.TokenBlacklist;
 import br.com.fiap.VetSync.service.JwtService;
 import br.com.fiap.VetSync.service.VinculoClinicaService;
+import br.com.fiap.VetSync.social.SocialProvider;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -58,6 +60,9 @@ class AuthControllerTest {
     private AdminRepository adminRepository;
 
     @MockBean
+    private IdentidadeSocialRepository identidadeSocialRepository;
+
+    @MockBean
     private PasswordEncoder passwordEncoder;
 
     @MockBean
@@ -75,6 +80,7 @@ class AuthControllerTest {
         when(authManager.authenticate(any())).thenReturn(new UsernamePasswordAuthenticationToken("tutor@teste.com", "senha123"));
         when(jwtService.gerarToken("tutor@teste.com")).thenReturn("fake-jwt-token");
         when(tutorRepository.findByDsEmail("tutor@teste.com")).thenReturn(Optional.of(tutor));
+        when(identidadeSocialRepository.existsByTutor_IdTutorAndProvedor(1L, SocialProvider.GOOGLE)).thenReturn(false);
 
         mockMvc.perform(post("/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -171,6 +177,20 @@ class AuthControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.idUsuario").value(1))
                 .andExpect(jsonPath("$.email").value("tutor@teste.com"))
-                .andExpect(jsonPath("$.perfil").value("TUTOR"));
+                .andExpect(jsonPath("$.perfil").value("TUTOR"))
+                .andExpect(jsonPath("$.googleVinculado").value(false));
+    }
+
+    @Test
+    @DisplayName("GET /auth/me - Informa quando Google está vinculado à conta do tutor")
+    @WithMockUser(username = "tutor@teste.com", roles = "TUTOR")
+    void me_ComGoogleVinculado() throws Exception {
+        Tutor tutor = Tutor.builder().idTutor(2L).nmTutor("Tutor Google").dsEmail("tutor@teste.com").build();
+        when(tutorRepository.findByDsEmail("tutor@teste.com")).thenReturn(Optional.of(tutor));
+        when(identidadeSocialRepository.existsByTutor_IdTutorAndProvedor(2L, SocialProvider.GOOGLE)).thenReturn(true);
+
+        mockMvc.perform(get("/auth/me"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.googleVinculado").value(true));
     }
 }

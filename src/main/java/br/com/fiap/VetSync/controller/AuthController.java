@@ -2,12 +2,14 @@ package br.com.fiap.VetSync.controller;
 
 import br.com.fiap.VetSync.entity.Tutor;
 import br.com.fiap.VetSync.repository.AdminRepository;
+import br.com.fiap.VetSync.repository.IdentidadeSocialRepository;
 import br.com.fiap.VetSync.repository.ProfissionalEsteticaRepository;
 import br.com.fiap.VetSync.repository.TutorRepository;
 import br.com.fiap.VetSync.repository.VeterinarioRepository;
 import br.com.fiap.VetSync.security.TokenBlacklist;
 import br.com.fiap.VetSync.service.JwtService;
 import br.com.fiap.VetSync.service.VinculoClinicaService;
+import br.com.fiap.VetSync.social.SocialProvider;
 import br.com.fiap.VetSync.service.PasswordResetService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -46,6 +48,7 @@ public class AuthController {
     private final ProfissionalEsteticaRepository profissionalEsteticaRepository;
     private final PasswordResetService passwordResetService;
     private final VinculoClinicaService vinculoClinicaService;
+    private final IdentidadeSocialRepository identidadeSocialRepository;
 
     private static final int SENHA_MIN_LENGTH = 6;
 
@@ -117,9 +120,16 @@ public class AuthController {
     }
     public record MeResponse(Long idUsuario, String email, String nome, String perfil,
                              boolean temVinculoAtivo, Long idClinica, String cargo,
-                             java.util.Set<String> permissoes, boolean trocaSenhaObrigatoria) {
+                             java.util.Set<String> permissoes, boolean trocaSenhaObrigatoria,
+                             boolean googleVinculado) {
         public MeResponse(Long idUsuario, String email, String nome, String perfil, boolean temVinculoAtivo) {
-            this(idUsuario, email, nome, perfil, temVinculoAtivo, null, null, java.util.Set.of(), false);
+            this(idUsuario, email, nome, perfil, temVinculoAtivo, null, null, java.util.Set.of(), false, false);
+        }
+        public MeResponse(Long idUsuario, String email, String nome, String perfil, boolean temVinculoAtivo,
+                          Long idClinica, String cargo, java.util.Set<String> permissoes,
+                          boolean trocaSenhaObrigatoria) {
+            this(idUsuario, email, nome, perfil, temVinculoAtivo, idClinica, cargo, permissoes,
+                    trocaSenhaObrigatoria, false);
         }
     }
 
@@ -285,8 +295,10 @@ public class AuthController {
 
         var tutor = tutorRepository.findByDsEmail(email);
         if (tutor.isPresent()) {
+            Long idTutor = tutor.get().getIdTutor();
             return new MeResponse(tutor.get().getIdTutor(), email, tutor.get().getNmTutor(), "TUTOR",
-                    vinculoClinicaService.temVinculoAtivo(tutor.get().getIdTutor()));
+                    vinculoClinicaService.temVinculoAtivo(idTutor), null, null, java.util.Set.of(), false,
+                    identidadeSocialRepository.existsByTutor_IdTutorAndProvedor(idTutor, SocialProvider.GOOGLE));
         }
         var vet = veterinarioRepository.findByDsEmail(email);
         if (vet.isPresent()) {
