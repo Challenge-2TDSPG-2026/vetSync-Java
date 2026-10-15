@@ -171,7 +171,7 @@ public class PetConviteService {
                 + "Para aceitar o convite, acesse o link abaixo e finalize seu cadastro:\n" + link + "\n\n"
                 + "Este link expira em " + expiracaoHoras + " horas.\n"
                 + "Se você não esperava este convite, pode ignorar este e-mail.";
-        emailService.enviar(convite.getDsEmailDestino(), assunto, corpo);
+        emailService.enviarObrigatorio(convite.getDsEmailDestino(), assunto, corpo);
     }
 
     private String rotuloRelacao(RelacaoPet relacao) {

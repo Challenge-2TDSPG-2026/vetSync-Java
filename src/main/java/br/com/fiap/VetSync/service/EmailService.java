@@ -22,6 +22,11 @@ public class EmailService {
     private String remetente;
 
     public void enviar(String destinatario, String assunto, String corpo) {
+        enviarObrigatorio(destinatario, assunto, corpo);
+    }
+
+    /** Convites de acesso não podem ser confirmados sem entregar a credencial. */
+    public void enviarObrigatorio(String destinatario, String assunto, String corpo) {
         try {
             SimpleMailMessage mensagem = new SimpleMailMessage();
             mensagem.setFrom(remetente);
@@ -30,19 +35,10 @@ public class EmailService {
             mensagem.setText(corpo);
             mailSender.send(mensagem);
             log.info("E-mail enviado com sucesso para: {}", destinatario);
-        } catch (Exception e) {
-            log.warn("Não foi possível enviar e-mail para {}: {}", destinatario, e.getMessage());
+        } catch (RuntimeException e) {
+            log.error("Falha ao enviar e-mail transacional (tipo={})", e.getClass().getSimpleName(), e);
+            throw e;
         }
-    }
-
-    /** Convites de acesso não podem ser confirmados sem entregar a credencial. */
-    public void enviarObrigatorio(String destinatario, String assunto, String corpo) {
-        SimpleMailMessage mensagem = new SimpleMailMessage();
-        mensagem.setFrom(remetente);
-        mensagem.setTo(destinatario);
-        mensagem.setSubject(assunto);
-        mensagem.setText(corpo);
-        mailSender.send(mensagem);
     }
 
     /**
@@ -52,7 +48,7 @@ public class EmailService {
     public void enviarComAnexo(String destinatario, String assunto, String corpo,
                                byte[] anexo, String nomeAnexo, String tipoAnexo) {
         if (anexo == null || anexo.length == 0) {
-            enviar(destinatario, assunto, corpo);
+            enviarObrigatorio(destinatario, assunto, corpo);
             return;
         }
         try {
@@ -70,7 +66,8 @@ public class EmailService {
             mailSender.send(mimeMessage);
             log.info("E-mail com anexo enviado com sucesso para: {}", destinatario);
         } catch (Exception e) {
-            log.warn("Não foi possível enviar e-mail com anexo para {}: {}", destinatario, e.getMessage());
+            log.error("Falha ao enviar e-mail com anexo (tipo={})", e.getClass().getSimpleName(), e);
+            throw new IllegalStateException("Falha ao enviar e-mail com anexo", e);
         }
     }
 }
