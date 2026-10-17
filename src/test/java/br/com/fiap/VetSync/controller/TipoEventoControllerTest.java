@@ -33,7 +33,7 @@ class TipoEventoControllerTest {
     void listar_Sucesso() throws Exception {
         TipoEvento t1 = TipoEvento.builder().idTipoEvento(1L).nmTipoEvento("Vacina Raiva").dsCategoria("PREVENTIVO").nrPontos(15).build();
         TipoEvento t2 = TipoEvento.builder().idTipoEvento(2L).nmTipoEvento("Consulta Geral").dsCategoria("CLINICO").nrPontos(10).build();
-        when(tipoEventoRepository.findAll()).thenReturn(List.of(t1, t2));
+        when(tipoEventoRepository.findByClinicaIsNull()).thenReturn(List.of(t1, t2));
 
         mockMvc.perform(get("/tipos-evento"))
                 .andExpect(status().isOk())

@@ -39,6 +39,47 @@ class EventoPontosRecompensaIntegrationTest {
     @Autowired
     private TipoEventoRepository tipoEventoRepository;
 
+    @Autowired
+    private VeterinarioRepository veterinarioRepository;
+
+    @Autowired
+    private ServicoClinicaRepository servicoClinicaRepository;
+
+    @Autowired
+    private ServicoProfissionalRepository servicoProfissionalRepository;
+
+    @Autowired
+    private HorarioClinicaRepository horarioClinicaRepository;
+
+    @Autowired
+    private DisponibilidadeRepository disponibilidadeRepository;
+
+    /**
+     * O agendamento so e aceito se a clinica oferecer o servico (ServicoClinica), o veterinario atender esse
+     * servico e houver horario de funcionamento + disponibilidade do veterinario no dia. Abre todos os dias
+     * da semana (00:00-23:59) para o teste nao depender do dia em que roda.
+     */
+    private void habilitarAgendamento(Clinica clinica, Long idVet, TipoEvento... tipos) {
+        Veterinario vet = veterinarioRepository.findById(idVet).orElseThrow();
+        for (int dia = 1; dia <= 7; dia++) {
+            horarioClinicaRepository.save(HorarioClinica.builder()
+                    .clinica(clinica).nrDiaSemana(dia).hrInicio("00:00").hrFim("23:59").build());
+            disponibilidadeRepository.save(Disponibilidade.builder()
+                    .veterinario(vet).nrDiaSemana(dia).hrInicio("00:00").hrFim("23:59").build());
+        }
+        for (TipoEvento tipo : tipos) {
+            ServicoClinica servico = servicoClinicaRepository.save(ServicoClinica.builder()
+                    .clinica(clinica)
+                    .tipoEvento(tipo)
+                    .nmServico(tipo.getNmTipoEvento())
+                    .dsCategoria(tipo.getDsCategoria())
+                    .nrDuracaoMinutos(30)
+                    .build());
+            servicoProfissionalRepository.save(ServicoProfissional.builder()
+                    .servico(servico).veterinario(vet).build());
+        }
+    }
+
     @Test
     @DisplayName("Ponta a ponta: Cadastro -> Pet -> Agendamento -> Conclusão -> Liberação de Pontos -> Saldo -> Resgate -> Validação")
     void fluxoCompletoEventoPontosRecompensa() throws Exception {
@@ -81,6 +122,8 @@ class EventoPontosRecompensaIntegrationTest {
         JsonNode vetNode = objectMapper.readTree(vetRes.getResponse().getContentAsString());
         Long idVet = vetNode.get("idVeterinario").asLong();
         String vetPwd = vetNode.get("senhaTemporaria").asText();
+
+        habilitarAgendamento(clinica, idVet, tipoVacina);
 
         MvcResult vetLoginRes = mockMvc.perform(post("/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)

@@ -1,6 +1,7 @@
 package br.com.fiap.VetSync.service;
 
 import br.com.fiap.VetSync.entity.Clinica;
+import br.com.fiap.VetSync.entity.CodigoVinculoClinica;
 import br.com.fiap.VetSync.repository.ClinicaRepository;
 import br.com.fiap.VetSync.repository.CodigoVinculoClinicaRepository;
 import br.com.fiap.VetSync.repository.EventoSaudeRepository;
@@ -78,6 +79,11 @@ class VinculoClinicaServiceTest {
         Clinica ativa = Clinica.builder().idClinica(2L).nmClinica("Clínica Ativa").stContratante("A").build();
         when(clinicaRepository.findByIdParaAtualizacao(2L)).thenReturn(Optional.of(ativa));
         when(codigoRepository.findByClinica_IdClinicaAndStAtivo(2L, "A")).thenReturn(List.of());
+        when(codigoRepository.saveAndFlush(any(CodigoVinculoClinica.class))).thenAnswer(inv -> {
+            CodigoVinculoClinica c = inv.getArgument(0);
+            c.setIdCodigoVinculo(99L);
+            return c;
+        });
 
         var emitido = vinculoService.emitirCodigo(2L);
 

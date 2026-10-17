@@ -2,6 +2,9 @@ package br.com.fiap.VetSync.service;
 
 import br.com.fiap.VetSync.entity.Admin;
 import br.com.fiap.VetSync.repository.AdminRepository;
+import br.com.fiap.VetSync.repository.ProfissionalEsteticaRepository;
+import br.com.fiap.VetSync.repository.TutorRepository;
+import br.com.fiap.VetSync.repository.VeterinarioRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -27,6 +30,15 @@ class AdminServiceTest {
 
     @Mock
     private AdminRepository adminRepository;
+
+    @Mock
+    private TutorRepository tutorRepository;
+
+    @Mock
+    private VeterinarioRepository veterinarioRepository;
+
+    @Mock
+    private ProfissionalEsteticaRepository esteticaRepository;
 
     @Mock
     private PasswordEncoder passwordEncoder;

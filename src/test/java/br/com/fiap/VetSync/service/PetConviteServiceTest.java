@@ -9,12 +9,14 @@ import br.com.fiap.VetSync.entity.Tutor;
 import br.com.fiap.VetSync.repository.PetConviteRepository;
 import br.com.fiap.VetSync.repository.PetRepository;
 import br.com.fiap.VetSync.repository.TutorRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -56,6 +58,13 @@ class PetConviteServiceTest {
     @InjectMocks
     private PetConviteService petConviteService;
 
+    @BeforeEach
+    void setUp() {
+        // @Value nao e resolvido em teste unitario com Mockito
+        ReflectionTestUtils.setField(petConviteService, "webInviteUrl", "https://app.vetsync.test/convite");
+        ReflectionTestUtils.setField(petConviteService, "expiracaoHoras", 72);
+    }
+
     private Tutor dono() {
         return Tutor.builder().idTutor(1L).nmTutor("Dono").dsEmail("dono@teste.com").build();
     }
@@ -85,7 +94,7 @@ class PetConviteServiceTest {
         assertThat(convite.getDsEmailDestino()).isEqualTo("cuidador@teste.com"); // normalizado para minúsculo
         assertThat(convite.getDsStatus()).isEqualTo(StatusConvitePet.PENDENTE);
         assertThat(convite.getDsTokenHash()).isNotBlank();
-        verify(emailService).enviar(eq("cuidador@teste.com"), anyString(), anyString());
+        verify(emailService).enviarObrigatorio(eq("cuidador@teste.com"), anyString(), anyString());
     }
 
     @Test
@@ -100,7 +109,7 @@ class PetConviteServiceTest {
                 .hasFieldOrPropertyWithValue("status", org.springframework.http.HttpStatus.FORBIDDEN);
 
         verify(petConviteRepository, never()).save(any());
-        verify(emailService, never()).enviar(anyString(), anyString(), anyString());
+        verify(emailService, never()).enviarObrigatorio(anyString(), anyString(), anyString());
     }
 
     @Test
