@@ -112,7 +112,8 @@ class EventoPontosRecompensaIntegrationTest {
                 .andReturn();
         String adminToken = objectMapper.readTree(adminLoginRes.getResponse().getContentAsString()).get("token").asText();
 
-        var vetReq = new VeterinarioController.VeterinarioRequest("Dr. Gabriel", "gabriel.vet@vetsync.com", clinica.getIdClinica());
+        var vetReq = new VeterinarioController.VeterinarioRequest(
+                "Dr. Gabriel", "gabriel.vet@vetsync.com", "SenhaVet123", clinica.getIdClinica());
         MvcResult vetRes = mockMvc.perform(post("/veterinarios")
                         .header("Authorization", "Bearer " + adminToken)
                         .contentType(MediaType.APPLICATION_JSON)

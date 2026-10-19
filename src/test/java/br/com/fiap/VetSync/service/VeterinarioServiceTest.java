@@ -46,14 +46,11 @@ class VeterinarioServiceTest {
     @Mock
     private PasswordEncoder passwordEncoder;
 
-    @Mock
-    private EmailService emailService;
-
     @InjectMocks
     private VeterinarioService veterinarioService;
 
     @Test
-    @DisplayName("Deve cadastrar veterinário, gerar CRM de 6 dígitos, senha temporária e enviar e-mail")
+    @DisplayName("Deve cadastrar veterinário com a senha definida pelo administrador")
     void cadastrar_Sucesso() {
         Clinica clinica = Clinica.builder().idClinica(1L).nmClinica("Clyvo Vet").build();
         when(veterinarioRepository.existsByDsEmail("vet@clyvovet.com")).thenReturn(false);
@@ -66,12 +63,12 @@ class VeterinarioServiceTest {
             return v;
         });
 
-        VeterinarioService.NovoVeterinario novo = veterinarioService.cadastrar("Dr. Pedro", "vet@clyvovet.com", 1L);
+        VeterinarioService.NovoVeterinario novo =
+                veterinarioService.cadastrar("Dr. Pedro", "vet@clyvovet.com", "SenhaSegura123", 1L, null);
 
         assertThat(novo.veterinario().getIdVeterinario()).isEqualTo(10L);
         assertThat(novo.veterinario().getNrCrmv()).matches("^\\d{6}$");
-        assertThat(novo.senhaTemporaria()).hasSize(10);
-        verify(emailService).enviar(eq("vet@clyvovet.com"), anyString(), anyString());
+        verify(passwordEncoder).encode("SenhaSegura123");
     }
 
     @Test
@@ -79,7 +76,7 @@ class VeterinarioServiceTest {
     void cadastrar_EmailDuplicado() {
         when(veterinarioRepository.existsByDsEmail("existente@vet.com")).thenReturn(true);
 
-        assertThatThrownBy(() -> veterinarioService.cadastrar("Nome", "existente@vet.com", 1L))
+        assertThatThrownBy(() -> veterinarioService.cadastrar("Nome", "existente@vet.com", "SenhaSegura123", 1L, null))
                 .isInstanceOf(ResponseStatusException.class)
                 .hasMessageContaining("E-mail já cadastrado");
 

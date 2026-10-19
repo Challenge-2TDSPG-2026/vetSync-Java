@@ -116,10 +116,11 @@ class PlanoTratamentoFlowIntegrationTest {
         MvcResult vetRes = mockMvc.perform(post("/veterinarios")
                 .header("Authorization", "Bearer " + adminToken)
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(new VeterinarioController.VeterinarioRequest("Dr. Paulo", "paulo.vet@vetsync.com", clinica.getIdClinica())))).andReturn();
+                .content(objectMapper.writeValueAsString(new VeterinarioController.VeterinarioRequest(
+                        "Dr. Paulo", "paulo.vet@vetsync.com", "SenhaVet123", clinica.getIdClinica())))).andReturn();
         JsonNode vetNode = objectMapper.readTree(vetRes.getResponse().getContentAsString());
         Long idVet = vetNode.get("idVeterinario").asLong();
-        String vetPwd = vetNode.get("senhaTemporaria").asText();
+        String vetPwd = "SenhaVet123";
 
         habilitarAgendamento(clinica, idVet, t1, t2);
 

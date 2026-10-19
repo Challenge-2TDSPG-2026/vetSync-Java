@@ -28,19 +28,12 @@ public class VeterinarioService {
     private final ProfissionalEsteticaRepository esteticaRepository;
     private final ClinicaRepository clinicaRepository;
     private final PasswordEncoder passwordEncoder;
-    private final EmailService emailService;
 
     private static final SecureRandom RANDOM = new SecureRandom();
-    private static final String CARACTERES_SENHA = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";
 
+    public record NovoVeterinario(Veterinario veterinario) {}
 
-    public record NovoVeterinario(Veterinario veterinario, String senhaTemporaria) {}
-
-    public NovoVeterinario cadastrar(String nome, String email, Long idClinica) {
-        return cadastrar(nome, email, idClinica, null);
-    }
-
-    public NovoVeterinario cadastrar(String nome, String email, Long idClinica, String especialidade) {
+    public NovoVeterinario cadastrar(String nome, String email, String senha, Long idClinica, String especialidade) {
         email = email.trim().toLowerCase(Locale.ROOT);
         if (veterinarioRepository.existsByDsEmail(email) || tutorRepository.existsByDsEmail(email)
                 || esteticaRepository.existsByDsEmail(email) || adminRepository.findByDsEmail(email).isPresent()) {
@@ -50,30 +43,18 @@ public class VeterinarioService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Clínica não encontrada"));
 
         String crm = gerarCrmUnico();
-        String senhaTemporaria = gerarSenhaTemporaria();
 
         Veterinario vet = Veterinario.builder()
                 .nmVeterinario(nome)
                 .nrCrmv(crm)
                 .dsEmail(email)
-                .dsSenha(passwordEncoder.encode(senhaTemporaria))
+                .dsSenha(passwordEncoder.encode(senha))
                 .clinica(clinica)
                 .dsEspecialidade(especialidade != null && !especialidade.isBlank() ? especialidade : null)
                 .build();
         vet = veterinarioRepository.save(vet);
 
-        emailService.enviar(
-                email,
-                "Sua conta VetSync foi criada",
-                "Olá, " + nome + "!\n\n"
-                        + "Sua conta de veterinário foi criada na clínica " + clinica.getNmClinica() + ".\n\n"
-                        + "CRM: " + crm + "\n"
-                        + "E-mail de login: " + email + "\n"
-                        + "Senha temporária: " + senhaTemporaria + "\n\n"
-                        + "Recomendamos alterar essa senha assim que possível."
-        );
-
-        return new NovoVeterinario(vet, senhaTemporaria);
+        return new NovoVeterinario(vet);
     }
 
     private String gerarCrmUnico() {
@@ -82,14 +63,6 @@ public class VeterinarioService {
             crm = String.format("%06d", RANDOM.nextInt(1_000_000));
         } while (veterinarioRepository.existsByNrCrmv(crm));
         return crm;
-    }
-
-    private String gerarSenhaTemporaria() {
-        StringBuilder sb = new StringBuilder(10);
-        for (int i = 0; i < 10; i++) {
-            sb.append(CARACTERES_SENHA.charAt(RANDOM.nextInt(CARACTERES_SENHA.length())));
-        }
-        return sb.toString();
     }
 
     public Veterinario buscarPorId(Long id) {
