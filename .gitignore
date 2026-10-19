@@ -6,3 +6,7 @@ target/
 *.env
 application-local.properties
 .vscode/
+data/
+*.mv.db
+*.trace.db
+flyway-info.json

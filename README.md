@@ -2,7 +2,8 @@
 
 <p align="center">
   API REST para continuidade do cuidado e engajamento na jornada de saúde do pet,<br/>
-  desenvolvida em parceria com a <strong>Clyvo Vet</strong>.
+  desenvolvida em parceria com a <strong>Clyvo Vet</strong>.<br/>
+  <em>Challenge FIAP 2026 · Java Advanced · Sprint 4 (entrega final)</em>
 </p>
 
 <p align="center">
@@ -18,13 +19,30 @@
 
 ---
 
+## 🔗 Links da entrega
+
+| Item | Link |
+|------|------|
+| 🌐 Aplicação online (Azure App Service) | https://app-vetsync-rm563197.azurewebsites.net |
+| 📘 Swagger UI | https://app-vetsync-rm563197.azurewebsites.net/swagger-ui.html |
+| ❤️ Health check | https://app-vetsync-rm563197.azurewebsites.net/actuator/health |
+| 🎥 Vídeo de apresentação (máx. 15 min) | _PREENCHER: link do vídeo_ |
+| 📬 Coleção Postman | [`documentos/JornadaPet_Postman_Collection.json`](documentos/JornadaPet_Postman_Collection.json) |
+| 📱 Aplicativo mobile (React Native / Expo) | _PREENCHER: link do repositório mobile_ |
+| 🖥 Site web | _PREENCHER: link do site (ex.: Vercel/Firebase)_ |
+
+---
+
 ## 📑 Sumário
 
 - [Sobre o projeto](#-sobre-o-projeto)
+- [Narrativa da solução](#-narrativa-da-solução)
 - [Funcionalidades](#-funcionalidades)
 - [Perfis de acesso](#-perfis-de-acesso)
 - [Tecnologias](#-tecnologias)
 - [Arquitetura](#-arquitetura)
+- [Decisões de design e justificativas](#-decisões-de-design-e-justificativas)
+- [Integração multidisciplinar](#-integração-multidisciplinar)
 - [Estrutura do projeto](#-estrutura-do-projeto)
 - [Pré-requisitos](#-pré-requisitos)
 - [Como executar](#-como-executar)
@@ -48,13 +66,32 @@ O sistema ajuda o tutor a não perder vacinas, consultas e retornos, dá ao vete
 
 Projeto desenvolvido para o **Challenge FIAP 2026** (disciplina *Java Advanced*, turma 2TDSPG) em parceria com a **Clyvo Vet**. A API é consumida por um aplicativo mobile (React Native / Expo) e por um site web.
 
+## 🎯 Narrativa da solução
+
+**Problema (desafio Clyvo Vet):** a saúde do pet é fragmentada. Vacinas atrasam, retornos são esquecidos, o histórico fica espalhado em papéis e conversas, e a clínica perde o vínculo com o tutor entre uma consulta e outra.
+
+**Proposta:** uma plataforma única que acompanha o pet de forma **contínua**, e não apenas no momento da consulta.
+
+| Para quem | Valor entregue |
+|-----------|----------------|
+| **Tutor** | Carteira de vacinação sempre atualizada, lembretes por push, próximas ações por pet, compartilhamento seguro com cuidadores e pontos/recompensas por cuidado preventivo |
+| **Veterinário** | Agenda do dia, slots disponíveis, prontuário, prescrições, planos de tratamento e histórico auditável |
+| **Clínica** | Painel administrativo, relatórios, vínculo com tutores por código, catálogo de recompensas e lista de espera |
+| **Pet** | Histórico clínico, de peso e de atividades centralizado e acessível a quem cuida dele |
+
+**Diferenciais:**
+- **Compartilhamento granular e revogável** (convite com expiração e permissões por pet, carteira pública por link/QR Code).
+- **Engajamento mensurável** com pontos que têm estado e validade, e resgates validados pela clínica.
+- **IA com humano no controle**: ações sugeridas passam por *preview* e **confirmação explícita** antes de executar.
+- **Auditoria** das alterações importantes, filtrável por tipo.
+
 ## ✨ Funcionalidades
 
 ### 🐕 Pets e tutores
 - Cadastro, edição, busca e paginação de pets, com **foto** e catálogo de **espécies e raças**
 - Gestão de tutores e **responsáveis adicionais**
 - **Perfil de saúde** do pet (alergias, medicamentos contínuos, condições pré-existentes, etc.)
-- **Histórico de peso** para gráficos de evolução
+- **Histórico de peso** para gráficos de evolução e **histórico de atividades** do pet
 - **Acesso compartilhado**: convites por link/token com expiração, permissões granulares e revogação imediata
 
 ### 🩺 Eventos clínicos e agenda
@@ -62,6 +99,7 @@ Projeto desenvolvido para o **Challenge FIAP 2026** (disciplina *Java Advanced*,
 - **Detalhes completos**, **histórico de alterações**, **anexos** e **reagendamento** de eventos
 - Conclusão e cancelamento de eventos
 - **Agenda do dia** e **slots disponíveis** por veterinário, com disponibilidades e bloqueios
+- **Lista de espera** e confirmação de agendamentos
 - Cálculo de **gasto total** e **alertas** por pet
 - **Agendamento de retorno** por link público com token
 
@@ -70,9 +108,10 @@ Projeto desenvolvido para o **Challenge FIAP 2026** (disciplina *Java Advanced*,
 - **Carteira compartilhável** por link público/QR Code, com expiração configurável
 - **Próximas ações e pendências** por pet
 
-### 💊 Tratamentos
+### 💊 Tratamentos e prontuário
 - **Prescrições** (com anexo em PDF) e catálogo de **medicamentos**
 - **Planos de tratamento** com itens agendáveis
+- **Prontuário clínico** com compartilhamento temporário para outro atendimento
 
 ### ✂️ Estética
 - Cadastro de **profissionais de estética**, serviços base e extras
@@ -81,6 +120,7 @@ Projeto desenvolvido para o **Challenge FIAP 2026** (disciplina *Java Advanced*,
 
 ### 🏥 Clínicas
 - **Vínculo tutor–clínica** por código, com troca de clínica e ativação de contrato
+- **Equipe da clínica**, perfil e catálogo de serviços
 - **Painel administrativo** com resumo e **relatórios da clínica**
 - **Auditoria** das alterações importantes, filtrável por tipo
 
@@ -93,7 +133,10 @@ Projeto desenvolvido para o **Challenge FIAP 2026** (disciplina *Java Advanced*,
 - Job agendado de **lembretes** com respeito ao fuso horário
 
 ### 🤖 IA (SIA)
-- **Ações assistidas por IA** com fluxo de *preview* e **confirmação explícita** antes da execução
+- **Ações assistidas por IA** com fluxo de *preview* e **confirmação explícita** antes da execução (`/ia/acoes`)
+
+### 🔑 Login social
+- Login e vínculo de conta com **Google** e **Apple** (validação do `id_token` por audiência configurável)
 
 ## 👥 Perfis de acesso
 
@@ -103,8 +146,9 @@ Projeto desenvolvido para o **Challenge FIAP 2026** (disciplina *Java Advanced*,
 | `VETERINARIO` | Atende pacientes, gerencia agenda, prescrições e planos de tratamento |
 | `PROFISSIONAL_ESTETICA` | Gerencia serviços, agenda e relatórios de estética |
 | `ADMIN` | Administra clínicas, vínculos, recompensas, pontos e painel |
+| `ADMIN_CLINICA` | Administra a operação de uma clínica específica |
 
-A autorização é feita por *roles* e por regras de propriedade (por tutor, pet, veterinário e clínica) nas classes do pacote `security`.
+A autorização é feita por *roles* (`@PreAuthorize` com `hasRole`/`hasAnyRole`) e por regras de propriedade (por tutor, pet, veterinário e clínica) nas classes do pacote `security`.
 
 ## 🛠 Tecnologias
 
@@ -112,12 +156,12 @@ A autorização é feita por *roles* e por regras de propriedade (por tutor, pet
 |-----------|------------|
 | Linguagem | Java 17 |
 | Framework | Spring Boot 3.3.5 (Web, Data JPA, Validation, Security, Actuator, Cache, Mail, Thymeleaf) |
-| Autenticação | JWT (jjwt 0.11.5) + BCrypt |
+| Autenticação | JWT (jjwt 0.11.5) + BCrypt + login social (Google/Apple) |
 | Banco de dados | Oracle (FIAP) em produção · H2 (modo Oracle) nos testes |
 | Migrations | Flyway (`flyway-core` + `flyway-database-oracle`) |
 | Documentação | SpringDoc OpenAPI 2.6.0 (Swagger UI) |
 | Produtividade | Lombok |
-| Testes | JUnit 5, Spring Boot Test, Spring Security Test, JaCoCo |
+| Testes | JUnit 5, Spring Boot Test, Spring Security Test, MockMvc, JaCoCo |
 | Containers | Docker, Docker Compose |
 | Cloud / CI-CD | Azure App Service, Azure Key Vault, GitHub Actions (OIDC) |
 
@@ -129,17 +173,17 @@ Arquitetura em camadas, com separação clara de responsabilidades:
 Cliente (App Mobile / Web)
         │  HTTPS + JWT
         ▼
-┌───────────────────────────────┐
-│  Controller   (REST + OpenAPI) │
-├───────────────────────────────┤
-│  Security     (JWT, regras de acesso por perfil/propriedade) │
-├───────────────────────────────┤
-│  Service      (regras de negócio)  │
-├───────────────────────────────┤
-│  Repository   (Spring Data JPA)    │
-└──────────────┬────────────────┘
-               ▼
-        Oracle (Flyway)
+┌──────────────────────────────────────────────────────────┐
+│  Controller   (REST + OpenAPI + validação @Valid)         │
+├──────────────────────────────────────────────────────────┤
+│  Security     (JWT, @PreAuthorize, regras por propriedade)│
+├──────────────────────────────────────────────────────────┤
+│  Service      (regras de negócio, jobs @Scheduled)        │
+├──────────────────────────────────────────────────────────┤
+│  Repository   (Spring Data JPA)                           │
+└──────────────────────────┬───────────────────────────────┘
+                           ▼
+                    Oracle (Flyway)
 ```
 
 Pontos de atenção do projeto:
@@ -147,13 +191,41 @@ Pontos de atenção do projeto:
 - **Rate limiter** no endpoint público da carteira compartilhada
 - Tratamento global de exceções (`GlobalExceptionHandler`)
 - Cache em memória (`spring.cache.type=simple`)
-- Jobs agendados (`@Scheduled`) para lembretes e notificações
+- Job agendado (`@Scheduled`) para lembretes e notificações
+
+## 🧭 Decisões de design e justificativas
+
+| Decisão | Justificativa |
+|---------|---------------|
+| **JWT stateless** com blacklist no logout | Escala horizontalmente no App Service e atende app mobile e web; a blacklist e a invalidação após troca de senha cobrem a principal fraqueza do JWT (token roubado) |
+| **Flyway como única fonte do esquema** (`ddl-auto=none`) | Esquema versionado e reproduzível em qualquer ambiente; evita divergência entre entidades e banco |
+| **Autorização por propriedade além de roles** | Role sozinha não impede um tutor de ler o pet de outro; as classes `*Security` validam o vínculo com o recurso |
+| **Pool Hikari com 2 conexões** | Respeita a cota `SESSIONS_PER_USER` do Oracle FIAP |
+| **IA com *preview* + confirmação** | Dados de saúde são sensíveis; nenhuma ação sugerida executa sem o aceite do usuário |
+| **Links públicos com token, expiração e rate limit** | Permite compartilhar carteira/prontuário sem criar conta, com superfície de ataque controlada |
+| **Auditoria como serviço próprio** | Rastreabilidade das alterações clínicas para a clínica e para o tutor |
+| **CI com checksum SHA-256 + deploy via OIDC** | O artefato implantado é exatamente o que foi testado, sem segredos de longa duração no GitHub |
+| **Segredos no Azure Key Vault** | Nenhuma credencial no repositório |
+
+## 🔗 Integração multidisciplinar
+
+Como as demais disciplinas do semestre foram aplicadas nesta solução:
+
+| Disciplina | Aplicação no projeto | Evidência |
+|------------|----------------------|-----------|
+| **Java Advanced** | API Spring Boot completa: Security/JWT, Flyway, validações, testes | Este repositório |
+| **Mastering Relational and Non-Relational Database** | Modelagem relacional em Oracle com 45 tabelas, versionada por migrations Flyway | [`scripts/Database/script_bd.sql`](scripts/Database/script_bd.sql) · [`src/main/resources/db/migration`](src/main/resources/db/migration) |
+| **DevOps Tools & Cloud Computing** | Pipeline GitHub Actions com build, testes e deploy no Azure App Service via OIDC; infraestrutura criada por Azure CLI; segredos no Key Vault | [`.github/workflows/deploy-azure.yml`](.github/workflows/deploy-azure.yml) · [`azure-pipelines.yml`](azure-pipelines.yml) · [`scripts/`](scripts) · [`Dockerfile`](Dockerfile) |
+| **Mobile Application Development** | O app React Native/Expo consome esta API (JWT, push via Expo, carteira, agenda) | _PREENCHER: link do repositório mobile_ |
+| **Disruptive Architectures: IoT, IoB & Generative IA** | Módulo de ações assistidas por IA com preview e confirmação | [`AcaoIaController`](src/main/java/br/com/fiap/VetSync/controller/AcaoIaController.java) · migration `V30__cria_acoes_ia.sql` |
+| **Compliance, Quality Assurance & Tests** | Testes automatizados (unitários, de controller, de segurança e de integração) executados no CI; coleção Postman | [`src/test`](src/test) · [`documentos/JornadaPet_Postman_Collection.json`](documentos/JornadaPet_Postman_Collection.json) · _PREENCHER: link do Azure Boards_ |
 
 ## 📂 Estrutura do projeto
 
 ```
 vetSync-Java/
 ├── .github/workflows/        # Pipeline CI/CD (deploy-azure.yml)
+├── azure-pipelines.yml       # Pipeline equivalente para Azure DevOps
 ├── .mvn/                     # Maven Wrapper
 ├── documentos/               # Coleção Postman, cronograma e imagens
 ├── scripts/                  # Provisionamento Azure e DDL Oracle
@@ -167,16 +239,16 @@ vetSync-Java/
 │   │   │   ├── exception/    # GlobalExceptionHandler
 │   │   │   ├── repository/   # Repositórios Spring Data
 │   │   │   ├── security/     # JWT, filtros e regras de acesso
-│   │   │   └── service/      # Regras de negócio
+│   │   │   ├── service/      # Regras de negócio
+│   │   │   └── social/       # Verificação de tokens Google/Apple
 │   │   └── resources/
-│   │       ├── db/migration/ # Migrations Flyway (V1 a V47)
+│   │       ├── db/migration/ # Migrations Flyway (V1 a V51)
 │   │       ├── static/       # Console de testes (index.html)
-│   │       ├── templates/    # Páginas da carteira pública (Thymeleaf)
+│   │       ├── templates/    # Páginas públicas (Thymeleaf)
 │   │       └── application.properties
-│   └── test/                 # Testes unitários, de controller e de integração
+│   └── test/                 # Testes unitários, de controller, segurança e integração
 ├── Dockerfile
 ├── docker-compose.yml
-├── deploy.sh
 └── pom.xml
 ```
 
@@ -219,13 +291,22 @@ export DB_PASSWORD="sua-senha"
 
 ### 3b. Executar com Docker Compose (Oracle XE + API)
 
+Crie um arquivo `.env` na raiz (ele já está no `.gitignore`):
+
+```env
+JWT_SECRET=uma-chave-secreta-com-no-minimo-32-caracteres
+ADMIN_BOOTSTRAP_KEY=chave-para-criar-o-primeiro-admin
+```
+
+Suba os serviços:
+
 ```bash
 docker compose up --build
 ```
 
-O compose sobe um **Oracle XE 21** e a aplicação na porta **8080**. Defina `JWT_SECRET` e `ADMIN_BOOTSTRAP_KEY` no ambiente antes de subir (ou em um arquivo `.env`, que já está no `.gitignore`).
+O compose sobe um **Oracle XE 21** e a aplicação na porta **8080**. A aplicação roda no container com **usuário não-root**.
 
-> Os valores de usuário e senha do `docker-compose.yml` são apenas para **desenvolvimento local**. Nunca os reutilize em produção.
+> Os valores de usuário e senha do banco no `docker-compose.yml` são apenas para **desenvolvimento local**. Nunca os reutilize em produção.
 
 ### 3c. Gerar o JAR
 
@@ -236,13 +317,13 @@ java -jar target/VetSync-0.0.1-SNAPSHOT.jar
 
 ### 4. Acessar
 
-| Recurso | URL |
-|---------|-----|
-| API | `http://localhost:8080` |
-| Swagger UI | `http://localhost:8080/swagger-ui.html` |
-| OpenAPI (JSON) | `http://localhost:8080/v3/api-docs` |
-| Health check | `http://localhost:8080/actuator/health` |
-| Console de testes | `http://localhost:8080/` |
+| Recurso | URL local | URL online |
+|---------|-----------|------------|
+| API | `http://localhost:8080` | https://app-vetsync-rm563197.azurewebsites.net |
+| Swagger UI | `http://localhost:8080/swagger-ui.html` | https://app-vetsync-rm563197.azurewebsites.net/swagger-ui.html |
+| OpenAPI (JSON) | `http://localhost:8080/v3/api-docs` | https://app-vetsync-rm563197.azurewebsites.net/v3/api-docs |
+| Health check | `http://localhost:8080/actuator/health` | https://app-vetsync-rm563197.azurewebsites.net/actuator/health |
+| Console de testes | `http://localhost:8080/` | https://app-vetsync-rm563197.azurewebsites.net/ |
 
 ### 5. Criar o primeiro administrador
 
@@ -271,10 +352,14 @@ Consulte o Swagger para o formato do corpo e do cabeçalho esperados.
 | `WEB_INVITE_URL` | | `https://vetsync-theta.vercel.app/convite` | Página web que trata o aceite de convites |
 | `PET_CONVITE_EXPIRACAO_HORAS` | | `72` | Validade do convite de acesso ao pet |
 | `CARTEIRA_COMPARTILHADA_EXPIRACAO_DIAS` | | `30` | Validade do link da carteira compartilhada |
+| `PRONTUARIO_COMPARTILHAMENTO_EXPIRACAO_DIAS` | | `7` | Validade do link de prontuário compartilhado |
+| `AGENDA_EXIGE_CONFIRMACAO` | | `false` | Se `true`, todo agendamento novo fica pendente até a clínica confirmar |
 | `NOTIFICACOES_PUSH_HABILITADO` | | `true` | Liga/desliga o envio de push |
 | `NOTIFICACOES_JOB_HABILITADO` | | `true` | Liga/desliga o job de lembretes |
 | `NOTIFICACOES_FUSO_CLINICA` | | `America/Sao_Paulo` | Fuso padrão da clínica |
 | `EXPO_PUSH_URL` | | `https://exp.host/--/api/v2/push/send` | Endpoint do Expo Push |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_ANDROID_CLIENT_ID` / `GOOGLE_IOS_CLIENT_ID` | | — | Audiências aceitas no login Google (vazio = desabilitado) |
+| `APPLE_CLIENT_ID` / `APPLE_SERVICE_ID` | | — | Audiências aceitas no login Apple (vazio = desabilitado) |
 | `MANAGEMENT_ENDPOINT_HEALTH_SHOW_DETAILS` | | `never` | Detalhes do `/actuator/health` |
 
 Parâmetros fixos relevantes: validade dos pontos de **365 dias**, upload máximo de **5 MB** e expiração do JWT de **24 h**.
@@ -282,23 +367,23 @@ Parâmetros fixos relevantes: validade dos pontos de **365 dias**, upload máxim
 ## 🗄 Banco de dados e migrations
 
 - O esquema é gerenciado **exclusivamente pelo Flyway** (`spring.jpa.hibernate.ddl-auto=none`).
-- As migrations ficam em `src/main/resources/db/migration` (de `V1__create_tables.sql` até `V47__...`).
+- As migrations ficam em `src/main/resources/db/migration` (de `V1__create_tables.sql` até `V51__persiste_codigo_vinculo_clinica.sql`).
 - O pool Hikari é limitado a **2 conexões** para respeitar a cota `SESSIONS_PER_USER` do Oracle FIAP.
-- O DDL consolidado está em `scripts/Database/script_bd.sql`.
+- O DDL consolidado (45 tabelas) está em `scripts/Database/script_bd.sql`.
 - Nos testes é usado **H2 em modo Oracle**, sem dependência de banco externo.
 
 ## 📡 Documentação da API
 
-A documentação interativa está no **Swagger UI** (`/swagger-ui.html`). Uma coleção Postman está em [`documentos/JornadaPet_Postman_Collection.json`](documentos/JornadaPet_Postman_Collection.json).
+A documentação interativa está no **Swagger UI** (`/swagger-ui.html`), com esquema de segurança `bearerAuth` (JWT). Uma coleção Postman está em [`documentos/JornadaPet_Postman_Collection.json`](documentos/JornadaPet_Postman_Collection.json).
 
 Resumo dos principais grupos de rotas (consulte o Swagger para o detalhamento):
 
 | Grupo | Base | Destaques |
 |-------|------|-----------|
-| Autenticação | `/auth` | `login`, `registrar`, `logout`, `me`, `esqueci-senha`, `validar-codigo`, `redefinir-senha`, convites |
+| Autenticação | `/auth` | `login`, `registrar`, `logout`, `me`, `esqueci-senha`, `validar-codigo`, `redefinir-senha`, convites, login social |
 | Admin e painel | `/admins`, `/painel` | `bootstrap`, criação de admin, `resumo` |
 | Tutores | `/tutores` | consulta, edição e remoção |
-| Pets | `/pets` | CRUD, busca, raças, foto, por tutor |
+| Pets | `/pets` | CRUD, busca, raças, foto, por tutor, atividades |
 | Saúde do pet | `/pets/{id}/...` | `proximas-acoes`, `carteira-vacinacao`, `perfil-saude`, `peso`, `peso/historico` |
 | Acesso compartilhado | `/pets/{idPet}/acessos`, `/convites` | convites, aceite, permissões, revogação |
 | Carteira compartilhável | `/pets/{idPet}/carteira-compartilhavel`, `/carteiras-publicas/{token}` | link público com expiração |
@@ -334,17 +419,17 @@ A resposta do login traz `token`, `idUsuario`, `email`, `nome`, `perfil` e `temV
 ## 🔐 Segurança
 
 - Autenticação **JWT stateless** e senhas com **BCrypt**
-- `@EnableMethodSecurity` com regras de propriedade por tutor, pet, evento, plano e profissional
+- `@EnableMethodSecurity` com `@PreAuthorize` e regras de propriedade por tutor, pet, evento, plano e profissional
 - **Logout** com blacklist de tokens e invalidação de sessões após troca de senha
 - Recuperação de senha por **código enviado por e-mail**
 - **CORS** restrito a localhost, emulador Android, site oficial e origens configuradas por ambiente
-- Rotas públicas limitadas ao necessário: login, registro, recuperação de senha, convites, carteira pública, retorno por token, health e Swagger
+- Rotas públicas limitadas ao necessário: login, registro, recuperação de senha, convites, carteira pública, retorno por token, health e Swagger; todo o restante exige autenticação
 - Segredos fora do código: variáveis de ambiente e **Azure Key Vault**; arquivos `.env` ignorados pelo Git
 - Container executado com **usuário não-root**
 
 ## 🧪 Testes
 
-O projeto possui testes de **repositório**, **serviço**, **controller**, **segurança (CORS e controle de acesso)** e **integração** (fluxo de autenticação, bootstrap de admin, planos de tratamento e pontos/recompensas).
+O projeto possui testes de **repositório**, **serviço**, **controller (MockMvc)**, **segurança (CORS e controle de acesso)** e **integração** (fluxo de autenticação, bootstrap de admin, planos de tratamento, prontuário e pontos/recompensas), somando cerca de **385 métodos de teste em 59 classes**.
 
 ```bash
 # Executar todos os testes
@@ -367,7 +452,7 @@ Scripts de infraestrutura (Azure CLI) na pasta [`scripts/`](scripts):
 | Script | Função |
 |--------|--------|
 | `1-system.sh` | Cria grupo de recursos, plano e App Service |
-| `2-oracle-fiap.sh` | Configura a conexão Oracle FIAP e segredos |
+| `2-oracle-fiap.sh` | Configura a conexão Oracle FIAP e segredos no Key Vault |
 | `3-backend-deploy.sh` | Faz o deploy do backend |
 | `4-github-oidc.sh` | Configura identidade federada GitHub → Azure para o workflow atual |
 | `sync-oracle-ddl.sh` | Sincroniza o DDL no Oracle |

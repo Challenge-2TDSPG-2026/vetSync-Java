@@ -1,3 +1,0 @@
-2026-08-21 16:17:40.459729-03:00 jdbc[3]: exception
-org.h2.jdbc.JdbcSQLSyntaxErrorException: Table "TUTOR" not found; SQL statement:
-select t1_0.id,t1_0.cpf,t1_0.email,t1_0.nome,t1_0.senha,t1_0.telefone from tutor t1_0 where t1_0.email=? [42102-224]

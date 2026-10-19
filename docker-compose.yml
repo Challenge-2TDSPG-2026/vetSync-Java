@@ -3,12 +3,11 @@ services:
     image: gvenzl/oracle-xe:21-slim
     container_name: oracle-db
     environment:
-      ORACLE_PASSWORD: "OracleRoot123"
+      ORACLE_PASSWORD: "${ORACLE_PASSWORD:-OracleRoot123}"
       APP_USER: "APP_USER"
-      APP_USER_PASSWORD: "AppPassword123"
+      APP_USER_PASSWORD: "${APP_USER_PASSWORD:-AppPassword123}"
     volumes:
       - oracle_data:/opt/oracle/oradata
-      - ./sql:/container-entrypoint-initdb.d
     healthcheck:
       test: ["CMD-SHELL", "healthcheck.sh"]
       interval: 10s
@@ -31,7 +30,10 @@ services:
     environment:
       SPRING_DATASOURCE_URL: "jdbc:oracle:thin:@oracle-db:1521/XEPDB1"
       SPRING_DATASOURCE_USERNAME: "APP_USER"
-      SPRING_DATASOURCE_PASSWORD: "AppPassword123"
+      SPRING_DATASOURCE_PASSWORD: "${APP_USER_PASSWORD:-AppPassword123}"
+      # Obrigatórias: a aplicação não sobe sem elas (jwt.secret e app.admin.bootstrap-key não têm padrão)
+      JWT_SECRET: "${JWT_SECRET:?Defina JWT_SECRET no arquivo .env}"
+      ADMIN_BOOTSTRAP_KEY: "${ADMIN_BOOTSTRAP_KEY:?Defina ADMIN_BOOTSTRAP_KEY no arquivo .env}"
     networks:
       - challenge_net
     restart: on-failure
