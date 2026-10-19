@@ -1,0 +1,291 @@
+src\main\java\br\com\fiap\VetSync\controller\AcaoIaController.java:14:@RequestMapping("/ia/acoes")
+src\main\java\br\com\fiap\VetSync\controller\AcaoIaController.java:17:public class AcaoIaController {
+src\main\java\br\com\fiap\VetSync\controller\AcaoIaController.java:27:    @PostMapping("/preview")
+src\main\java\br\com\fiap\VetSync\controller\AcaoIaController.java:33:    @PostMapping("/{id}/confirmar")
+src\main\java\br\com\fiap\VetSync\controller\AdminController.java:15:@RequestMapping("/admins")
+src\main\java\br\com\fiap\VetSync\controller\AdminController.java:18:public class AdminController {
+src\main\java\br\com\fiap\VetSync\controller\AdminController.java:35:    @PostMapping("/bootstrap")
+src\main\java\br\com\fiap\VetSync\controller\AdminController.java:44:    @PostMapping
+src\main\java\br\com\fiap\VetSync\controller\AgendaController.java:33:@RequestMapping("/agenda")
+src\main\java\br\com\fiap\VetSync\controller\AgendaController.java:36:public class AgendaController {
+src\main\java\br\com\fiap\VetSync\controller\AgendaController.java:46:    @GetMapping("/slots")
+src\main\java\br\com\fiap\VetSync\controller\AgendaController.java:76:    @GetMapping("/servicos")
+src\main\java\br\com\fiap\VetSync\controller\AgendaController.java:82:    @GetMapping("/servicos/{idServico}/slots")
+src\main\java\br\com\fiap\VetSync\controller\AgendaController.java:89:    @PostMapping("/servicos/{idServico}/agendar")
+src\main\java\br\com\fiap\VetSync\controller\AgendaController.java:104:    @GetMapping("/dia")
+src\main\java\br\com\fiap\VetSync\controller\AgendamentoRetornoController.java:20:@RequestMapping("/agendamentos-retorno")
+src\main\java\br\com\fiap\VetSync\controller\AgendamentoRetornoController.java:23:public class AgendamentoRetornoController {
+src\main\java\br\com\fiap\VetSync\controller\AgendamentoRetornoController.java:47:    @GetMapping("/{token}")
+src\main\java\br\com\fiap\VetSync\controller\AgendamentoRetornoController.java:66:    @PostMapping("/{token}/confirmar")
+src\main\java\br\com\fiap\VetSync\controller\AuditoriaController.java:20:@RequestMapping("/auditoria")
+src\main\java\br\com\fiap\VetSync\controller\AuditoriaController.java:22:public class AuditoriaController {
+src\main\java\br\com\fiap\VetSync\controller\AuditoriaController.java:25:    @GetMapping
+src\main\java\br\com\fiap\VetSync\controller\AuditoriaController.java:53:    @GetMapping("/tipos")
+src\main\java\br\com\fiap\VetSync\controller\AuthController.java:34:@RequestMapping("/auth")
+src\main\java\br\com\fiap\VetSync\controller\AuthController.java:37:public class AuthController {
+src\main\java\br\com\fiap\VetSync\controller\AuthController.java:161:    @PostMapping("/login")
+src\main\java\br\com\fiap\VetSync\controller\AuthController.java:183:    @PostMapping("/registrar")
+src\main\java\br\com\fiap\VetSync\controller\AuthController.java:221:    @PostMapping("/esqueci-senha")
+src\main\java\br\com\fiap\VetSync\controller\AuthController.java:231:    @PostMapping("/validar-codigo")
+src\main\java\br\com\fiap\VetSync\controller\AuthController.java:240:    @PostMapping("/redefinir-senha")
+src\main\java\br\com\fiap\VetSync\controller\AuthController.java:248:    @PostMapping("/logout")
+src\main\java\br\com\fiap\VetSync\controller\AuthController.java:257:    @PostMapping("/trocar-senha-inicial")
+src\main\java\br\com\fiap\VetSync\controller\AuthController.java:281:    @GetMapping("/me")
+src\main\java\br\com\fiap\VetSync\controller\CarteiraCompartilhadaController.java:21:@RequestMapping("/pets/{idPet}/carteira-compartilhavel")
+src\main\java\br\com\fiap\VetSync\controller\CarteiraCompartilhadaController.java:24:public class CarteiraCompartilhadaController {
+src\main\java\br\com\fiap\VetSync\controller\CarteiraCompartilhadaController.java:51:    @PostMapping
+src\main\java\br\com\fiap\VetSync\controller\CarteiraCompartilhadaController.java:67:    @GetMapping
+src\main\java\br\com\fiap\VetSync\controller\CarteiraCompartilhadaController.java:82:    @DeleteMapping("/{id}")
+src\main\java\br\com\fiap\VetSync\controller\CarteiraPublicaController.java:28:public class CarteiraPublicaController {
+src\main\java\br\com\fiap\VetSync\controller\CarteiraPublicaController.java:33:    @GetMapping(value = "/carteiras-publicas/{token}", produces = MediaType.TEXT_HTML_VALUE)
+src\main\java\br\com\fiap\VetSync\controller\CarteiraPublicaController.java:65:    @GetMapping("/carteiras-publicas/{token}/foto")
+src\main\java\br\com\fiap\VetSync\controller\CatalogoClinicaController.java:14:@RequestMapping("/clinica-admin/servicos")
+src\main\java\br\com\fiap\VetSync\controller\CatalogoClinicaController.java:17:public class CatalogoClinicaController {
+src\main\java\br\com\fiap\VetSync\controller\CatalogoClinicaController.java:23:    @GetMapping("/modelos")
+src\main\java\br\com\fiap\VetSync\controller\CatalogoClinicaController.java:26:    @GetMapping
+src\main\java\br\com\fiap\VetSync\controller\CatalogoClinicaController.java:29:    @PostMapping
+src\main\java\br\com\fiap\VetSync\controller\CatalogoClinicaController.java:35:    @PutMapping("/{idServico}")
+src\main\java\br\com\fiap\VetSync\controller\ClinicaOperacaoController.java:23:@RequestMapping("/clinica-admin")
+src\main\java\br\com\fiap\VetSync\controller\ClinicaOperacaoController.java:26:public class ClinicaOperacaoController {
+src\main\java\br\com\fiap\VetSync\controller\ClinicaOperacaoController.java:43:    @GetMapping("/agenda/dia")
+src\main\java\br\com\fiap\VetSync\controller\ClinicaOperacaoController.java:57:    @PostMapping("/agenda")
+src\main\java\br\com\fiap\VetSync\controller\ClinicaOperacaoController.java:75:    @PatchMapping("/agenda/{idEvento}/reagendar")
+src\main\java\br\com\fiap\VetSync\controller\ClinicaOperacaoController.java:82:    @PatchMapping("/agenda/{idEvento}/cancelar")
+src\main\java\br\com\fiap\VetSync\controller\ClinicaOperacaoController.java:89:    @GetMapping("/pontos")
+src\main\java\br\com\fiap\VetSync\controller\ClinicaOperacaoController.java:96:    @PatchMapping("/pontos/{idLancamento}/liberar")
+src\main\java\br\com\fiap\VetSync\controller\ClinicaParticipantesController.java:13:@RequestMapping("/clinica-admin")
+src\main\java\br\com\fiap\VetSync\controller\ClinicaParticipantesController.java:16:public class ClinicaParticipantesController {
+src\main\java\br\com\fiap\VetSync\controller\ClinicaParticipantesController.java:27:    @GetMapping("/profissionais")
+src\main\java\br\com\fiap\VetSync\controller\ClinicaParticipantesController.java:39:    @GetMapping("/tutores")
+src\main\java\br\com\fiap\VetSync\controller\ClinicaParticipantesController.java:47:    @GetMapping("/pets")
+src\main\java\br\com\fiap\VetSync\controller\ClinicaPerfilController.java:17:@RequestMapping("/clinica-admin/perfil")
+src\main\java\br\com\fiap\VetSync\controller\ClinicaPerfilController.java:20:public class ClinicaPerfilController {
+src\main\java\br\com\fiap\VetSync\controller\ClinicaPerfilController.java:25:    @GetMapping
+src\main\java\br\com\fiap\VetSync\controller\ClinicaPerfilController.java:28:    @PutMapping
+src\main\java\br\com\fiap\VetSync\controller\ClinicaPerfilController.java:33:    @PutMapping(value = "/logo", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+src\main\java\br\com\fiap\VetSync\controller\ClinicaPerfilController.java:39:    @GetMapping("/logo")
+src\main\java\br\com\fiap\VetSync\controller\EquipeClinicaController.java:17:public class EquipeClinicaController {
+src\main\java\br\com\fiap\VetSync\controller\EquipeClinicaController.java:26:    @PostMapping("/admin-global/clinicas/{idClinica}/dono")
+src\main\java\br\com\fiap\VetSync\controller\EquipeClinicaController.java:34:    @GetMapping("/clinica-admin/equipe")
+src\main\java\br\com\fiap\VetSync\controller\EquipeClinicaController.java:40:    @PostMapping("/clinica-admin/equipe")
+src\main\java\br\com\fiap\VetSync\controller\EquipeClinicaController.java:49:    @PatchMapping("/clinica-admin/equipe/{idAdmin}")
+src\main\java\br\com\fiap\VetSync\controller\EquipeClinicaController.java:56:    @GetMapping("/clinica-admin/cargos")
+src\main\java\br\com\fiap\VetSync\controller\EquipeClinicaController.java:62:    @PostMapping("/clinica-admin/cargos")
+src\main\java\br\com\fiap\VetSync\controller\EquipeClinicaController.java:70:    @PutMapping("/clinica-admin/cargos/{idCargo}")
+src\main\java\br\com\fiap\VetSync\controller\EventoConfirmacaoController.java:14:@RequestMapping("/eventos")
+src\main\java\br\com\fiap\VetSync\controller\EventoConfirmacaoController.java:17:public class EventoConfirmacaoController {
+src\main\java\br\com\fiap\VetSync\controller\EventoConfirmacaoController.java:25:    @PatchMapping("/{id}/confirmar")
+src\main\java\br\com\fiap\VetSync\controller\EventoConfirmacaoController.java:33:    @PatchMapping("/{id}/recusar")
+src\main\java\br\com\fiap\VetSync\controller\EventoController.java:34:@RequestMapping("/eventos")
+src\main\java\br\com\fiap\VetSync\controller\EventoController.java:37:public class EventoController {
+src\main\java\br\com\fiap\VetSync\controller\EventoController.java:154:    @PostMapping
+src\main\java\br\com\fiap\VetSync\controller\EventoController.java:172:    @PostMapping("/estetica")
+src\main\java\br\com\fiap\VetSync\controller\EventoController.java:193:    @GetMapping
+src\main\java\br\com\fiap\VetSync\controller\EventoController.java:207:    @GetMapping("/{id}")
+src\main\java\br\com\fiap\VetSync\controller\EventoController.java:214:    @GetMapping("/{id}/detalhes")
+src\main\java\br\com\fiap\VetSync\controller\EventoController.java:220:    @GetMapping("/{id}/historico")
+src\main\java\br\com\fiap\VetSync\controller\EventoController.java:226:    @PatchMapping("/{id}/reagendar")
+src\main\java\br\com\fiap\VetSync\controller\EventoController.java:232:    @PostMapping(value = "/{id}/anexos", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+src\main\java\br\com\fiap\VetSync\controller\EventoController.java:240:    @GetMapping("/{id}/anexos")
+src\main\java\br\com\fiap\VetSync\controller\EventoController.java:246:    @GetMapping("/{id}/anexos/{idAnexo}")
+src\main\java\br\com\fiap\VetSync\controller\EventoController.java:255:    @DeleteMapping("/{id}/anexos/{idAnexo}")
+src\main\java\br\com\fiap\VetSync\controller\EventoController.java:274:    @PatchMapping("/{id}/concluir")
+src\main\java\br\com\fiap\VetSync\controller\EventoController.java:282:    @PatchMapping("/{id}/cancelar")
+src\main\java\br\com\fiap\VetSync\controller\EventoController.java:293:    @DeleteMapping("/{id}")
+src\main\java\br\com\fiap\VetSync\controller\EventoController.java:301:    @GetMapping("/pet/{idPet}/gasto-total")
+src\main\java\br\com\fiap\VetSync\controller\EventoController.java:308:    @GetMapping("/pet/{idPet}/alertas")
+src\main\java\br\com\fiap\VetSync\controller\GlobalClinicaController.java:16:@RequestMapping("/admin-global/clinicas")
+src\main\java\br\com\fiap\VetSync\controller\GlobalClinicaController.java:19:public class GlobalClinicaController {
+src\main\java\br\com\fiap\VetSync\controller\GlobalClinicaController.java:28:    @PostMapping
+src\main\java\br\com\fiap\VetSync\controller\ListaEsperaController.java:24:@RequestMapping("/agenda/espera")
+src\main\java\br\com\fiap\VetSync\controller\ListaEsperaController.java:28:public class ListaEsperaController {
+src\main\java\br\com\fiap\VetSync\controller\ListaEsperaController.java:65:    @PostMapping
+src\main\java\br\com\fiap\VetSync\controller\ListaEsperaController.java:80:    @GetMapping
+src\main\java\br\com\fiap\VetSync\controller\ListaEsperaController.java:86:    @DeleteMapping("/{id}")
+src\main\java\br\com\fiap\VetSync\controller\MedicamentoController.java:22:@RequestMapping("/medicamentos")
+src\main\java\br\com\fiap\VetSync\controller\MedicamentoController.java:25:public class MedicamentoController {
+src\main\java\br\com\fiap\VetSync\controller\MedicamentoController.java:62:    @PostMapping
+src\main\java\br\com\fiap\VetSync\controller\MedicamentoController.java:71:    @GetMapping
+src\main\java\br\com\fiap\VetSync\controller\MedicamentoController.java:88:    @GetMapping("/{id}")
+src\main\java\br\com\fiap\VetSync\controller\MedicamentoController.java:94:    @PutMapping("/{id}")
+src\main\java\br\com\fiap\VetSync\controller\MedicamentoController.java:109:    @DeleteMapping("/{id}")
+src\main\java\br\com\fiap\VetSync\controller\MensagensClinicaController.java:14:@RequestMapping("/mensagens-clinica")
+src\main\java\br\com\fiap\VetSync\controller\MensagensClinicaController.java:17:public class MensagensClinicaController {
+src\main\java\br\com\fiap\VetSync\controller\MensagensClinicaController.java:22:    @GetMapping("/conversas")
+src\main\java\br\com\fiap\VetSync\controller\MensagensClinicaController.java:27:    @PostMapping("/conversas")
+src\main\java\br\com\fiap\VetSync\controller\MensagensClinicaController.java:33:    @GetMapping("/conversas/{id}/mensagens")
+src\main\java\br\com\fiap\VetSync\controller\MensagensClinicaController.java:38:    @PostMapping("/conversas/{id}/mensagens")
+src\main\java\br\com\fiap\VetSync\controller\MinhaClinicaController.java:13:@RequestMapping("/minha-clinica")
+src\main\java\br\com\fiap\VetSync\controller\MinhaClinicaController.java:16:public class MinhaClinicaController {
+src\main\java\br\com\fiap\VetSync\controller\MinhaClinicaController.java:19:    @GetMapping("/perfil")
+src\main\java\br\com\fiap\VetSync\controller\MinhaClinicaController.java:22:    @GetMapping("/logo")
+src\main\java\br\com\fiap\VetSync\controller\NotificacaoController.java:27:@RequestMapping("/notificacoes")
+src\main\java\br\com\fiap\VetSync\controller\NotificacaoController.java:31:public class NotificacaoController {
+src\main\java\br\com\fiap\VetSync\controller\NotificacaoController.java:49:    @PostMapping("/dispositivos")
+src\main\java\br\com\fiap\VetSync\controller\NotificacaoController.java:57:    @DeleteMapping("/dispositivos/{token}")
+src\main\java\br\com\fiap\VetSync\controller\NotificacaoController.java:64:    @GetMapping
+src\main\java\br\com\fiap\VetSync\controller\NotificacaoController.java:73:    @PatchMapping("/{id}/lida")
+src\main\java\br\com\fiap\VetSync\controller\NotificacaoController.java:79:    @PatchMapping("/lidas")
+src\main\java\br\com\fiap\VetSync\controller\PainelAdminController.java:15:@RequestMapping("/painel")
+src\main\java\br\com\fiap\VetSync\controller\PainelAdminController.java:18:public class PainelAdminController {
+src\main\java\br\com\fiap\VetSync\controller\PainelAdminController.java:22:    @GetMapping("/resumo")
+src\main\java\br\com\fiap\VetSync\controller\PetAtividadeController.java:19:public class PetAtividadeController {
+src\main\java\br\com\fiap\VetSync\controller\PetAtividadeController.java:26:    @GetMapping("/pets/{idPet}/atividades")
+src\main\java\br\com\fiap\VetSync\controller\PetController.java:30:@RequestMapping("/pets")
+src\main\java\br\com\fiap\VetSync\controller\PetController.java:33:public class PetController {
+src\main\java\br\com\fiap\VetSync\controller\PetController.java:102:    @GetMapping("/racas")
+src\main\java\br\com\fiap\VetSync\controller\PetController.java:109:    @PostMapping
+src\main\java\br\com\fiap\VetSync\controller\PetController.java:124:    @GetMapping
+src\main\java\br\com\fiap\VetSync\controller\PetController.java:135:    @GetMapping("/{id:\\d+}")
+src\main\java\br\com\fiap\VetSync\controller\PetController.java:144:    @GetMapping("/buscar")
+src\main\java\br\com\fiap\VetSync\controller\PetController.java:156:    @GetMapping("/tutor/{idTutor}")
+src\main\java\br\com\fiap\VetSync\controller\PetController.java:165:    @PutMapping("/{id:\\d+}")
+src\main\java\br\com\fiap\VetSync\controller\PetController.java:179:    @PutMapping(value = "/{id:\\d+}/foto", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+src\main\java\br\com\fiap\VetSync\controller\PetController.java:189:    @DeleteMapping("/{id:\\d+}/foto")
+src\main\java\br\com\fiap\VetSync\controller\PetController.java:197:    @GetMapping("/{id:\\d+}/foto")
+src\main\java\br\com\fiap\VetSync\controller\PetController.java:215:    @DeleteMapping("/{id:\\d+}")
+src\main\java\br\com\fiap\VetSync\controller\PetConviteController.java:38:public class PetConviteController {
+src\main\java\br\com\fiap\VetSync\controller\PetConviteController.java:166:    @PostMapping("/responsaveis/convites")
+src\main\java\br\com\fiap\VetSync\controller\PetConviteController.java:184:    @GetMapping("/responsaveis")
+src\main\java\br\com\fiap\VetSync\controller\PetConviteController.java:192:    @DeleteMapping("/responsaveis/{idResponsavel}")
+src\main\java\br\com\fiap\VetSync\controller\PetConviteController.java:205:    @PostMapping("/pets/{idPet}/convites")
+src\main\java\br\com\fiap\VetSync\controller\PetConviteController.java:222:    @GetMapping("/auth/convites/{token}")
+src\main\java\br\com\fiap\VetSync\controller\PetConviteController.java:237:    @PostMapping("/auth/registrar-convite")
+src\main\java\br\com\fiap\VetSync\controller\PetConviteController.java:253:    @GetMapping("/pets/{idPet}/acessos")
+src\main\java\br\com\fiap\VetSync\controller\PetConviteController.java:260:    @DeleteMapping("/pets/{idPet}/acessos/{idAcesso}")
+src\main\java\br\com\fiap\VetSync\controller\PetConviteController.java:268:    @PatchMapping("/pets/{idPet}/acessos/{idAcesso}")
+src\main\java\br\com\fiap\VetSync\controller\PetConviteController.java:275:    @GetMapping("/pets/{idPet}/convites")
+src\main\java\br\com\fiap\VetSync\controller\PetConviteController.java:281:    @PostMapping("/convites/{token}/aceitar")
+src\main\java\br\com\fiap\VetSync\controller\PetConviteController.java:289:    @DeleteMapping("/pets/{idPet}/convites/{idConvite}")
+src\main\java\br\com\fiap\VetSync\controller\PetSaudeController.java:21:@RequestMapping("/pets")
+src\main\java\br\com\fiap\VetSync\controller\PetSaudeController.java:24:public class PetSaudeController {
+src\main\java\br\com\fiap\VetSync\controller\PetSaudeController.java:53:    @GetMapping("/{id:\\d+}/proximas-acoes")
+src\main\java\br\com\fiap\VetSync\controller\PetSaudeController.java:60:    @PostMapping("/tipos-vacina")
+src\main\java\br\com\fiap\VetSync\controller\PetSaudeController.java:72:    @GetMapping("/{id:\\d+}/carteira-vacinacao")
+src\main\java\br\com\fiap\VetSync\controller\PetSaudeController.java:100:    @PostMapping("/{id:\\d+}/carteira-vacinacao")
+src\main\java\br\com\fiap\VetSync\controller\PetSaudeController.java:113:    @GetMapping("/{id:\\d+}/perfil-saude")
+src\main\java\br\com\fiap\VetSync\controller\PetSaudeController.java:119:    @PutMapping("/{id:\\d+}/perfil-saude")
+src\main\java\br\com\fiap\VetSync\controller\PetSaudeController.java:129:    @PostMapping("/{id:\\d+}/peso")
+src\main\java\br\com\fiap\VetSync\controller\PetSaudeController.java:136:    @GetMapping("/{id:\\d+}/peso/historico")
+src\main\java\br\com\fiap\VetSync\controller\PlanoTratamentoController.java:27:@RequestMapping("/planos")
+src\main\java\br\com\fiap\VetSync\controller\PlanoTratamentoController.java:30:public class PlanoTratamentoController {
+src\main\java\br\com\fiap\VetSync\controller\PlanoTratamentoController.java:87:    @PostMapping
+src\main\java\br\com\fiap\VetSync\controller\PlanoTratamentoController.java:99:    @GetMapping
+src\main\java\br\com\fiap\VetSync\controller\PlanoTratamentoController.java:108:    @GetMapping("/{id}")
+src\main\java\br\com\fiap\VetSync\controller\PlanoTratamentoController.java:115:    @PatchMapping("/itens/{idItem}/agendar")
+src\main\java\br\com\fiap\VetSync\controller\PontosController.java:26:@RequestMapping("/pontos")
+src\main\java\br\com\fiap\VetSync\controller\PontosController.java:30:public class PontosController {
+src\main\java\br\com\fiap\VetSync\controller\PontosController.java:137:    @GetMapping
+src\main\java\br\com\fiap\VetSync\controller\PontosController.java:153:    @GetMapping("/saldos")
+src\main\java\br\com\fiap\VetSync\controller\PontosController.java:166:    @PatchMapping("/{id}/liberar")
+src\main\java\br\com\fiap\VetSync\controller\PontosController.java:177:    @PatchMapping("/{id}/bloquear")
+src\main\java\br\com\fiap\VetSync\controller\PontosController.java:188:    @PatchMapping("/{id}/desbloquear")
+src\main\java\br\com\fiap\VetSync\controller\PreferenciaNotificacaoController.java:13:@RequestMapping("/usuarios/preferencias/notificacoes")
+src\main\java\br\com\fiap\VetSync\controller\PreferenciaNotificacaoController.java:17:public class PreferenciaNotificacaoController {
+src\main\java\br\com\fiap\VetSync\controller\PreferenciaNotificacaoController.java:29:    @GetMapping
+src\main\java\br\com\fiap\VetSync\controller\PreferenciaNotificacaoController.java:34:    @PutMapping
+src\main\java\br\com\fiap\VetSync\controller\PrescricaoController.java:30:@RequestMapping("/prescricoes")
+src\main\java\br\com\fiap\VetSync\controller\PrescricaoController.java:33:public class PrescricaoController {
+src\main\java\br\com\fiap\VetSync\controller\PrescricaoController.java:93:    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+src\main\java\br\com\fiap\VetSync\controller\PrescricaoController.java:110:    @GetMapping
+src\main\java\br\com\fiap\VetSync\controller\PrescricaoController.java:124:    @GetMapping("/{id}")
+src\main\java\br\com\fiap\VetSync\controller\PrescricaoController.java:139:    @PatchMapping("/{id}/liberar")
+src\main\java\br\com\fiap\VetSync\controller\ProfissionalEsteticaController.java:27:@RequestMapping("/profissionais-estetica")
+src\main\java\br\com\fiap\VetSync\controller\ProfissionalEsteticaController.java:30:public class ProfissionalEsteticaController {
+src\main\java\br\com\fiap\VetSync\controller\ProfissionalEsteticaController.java:68:    @GetMapping
+src\main\java\br\com\fiap\VetSync\controller\ProfissionalEsteticaController.java:74:    @GetMapping("/disponiveis")
+src\main\java\br\com\fiap\VetSync\controller\ProfissionalEsteticaController.java:81:    @GetMapping("/{id}")
+src\main\java\br\com\fiap\VetSync\controller\ProfissionalEsteticaController.java:87:    @PostMapping
+src\main\java\br\com\fiap\VetSync\controller\ProfissionalEsteticaController.java:100:    @PutMapping("/{id}")
+src\main\java\br\com\fiap\VetSync\controller\ProfissionalEsteticaController.java:114:    @PutMapping("/{id}/servicos")
+src\main\java\br\com\fiap\VetSync\controller\ProfissionalEsteticaController.java:143:    @GetMapping("/{id}/disponibilidade")
+src\main\java\br\com\fiap\VetSync\controller\ProfissionalEsteticaController.java:149:    @PostMapping("/{id}/disponibilidade")
+src\main\java\br\com\fiap\VetSync\controller\ProfissionalEsteticaController.java:157:    @DeleteMapping("/{id}/disponibilidade/{idDisponibilidade}")
+src\main\java\br\com\fiap\VetSync\controller\ProfissionalEsteticaController.java:182:    @GetMapping("/{id}/bloqueios")
+src\main\java\br\com\fiap\VetSync\controller\ProfissionalEsteticaController.java:188:    @PostMapping("/{id}/bloqueios")
+src\main\java\br\com\fiap\VetSync\controller\ProfissionalEsteticaController.java:196:    @DeleteMapping("/{id}/bloqueios/{idBloqueio}")
+src\main\java\br\com\fiap\VetSync\controller\ProntuarioController.java:40:@RequestMapping("/pets/{idPet}/prontuario")
+src\main\java\br\com\fiap\VetSync\controller\ProntuarioController.java:44:public class ProntuarioController {
+src\main\java\br\com\fiap\VetSync\controller\ProntuarioController.java:73:    @GetMapping
+src\main\java\br\com\fiap\VetSync\controller\ProntuarioController.java:88:    @GetMapping("/exportar")
+src\main\java\br\com\fiap\VetSync\controller\ProntuarioController.java:124:    @PostMapping("/compartilhamentos")
+src\main\java\br\com\fiap\VetSync\controller\ProntuarioController.java:146:    @GetMapping("/compartilhamentos")
+src\main\java\br\com\fiap\VetSync\controller\ProntuarioController.java:154:    @DeleteMapping("/compartilhamentos/{idCompartilhamento}")
+src\main\java\br\com\fiap\VetSync\controller\ProntuarioExameController.java:25:@RequestMapping("/pets/{idPet}/exames")
+src\main\java\br\com\fiap\VetSync\controller\ProntuarioExameController.java:28:public class ProntuarioExameController {
+src\main\java\br\com\fiap\VetSync\controller\ProntuarioExameController.java:43:    @PostMapping
+src\main\java\br\com\fiap\VetSync\controller\ProntuarioExameController.java:57:    @PostMapping(value = "/{idExame}/arquivo", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+src\main\java\br\com\fiap\VetSync\controller\ProntuarioExameController.java:65:    @GetMapping
+src\main\java\br\com\fiap\VetSync\controller\ProntuarioExameController.java:72:    @GetMapping("/{idExame}/arquivo")
+src\main\java\br\com\fiap\VetSync\controller\ProntuarioExameController.java:85:    @DeleteMapping("/{idExame}")
+src\main\java\br\com\fiap\VetSync\controller\ProntuarioOrientacaoController.java:20:@RequestMapping("/eventos/{idEvento}/orientacoes")
+src\main\java\br\com\fiap\VetSync\controller\ProntuarioOrientacaoController.java:23:public class ProntuarioOrientacaoController {
+src\main\java\br\com\fiap\VetSync\controller\ProntuarioOrientacaoController.java:32:    @PostMapping
+src\main\java\br\com\fiap\VetSync\controller\ProntuarioOrientacaoController.java:42:    @GetMapping
+src\main\java\br\com\fiap\VetSync\controller\ProntuarioOrientacaoController.java:49:    @DeleteMapping("/{idOrientacao}")
+src\main\java\br\com\fiap\VetSync\controller\ProntuarioPublicoController.java:28:public class ProntuarioPublicoController {
+src\main\java\br\com\fiap\VetSync\controller\ProntuarioPublicoController.java:33:    @GetMapping(value = "/prontuarios-publicos/{token}", produces = MediaType.TEXT_HTML_VALUE)
+src\main\java\br\com\fiap\VetSync\controller\ProntuarioPublicoController.java:51:    @GetMapping(value = "/prontuarios-publicos/{token}/dados", produces = MediaType.APPLICATION_JSON_VALUE)
+src\main\java\br\com\fiap\VetSync\controller\ProntuarioPublicoController.java:69:    @GetMapping("/prontuarios-publicos/{token}/exames/{idExame}/arquivo")
+src\main\java\br\com\fiap\VetSync\controller\RecompensaController.java:33:@RequestMapping("/recompensas")
+src\main\java\br\com\fiap\VetSync\controller\RecompensaController.java:36:public class RecompensaController {
+src\main\java\br\com\fiap\VetSync\controller\RecompensaController.java:167:    @GetMapping
+src\main\java\br\com\fiap\VetSync\controller\RecompensaController.java:188:    @GetMapping("/todas")
+src\main\java\br\com\fiap\VetSync\controller\RecompensaController.java:199:    @GetMapping("/{id}")
+src\main\java\br\com\fiap\VetSync\controller\RecompensaController.java:207:    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+src\main\java\br\com\fiap\VetSync\controller\RecompensaController.java:223:    @PutMapping(value = "/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+src\main\java\br\com\fiap\VetSync\controller\RecompensaController.java:240:    @DeleteMapping("/{id}")
+src\main\java\br\com\fiap\VetSync\controller\RecompensaController.java:254:    @GetMapping("/{id}/imagem")
+src\main\java\br\com\fiap\VetSync\controller\RecompensaController.java:267:    @GetMapping("/saldo")
+src\main\java\br\com\fiap\VetSync\controller\RecompensaController.java:279:    @PatchMapping("/{id}/resgatar")
+src\main\java\br\com\fiap\VetSync\controller\RecompensaController.java:286:    @GetMapping("/resgates")
+src\main\java\br\com\fiap\VetSync\controller\RecompensaController.java:300:    @PatchMapping("/resgates/{idResgate}/validar")
+src\main\java\br\com\fiap\VetSync\controller\RelatorioClinicaController.java:14:@RequestMapping("/veterinarios/me/relatorios")
+src\main\java\br\com\fiap\VetSync\controller\RelatorioClinicaController.java:17:public class RelatorioClinicaController {
+src\main\java\br\com\fiap\VetSync\controller\RelatorioClinicaController.java:20:    @GetMapping("/resumo")
+src\main\java\br\com\fiap\VetSync\controller\RelatorioEsteticaController.java:24:@RequestMapping("/relatorios-estetica")
+src\main\java\br\com\fiap\VetSync\controller\RelatorioEsteticaController.java:27:public class RelatorioEsteticaController {
+src\main\java\br\com\fiap\VetSync\controller\RelatorioEsteticaController.java:76:    @PostMapping
+src\main\java\br\com\fiap\VetSync\controller\RelatorioEsteticaController.java:87:    @GetMapping
+src\main\java\br\com\fiap\VetSync\controller\RelatorioEsteticaController.java:101:    @GetMapping("/{id}")
+src\main\java\br\com\fiap\VetSync\controller\RelatorioEsteticaController.java:116:    @PatchMapping("/{id}/liberar")
+src\main\java\br\com\fiap\VetSync\controller\ServicoEsteticaController.java:13:@RequestMapping("/servicos-estetica")
+src\main\java\br\com\fiap\VetSync\controller\ServicoEsteticaController.java:16:public class ServicoEsteticaController {
+src\main\java\br\com\fiap\VetSync\controller\ServicoEsteticaController.java:26:    @GetMapping
+src\main\java\br\com\fiap\VetSync\controller\ServicoEsteticaController.java:32:    @GetMapping("/base")
+src\main\java\br\com\fiap\VetSync\controller\ServicoEsteticaController.java:38:    @GetMapping("/extras")
+src\main\java\br\com\fiap\VetSync\controller\SocialAuthController.java:18:@RequestMapping("/auth")
+src\main\java\br\com\fiap\VetSync\controller\SocialAuthController.java:21:public class SocialAuthController {
+src\main\java\br\com\fiap\VetSync\controller\SocialAuthController.java:69:    @PostMapping("/social-login")
+src\main\java\br\com\fiap\VetSync\controller\SocialAuthController.java:82:    @PostMapping("/social-registrar")
+src\main\java\br\com\fiap\VetSync\controller\SocialAuthController.java:90:    @PostMapping("/social-vincular")
+src\main\java\br\com\fiap\VetSync\controller\TipoEventoController.java:15:@RequestMapping("/tipos-evento")
+src\main\java\br\com\fiap\VetSync\controller\TipoEventoController.java:18:public class TipoEventoController {
+src\main\java\br\com\fiap\VetSync\controller\TipoEventoController.java:42:    @GetMapping
+src\main\java\br\com\fiap\VetSync\controller\TutorController.java:19:@RequestMapping("/tutores")
+src\main\java\br\com\fiap\VetSync\controller\TutorController.java:22:public class TutorController {
+src\main\java\br\com\fiap\VetSync\controller\TutorController.java:94:    @GetMapping("/{id}")
+src\main\java\br\com\fiap\VetSync\controller\TutorController.java:101:    @GetMapping
+src\main\java\br\com\fiap\VetSync\controller\TutorController.java:110:    @PutMapping("/{id}")
+src\main\java\br\com\fiap\VetSync\controller\TutorController.java:128:    @DeleteMapping("/{id}")
+src\main\java\br\com\fiap\VetSync\controller\VeterinarioController.java:26:@RequestMapping("/veterinarios")
+src\main\java\br\com\fiap\VetSync\controller\VeterinarioController.java:29:public class VeterinarioController {
+src\main\java\br\com\fiap\VetSync\controller\VeterinarioController.java:76:    @GetMapping
+src\main\java\br\com\fiap\VetSync\controller\VeterinarioController.java:82:    @GetMapping("/{id}")
+src\main\java\br\com\fiap\VetSync\controller\VeterinarioController.java:88:    @PostMapping
+src\main\java\br\com\fiap\VetSync\controller\VeterinarioController.java:101:    @PutMapping("/{id}")
+src\main\java\br\com\fiap\VetSync\controller\VeterinarioController.java:130:    @GetMapping("/{id}/disponibilidade")
+src\main\java\br\com\fiap\VetSync\controller\VeterinarioController.java:136:    @PostMapping("/{id}/disponibilidade")
+src\main\java\br\com\fiap\VetSync\controller\VeterinarioController.java:144:    @DeleteMapping("/{id}/disponibilidade/{idDisponibilidade}")
+src\main\java\br\com\fiap\VetSync\controller\VeterinarioController.java:169:    @GetMapping("/{id}/bloqueios")
+src\main\java\br\com\fiap\VetSync\controller\VeterinarioController.java:175:    @PostMapping("/{id}/bloqueios")
+src\main\java\br\com\fiap\VetSync\controller\VeterinarioController.java:183:    @DeleteMapping("/{id}/bloqueios/{idBloqueio}")
+src\main\java\br\com\fiap\VetSync\controller\VinculoClinicaController.java:22:@RequestMapping("/vinculos-clinica")
+src\main\java\br\com\fiap\VetSync\controller\VinculoClinicaController.java:25:public class VinculoClinicaController {
+src\main\java\br\com\fiap\VetSync\controller\VinculoClinicaController.java:38:    @PostMapping("/validar-codigo")
+src\main\java\br\com\fiap\VetSync\controller\VinculoClinicaController.java:44:    @PostMapping("/trocar")
+src\main\java\br\com\fiap\VetSync\controller\VinculoClinicaController.java:51:    @GetMapping("/me")
+src\main\java\br\com\fiap\VetSync\controller\VinculoClinicaController.java:61:    @GetMapping("/clinicas")
+src\main\java\br\com\fiap\VetSync\controller\VinculoClinicaController.java:73:    @PostMapping("/clinicas/{idClinica}/codigo")
+src\main\java\br\com\fiap\VetSync\controller\VinculoClinicaController.java:81:    @DeleteMapping("/clinicas/{idClinica}/codigo")
+src\main\java\br\com\fiap\VetSync\controller\VinculoClinicaController.java:88:    @PatchMapping("/clinicas/{idClinica}/contrato")
