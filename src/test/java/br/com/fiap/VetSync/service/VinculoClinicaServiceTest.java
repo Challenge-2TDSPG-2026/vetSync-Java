@@ -89,7 +89,8 @@ class VinculoClinicaServiceTest {
 
         assertThat(emitido.codigo()).hasSize(18).matches("[A-HJ-NP-Z2-9]+");
         assertThat(emitido.clinica()).isEqualTo(ativa);
-        verify(codigoRepository).saveAndFlush(any());
+        verify(codigoRepository).saveAndFlush(org.mockito.ArgumentMatchers.argThat(codigo ->
+                emitido.codigo().equals(codigo.getDsCodigo())));
     }
 
     @Test
@@ -101,6 +102,7 @@ class VinculoClinicaServiceTest {
         CodigoVinculoClinicaRepository.CodigoAtivoView view = new CodigoVinculoClinicaRepository.CodigoAtivoView() {
             public Long getIdClinica() { return 1L; }
             public LocalDateTime getDtCriacao() { return emitidoEm; }
+            public String getDsCodigo() { return "ABCDEFGHJKLMNPQR23"; }
         };
         when(clinicaRepository.findAll(any(org.springframework.data.domain.Sort.class))).thenReturn(List.of(comCodigo, semCodigo));
         when(codigoRepository.findCodigosAtivos()).thenReturn(List.of(view));
@@ -110,6 +112,7 @@ class VinculoClinicaServiceTest {
         assertThat(lista).hasSize(2);
         assertThat(lista.get(0).codigoAtivo()).isTrue();
         assertThat(lista.get(0).codigoEmitidoEm()).isEqualTo(emitidoEm);
+        assertThat(lista.get(0).codigo()).isEqualTo("ABCDEFGHJKLMNPQR23");
         assertThat(lista.get(1).codigoAtivo()).isFalse();
         assertThat(lista.get(1).codigoEmitidoEm()).isNull();
     }

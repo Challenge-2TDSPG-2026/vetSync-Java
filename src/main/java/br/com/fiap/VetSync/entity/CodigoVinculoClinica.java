@@ -21,6 +21,9 @@ public class CodigoVinculoClinica {
     @Column(name = "ds_codigo_hash", nullable = false, unique = true, length = 64)
     private String dsCodigoHash;
 
+    @Column(name = "ds_codigo", length = 18)
+    private String dsCodigo;
+
     @Builder.Default @Column(name = "st_ativo", nullable = false, length = 1)
     private String stAtivo = "A";
 

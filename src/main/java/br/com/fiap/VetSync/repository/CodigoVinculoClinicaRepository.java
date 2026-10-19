@@ -21,9 +21,10 @@ public interface CodigoVinculoClinicaRepository extends JpaRepository<CodigoVinc
     interface CodigoAtivoView {
         Long getIdClinica();
         LocalDateTime getDtCriacao();
+        String getDsCodigo();
     }
 
-    @Query("select c.clinica.idClinica as idClinica, c.dtCriacao as dtCriacao from CodigoVinculoClinica c "
+    @Query("select c.clinica.idClinica as idClinica, c.dtCriacao as dtCriacao, c.dsCodigo as dsCodigo from CodigoVinculoClinica c "
             + "where c.stAtivo = 'A' and c.dtRevogacao is null")
     List<CodigoAtivoView> findCodigosAtivos();
 }

@@ -38,17 +38,22 @@ public class VinculoClinicaService {
 
     public record CodigoEmitido(String codigo, Clinica clinica) {}
     public record CodigoValidado(String sessaoVinculo, Clinica clinica, LocalDateTime expiraEm) {}
-    public record ClinicaListada(Clinica clinica, boolean codigoAtivo, LocalDateTime codigoEmitidoEm) {}
+    public record ClinicaListada(Clinica clinica, boolean codigoAtivo, LocalDateTime codigoEmitidoEm, String codigo) {}
     private record SessaoConsumida(Clinica clinica, CodigoVinculoClinica codigo) {}
 
     public List<ClinicaListada> listarClinicas() {
-        Map<Long, LocalDateTime> emissaoPorClinica = new HashMap<>();
-        codigoRepository.findCodigosAtivos().forEach(v -> emissaoPorClinica.put(v.getIdClinica(), v.getDtCriacao()));
+        Map<Long, CodigoAtivo> codigoPorClinica = new HashMap<>();
+        codigoRepository.findCodigosAtivos().forEach(v -> codigoPorClinica.put(v.getIdClinica(), new CodigoAtivo(v.getDtCriacao(), v.getDsCodigo())));
         return clinicaRepository.findAll(Sort.by(Sort.Direction.ASC, "nmClinica")).stream()
-                .map(c -> new ClinicaListada(c, emissaoPorClinica.containsKey(c.getIdClinica()),
-                        emissaoPorClinica.get(c.getIdClinica())))
+                .map(c -> {
+                    CodigoAtivo codigo = codigoPorClinica.get(c.getIdClinica());
+                    return new ClinicaListada(c, codigo != null, codigo != null ? codigo.emitidoEm() : null,
+                            codigo != null ? codigo.valor() : null);
+                })
                 .toList();
     }
+
+    private record CodigoAtivo(LocalDateTime emitidoEm, String valor) {}
 
     @Transactional
     public CodigoEmitido emitirCodigo(Long idClinica) {
@@ -60,7 +65,8 @@ public class VinculoClinicaService {
         // Emitir outro código revoga o anterior (e as sessões ainda abertas dele).
         revogar(codigoRepository.findByClinica_IdClinicaAndStAtivo(idClinica, "A"), "substituído por novo código");
         String codigo = gerarSegredo(18);
-        CodigoVinculoClinica emitido = codigoRepository.saveAndFlush(CodigoVinculoClinica.builder().clinica(clinica).dsCodigoHash(hash(codigo)).build());
+        CodigoVinculoClinica emitido = codigoRepository.saveAndFlush(CodigoVinculoClinica.builder()
+                .clinica(clinica).dsCodigoHash(hash(codigo)).dsCodigo(codigo).build());
         // O código em si (e o hash) nunca vão para a auditoria.
         auditar(AuditoriaTipos.CODIGO_VINCULO, emitido.getIdCodigoVinculo(), "CODIGO_EMITIDO", clinica, null, "ATIVO", null, null);
         return new CodigoEmitido(codigo, clinica);
