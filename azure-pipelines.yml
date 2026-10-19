@@ -1,0 +1,97 @@
+trigger:
+  branches:
+    include:
+      - main
+
+pr:
+  branches:
+    include:
+      - main
+
+pool:
+  vmImage: ubuntu-latest
+
+stages:
+  - stage: Build
+    displayName: Build and test
+    jobs:
+      - job: BuildAndTest
+        displayName: Build with Java 17 and run tests
+        steps:
+          - checkout: self
+
+          - bash: |
+              set -euo pipefail
+              if [[ -z "${JAVA_HOME_17_X64:-}" ]]; then
+                echo "Java 17 is not available on this Azure Pipelines agent." >&2
+                exit 1
+              fi
+              export JAVA_HOME="$JAVA_HOME_17_X64"
+              export PATH="$JAVA_HOME/bin:$PATH"
+              java -version
+              chmod +x ./mvnw
+              ./mvnw --batch-mode clean verify
+            displayName: Build and run tests
+
+          - bash: |
+              set -euo pipefail
+              jar_path=$(find target -maxdepth 1 -type f -name '*.jar' ! -name '*-plain.jar' -print -quit)
+              if [[ -z "$jar_path" ]]; then
+                echo "No executable JAR was generated." >&2
+                exit 1
+              fi
+              mkdir -p "$(Build.ArtifactStagingDirectory)/artifact"
+              cp "$jar_path" "$(Build.ArtifactStagingDirectory)/artifact/app.jar"
+              cd "$(Build.ArtifactStagingDirectory)/artifact"
+              sha256sum app.jar > app.jar.sha256
+            displayName: Prepare deployment artifact
+
+          - task: PublishPipelineArtifact@1
+            displayName: Publish artifact for this run
+            inputs:
+              targetPath: $(Build.ArtifactStagingDirectory)/artifact
+              artifact: vetsync
+              publishLocation: pipeline
+
+  - stage: Deploy
+    displayName: Deploy to Azure App Service
+    dependsOn: Build
+    condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'), ne(variables['Build.Reason'], 'PullRequest'))
+    jobs:
+      - job: DeployToAzure
+        displayName: Deploy and check health
+        steps:
+          - task: DownloadPipelineArtifact@2
+            displayName: Download artifact from this run
+            inputs:
+              buildType: current
+              artifactName: vetsync
+              targetPath: $(Pipeline.Workspace)/artifact
+
+          - bash: sha256sum --check app.jar.sha256
+            workingDirectory: $(Pipeline.Workspace)/artifact
+            displayName: Verify artifact checksum
+
+          - task: AzureWebApp@1
+            displayName: Deploy JAR to Azure App Service
+            inputs:
+              azureSubscription: sc-vetsync-production
+              appType: webAppLinux
+              appName: app-vetsync-rm563197
+              package: $(Pipeline.Workspace)/artifact/app.jar
+
+          - bash: |
+              set -euo pipefail
+              health_url="https://app-vetsync-rm563197.azurewebsites.net/actuator/health"
+              for attempt in {1..18}; do
+                if curl --fail --silent --show-error --max-time 20 "$health_url"; then
+                  echo
+                  echo "Commit $(Build.SourceVersion) is healthy in Azure."
+                  exit 0
+                fi
+                echo "Health check attempt $attempt/18 failed; retrying in 10 seconds..."
+                sleep 10
+              done
+              echo "The deployment did not become healthy." >&2
+              exit 1
+            displayName: Validate public health endpoint

@@ -358,10 +358,9 @@ O relatório de cobertura do **JaCoCo** é gerado em `target/site/jacoco/index.h
 
 ## ⚡ CI/CD e deploy
 
-O pipeline em [`.github/workflows/deploy-azure.yml`](.github/workflows/deploy-azure.yml) executa:
+O fluxo atual do GitHub Actions está em [`.github/workflows/deploy-azure.yml`](.github/workflows/deploy-azure.yml). A configuração equivalente para Azure DevOps está preparada em [`azure-pipelines.yml`](azure-pipelines.yml). Até a criação e validação do pipeline e da conexão de serviço no Azure DevOps, mantenha o workflow atual ativo.
 
-1. **Build and tests**: `mvn clean verify` com Java 17 (em *push* e *pull request* na `main`) e geração do artefato com checksum SHA-256
-2. **Deploy**: em *push* na `main`, autentica no Azure via **OIDC**, publica o JAR no **Azure App Service** e valida o `/actuator/health`
+Ambos executam build e testes com Java 17 em *push* e *pull request* para `main`, gerando o JAR com checksum SHA-256. Em pushes para `main` (e execuções manuais de `main`), fazem deploy do JAR no Azure App Service e validam `/actuator/health`. O Azure DevOps requer a conexão de serviço `sc-vetsync-production`, configurada como Azure Resource Manager com workload identity federation e permissão de deploy no App Service.
 
 Scripts de infraestrutura (Azure CLI) na pasta [`scripts/`](scripts):
 
@@ -370,7 +369,7 @@ Scripts de infraestrutura (Azure CLI) na pasta [`scripts/`](scripts):
 | `1-system.sh` | Cria grupo de recursos, plano e App Service |
 | `2-oracle-fiap.sh` | Configura a conexão Oracle FIAP e segredos |
 | `3-backend-deploy.sh` | Faz o deploy do backend |
-| `4-github-oidc.sh` | Configura identidade federada GitHub → Azure |
+| `4-github-oidc.sh` | Configura identidade federada GitHub → Azure para o workflow atual |
 | `sync-oracle-ddl.sh` | Sincroniza o DDL no Oracle |
 | `x-delete.sh` | Remove os recursos criados |
 
