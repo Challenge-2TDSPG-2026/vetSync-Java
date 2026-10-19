@@ -122,13 +122,13 @@ class EventoPontosRecompensaIntegrationTest {
                 .andReturn();
         JsonNode vetNode = objectMapper.readTree(vetRes.getResponse().getContentAsString());
         Long idVet = vetNode.get("idVeterinario").asLong();
-        String vetPwd = vetNode.get("senhaTemporaria").asText();
+        assertThat(vetNode.has("senhaTemporaria")).isFalse();
 
         habilitarAgendamento(clinica, idVet, tipoVacina);
 
         MvcResult vetLoginRes = mockMvc.perform(post("/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(new AuthController.LoginRequest("gabriel.vet@vetsync.com", vetPwd))))
+                        .content(objectMapper.writeValueAsString(new AuthController.LoginRequest("gabriel.vet@vetsync.com", vetReq.senha()))))
                 .andExpect(status().isOk())
                 .andReturn();
         String vetToken = objectMapper.readTree(vetLoginRes.getResponse().getContentAsString()).get("token").asText();

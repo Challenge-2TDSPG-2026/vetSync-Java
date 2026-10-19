@@ -58,7 +58,7 @@ class SecurityAccessControlTest {
 
         mockMvc.perform(post("/veterinarios")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"nome\":\"Vet\",\"email\":\"v@v.com\",\"idClinica\":1}"))
+                        .content("{\"nome\":\"Vet\",\"email\":\"v@v.com\",\"senha\":\"SenhaVet123\",\"idClinica\":1}"))
                 .andExpect(status().isForbidden());
     }
 
