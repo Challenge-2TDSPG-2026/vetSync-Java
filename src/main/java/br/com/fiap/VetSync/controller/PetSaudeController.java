@@ -51,7 +51,7 @@ public class PetSaudeController {
     public record PesoResponse(Long id, BigDecimal pesoKg, LocalDate dataMedicao, String observacao) {}
 
     @GetMapping("/{id:\\d+}/proximas-acoes")
-    @PreAuthorize("hasAnyRole('ADMIN','VETERINARIO') or @petAccessSecurity.canView(#id, authentication)")
+    @PreAuthorize("hasRole('ADMIN') or @petAccessSecurity.canVeterinarioView(#id, authentication) or @petAccessSecurity.canView(#id, authentication)")
     public List<AcaoResponse> proximasAcoes(@PathVariable Long id) {
         return acaoService.listar(id).stream().map(a -> new AcaoResponse(a.id(), a.tipo(), a.prioridade(),
                 a.titulo(), a.descricao(), a.eventoReferenciaId(), a.dataLimite(), a.podeAgendar())).toList();
@@ -70,7 +70,7 @@ public class PetSaudeController {
     public record TipoVacinaResponse(Long id, String nome, Integer periodicidadeDias, Long idClinica, String nmClinica) {}
 
     @GetMapping("/{id:\\d+}/carteira-vacinacao")
-    @PreAuthorize("hasAnyRole('ADMIN','VETERINARIO') or @petAccessSecurity.canView(#id, authentication)")
+    @PreAuthorize("hasRole('ADMIN') or @petAccessSecurity.canVeterinarioView(#id, authentication) or @petAccessSecurity.canView(#id, authentication)")
     public CarteiraResponse carteira(@PathVariable Long id) {
         List<VacinaPet> vacinas = vacinaService.listar(id);
         LocalDate hoje = LocalDate.now();
@@ -99,7 +99,7 @@ public class PetSaudeController {
 
     @PostMapping("/{id:\\d+}/carteira-vacinacao")
     @ResponseStatus(HttpStatus.CREATED)
-    @PreAuthorize("hasAnyRole('ADMIN','VETERINARIO') or @petAccessSecurity.canEdit(#id, authentication)")
+    @PreAuthorize("hasRole('ADMIN') or @petAccessSecurity.canVeterinarioView(#id, authentication) or @petAccessSecurity.canEdit(#id, authentication)")
     public VacinaResponse registrarVacina(@PathVariable Long id, @Valid @RequestBody VacinaRequest request) {
         VacinaPet vacina = vacinaService.registrar(id, request.tipoVacinaId(), request.eventoId(),
                 request.aplicadaEm(), request.proximaDoseEm(), request.comprovanteUrl());
@@ -111,13 +111,13 @@ public class PetSaudeController {
     }
 
     @GetMapping("/{id:\\d+}/perfil-saude")
-    @PreAuthorize("hasAnyRole('ADMIN','VETERINARIO') or @petAccessSecurity.canView(#id, authentication)")
+    @PreAuthorize("hasRole('ADMIN') or @petAccessSecurity.canVeterinarioView(#id, authentication) or @petAccessSecurity.canView(#id, authentication)")
     public PerfilResponse perfil(@PathVariable Long id) {
         return toPerfilResponse(perfilService.buscar(id));
     }
 
     @PutMapping("/{id:\\d+}/perfil-saude")
-    @PreAuthorize("hasAnyRole('ADMIN','VETERINARIO') or @petAccessSecurity.canEdit(#id, authentication)")
+    @PreAuthorize("hasRole('ADMIN') or @petAccessSecurity.canVeterinarioView(#id, authentication) or @petAccessSecurity.canEdit(#id, authentication)")
     public PerfilResponse atualizarPerfil(@PathVariable Long id, @Valid @RequestBody PerfilRequest request) {
         PerfilSaude dados = PerfilSaude.builder().pesoAtual(request.pesoAtual()).alergias(request.alergias())
                 .medicamentosContinuos(request.medicamentosContinuos()).restricoesAlimentares(request.restricoesAlimentares())
@@ -128,13 +128,13 @@ public class PetSaudeController {
 
     @PostMapping("/{id:\\d+}/peso")
     @ResponseStatus(HttpStatus.CREATED)
-    @PreAuthorize("hasAnyRole('ADMIN','VETERINARIO') or @petAccessSecurity.canEdit(#id, authentication)")
+    @PreAuthorize("hasRole('ADMIN') or @petAccessSecurity.canVeterinarioView(#id, authentication) or @petAccessSecurity.canEdit(#id, authentication)")
     public PesoResponse registrarPeso(@PathVariable Long id, @Valid @RequestBody PesoRequest request) {
         return toPesoResponse(perfilService.registrarPeso(id, request.pesoKg(), request.dataMedicao(), request.observacao()));
     }
 
     @GetMapping("/{id:\\d+}/peso/historico")
-    @PreAuthorize("hasAnyRole('ADMIN','VETERINARIO') or @petAccessSecurity.canView(#id, authentication)")
+    @PreAuthorize("hasRole('ADMIN') or @petAccessSecurity.canVeterinarioView(#id, authentication) or @petAccessSecurity.canView(#id, authentication)")
     public List<PesoResponse> historicoPeso(@PathVariable Long id) {
         return perfilService.historicoPeso(id).stream().map(this::toPesoResponse).toList();
     }

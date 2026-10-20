@@ -133,9 +133,9 @@ public class PetController {
     }
 
     @GetMapping("/{id:\\d+}")
-    @PreAuthorize("hasAnyRole('ADMIN','VETERINARIO') or @petAccessSecurity.canView(#id, authentication)")
+    @PreAuthorize("hasRole('ADMIN') or @petAccessSecurity.canVeterinarioView(#id, authentication) or @petAccessSecurity.canView(#id, authentication)")
     @Operation(summary = "Buscar pet por ID",
-            description = "Admin e veterinário veem qualquer pet; tutor vê se for o proprietário ou tiver acesso ativo (LEITURA ou EDICAO).")
+            description = "Admin vê qualquer pet; veterinário vê pets de tutores vinculados à sua clínica ativa; tutor vê pets próprios ou compartilhados.")
     public PetResponse buscarPorId(@PathVariable Long id) {
         return toResponse(petService.buscarPorId(id));
     }
@@ -154,7 +154,7 @@ public class PetController {
     }
 
     @GetMapping("/tutor/{idTutor}")
-    @PreAuthorize("hasRole('VETERINARIO')")
+    @PreAuthorize("@petAccessSecurity.canVeterinarioViewTutor(#idTutor, authentication)")
     @Operation(summary = "Listar pets de um tutor específico. Somente VETERINARIO.")
     public List<PetResponse> listarPorTutor(@PathVariable Long idTutor) {
         return petService.listarPorTutor(idTutor).stream()
@@ -195,7 +195,7 @@ public class PetController {
 
     // NOVO
     @GetMapping("/{id:\\d+}/foto")
-    @PreAuthorize("hasRole('VETERINARIO') or @petAccessSecurity.canView(#id, authentication)")
+    @PreAuthorize("@petAccessSecurity.canVeterinarioView(#id, authentication) or @petAccessSecurity.canView(#id, authentication)")
     @Operation(summary = "Obter a foto do pet (imagem)",
             description = "Exige token JWT: quem tem acesso ao pet (tutor, cuidador com acesso ativo) ou veterinário.")
     public ResponseEntity<byte[]> obterFoto(@PathVariable Long id) {

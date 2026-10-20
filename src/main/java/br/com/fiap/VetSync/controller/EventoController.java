@@ -299,14 +299,14 @@ public class EventoController {
     }
 
     @GetMapping("/pet/{idPet}/gasto-total")
-    @PreAuthorize("hasRole('VETERINARIO') or @petAccessSecurity.canView(#idPet, authentication)")
+    @PreAuthorize("@petAccessSecurity.canVeterinarioView(#idPet, authentication) or @petAccessSecurity.canView(#idPet, authentication)")
     @Operation(summary = "Somar o gasto total (só eventos CONCLUIDOS) de um pet")
     public BigDecimal gastoTotal(@PathVariable Long idPet) {
         return eventoService.calcularGastoTotal(idPet);
     }
 
     @GetMapping("/pet/{idPet}/alertas")
-    @PreAuthorize("hasRole('VETERINARIO') or @petAccessSecurity.canView(#idPet, authentication)")
+    @PreAuthorize("@petAccessSecurity.canVeterinarioView(#idPet, authentication) or @petAccessSecurity.canView(#idPet, authentication)")
     @Operation(summary = "Histórico + alerta de atraso por tipo de evento (só considera eventos CONCLUIDOS)")
     public List<EventoService.AlertaEvento> alertas(@PathVariable Long idPet) {
         return eventoService.gerarAlertas(idPet);

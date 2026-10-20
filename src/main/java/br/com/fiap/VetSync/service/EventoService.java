@@ -348,6 +348,7 @@ public class EventoService {
     public EventoSaude concluir(Long id, String dsObservacao, BigDecimal vlCusto) {
         EventoSaude evento = buscarPorId(id);
         exigirStatus(evento, StatusEvento.AGENDADO, "concluir");
+        exigirConfirmacaoConcluivel(evento);
         evento.setDsStatus(StatusEvento.CONCLUIDO);
         if (dsObservacao != null) {
             evento.setDsObservacao(dsObservacao);
@@ -363,6 +364,14 @@ public class EventoService {
         pontosService.lancarPendente(concluido);
         processarPlanoAoConcluir(concluido);
         return concluido;
+    }
+
+    private void exigirConfirmacaoConcluivel(EventoSaude evento) {
+        if (evento.getDsConfirmacao() == StatusConfirmacao.PENDENTE
+                || evento.getDsConfirmacao() == StatusConfirmacao.RECUSADO) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Só é possível concluir um atendimento confirmado pela clínica");
+        }
     }
 
 
