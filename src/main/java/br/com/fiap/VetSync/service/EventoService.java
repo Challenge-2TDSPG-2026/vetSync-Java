@@ -351,7 +351,12 @@ public class EventoService {
         exigirConfirmacaoConcluivel(evento);
         evento.setDsStatus(StatusEvento.CONCLUIDO);
         if (dsObservacao != null) {
-            evento.setDsObservacao(dsObservacao);
+            if (tamanhoEmBytes(dsObservacao) > LIMITE_OBSERVACAO_CLINICA_BYTES) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "A observação do atendimento excede o limite de " + LIMITE_OBSERVACAO_CLINICA_BYTES + " bytes");
+            }
+            // ds_observacao (e o histórico) comportam 500 bytes; a observação clínica comporta 1000.
+            evento.setDsObservacao(resumirEmBytes(dsObservacao, LIMITE_OBSERVACAO_BYTES));
             evento.setDsObservacaoClinica(dsObservacao);
         }
         evento.setVlCusto(vlCusto != null ? vlCusto : BigDecimal.ZERO);
@@ -364,6 +369,22 @@ public class EventoService {
         pontosService.lancarPendente(concluido);
         processarPlanoAoConcluir(concluido);
         return concluido;
+    }
+
+    private static final int LIMITE_OBSERVACAO_BYTES = 500;
+    private static final int LIMITE_OBSERVACAO_CLINICA_BYTES = 1000;
+
+    private static int tamanhoEmBytes(String texto) {
+        return texto.getBytes(java.nio.charset.StandardCharsets.UTF_8).length;
+    }
+
+    /** Corta o texto em no máximo {@code limite} bytes (UTF-8) sem quebrar um caractere no meio. */
+    private static String resumirEmBytes(String texto, int limite) {
+        byte[] bytes = texto.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        if (bytes.length <= limite) return texto;
+        int fim = limite;
+        while (fim > 0 && (bytes[fim] & 0xC0) == 0x80) fim--;
+        return new String(bytes, 0, fim, java.nio.charset.StandardCharsets.UTF_8);
     }
 
     private void exigirConfirmacaoConcluivel(EventoSaude evento) {
