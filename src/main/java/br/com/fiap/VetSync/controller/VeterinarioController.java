@@ -46,13 +46,17 @@ public class VeterinarioController {
             @Size(min = 8, message = "A senha deve ter pelo menos 8 caracteres")
             String senha,
 
+            @NotBlank(message = "CRMV é obrigatório")
+            @Size(max = 20, message = "CRMV deve ter até 20 caracteres")
+            String crmv,
+
             @NotNull(message = "Clínica é obrigatória")
             Long idClinica,
 
             String especialidade
     ) {
-        public VeterinarioRequest(String nome, String email, String senha, Long idClinica) {
-            this(nome, email, senha, idClinica, null);
+        public VeterinarioRequest(String nome, String email, String senha, String crmv, Long idClinica) {
+            this(nome, email, senha, crmv, idClinica, null);
         }
     }
 
@@ -94,10 +98,10 @@ public class VeterinarioController {
     @ResponseStatus(HttpStatus.CREATED)
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Cadastrar veterinário. Somente ADMIN.",
-            description = "Gera o CRM e cadastra a senha informada pelo administrador.")
+            description = "Cadastra o CRMV informado e a senha definida pelo administrador.")
     public CadastroResponse cadastrar(@Valid @RequestBody VeterinarioRequest request) {
         var novo = veterinarioService.cadastrar(
-                request.nome(), request.email(), request.senha(), request.idClinica(), request.especialidade());
+                request.nome(), request.email(), request.senha(), request.crmv(), request.idClinica(), request.especialidade());
         return new CadastroResponse(
                 novo.veterinario().getIdVeterinario(), novo.veterinario().getDsEmail(),
                 novo.veterinario().getNmVeterinario(), novo.veterinario().getNrCrmv()

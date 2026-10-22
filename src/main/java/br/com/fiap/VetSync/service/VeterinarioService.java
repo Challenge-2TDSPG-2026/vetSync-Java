@@ -14,7 +14,6 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.security.SecureRandom;
 import java.util.List;
 import java.util.Locale;
 
@@ -29,24 +28,24 @@ public class VeterinarioService {
     private final ClinicaRepository clinicaRepository;
     private final PasswordEncoder passwordEncoder;
 
-    private static final SecureRandom RANDOM = new SecureRandom();
-
     public record NovoVeterinario(Veterinario veterinario) {}
 
-    public NovoVeterinario cadastrar(String nome, String email, String senha, Long idClinica, String especialidade) {
+    public NovoVeterinario cadastrar(String nome, String email, String senha, String crmv, Long idClinica, String especialidade) {
         email = email.trim().toLowerCase(Locale.ROOT);
+        crmv = crmv.trim().toUpperCase(Locale.ROOT);
         if (veterinarioRepository.existsByDsEmail(email) || tutorRepository.existsByDsEmail(email)
                 || esteticaRepository.existsByDsEmail(email) || adminRepository.findByDsEmail(email).isPresent()) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "E-mail já cadastrado");
         }
+        if (veterinarioRepository.existsByNrCrmv(crmv)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "CRMV já cadastrado");
+        }
         Clinica clinica = clinicaRepository.findById(idClinica)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Clínica não encontrada"));
 
-        String crm = gerarCrmUnico();
-
         Veterinario vet = Veterinario.builder()
                 .nmVeterinario(nome)
-                .nrCrmv(crm)
+                .nrCrmv(crmv)
                 .dsEmail(email)
                 .dsSenha(passwordEncoder.encode(senha))
                 .clinica(clinica)
@@ -55,14 +54,6 @@ public class VeterinarioService {
         vet = veterinarioRepository.save(vet);
 
         return new NovoVeterinario(vet);
-    }
-
-    private String gerarCrmUnico() {
-        String crm;
-        do {
-            crm = String.format("%06d", RANDOM.nextInt(1_000_000));
-        } while (veterinarioRepository.existsByNrCrmv(crm));
-        return crm;
     }
 
     public Veterinario buscarPorId(Long id) {

@@ -64,7 +64,7 @@ class VeterinarioControllerTest {
     @WithMockUser(roles = "ADMIN")
     void cadastrar_AdminSucesso() throws Exception {
         Veterinario vet = Veterinario.builder().idVeterinario(10L).nmVeterinario("Dr. Lucas").dsEmail("lucas@vet.com").nrCrmv("654321").build();
-        when(veterinarioService.cadastrar("Dr. Lucas", "lucas@vet.com", "SenhaSegura123", 1L, null))
+        when(veterinarioService.cadastrar("Dr. Lucas", "lucas@vet.com", "SenhaSegura123", "SP-654321", 1L, null))
                 .thenReturn(new VeterinarioService.NovoVeterinario(vet));
 
         var req = new VeterinarioController.VeterinarioRequest("Dr. Lucas", "lucas@vet.com", "SenhaSegura123", 1L);

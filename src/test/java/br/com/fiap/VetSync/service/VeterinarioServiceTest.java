@@ -55,7 +55,7 @@ class VeterinarioServiceTest {
         Clinica clinica = Clinica.builder().idClinica(1L).nmClinica("Clyvo Vet").build();
         when(veterinarioRepository.existsByDsEmail("vet@clyvovet.com")).thenReturn(false);
         when(clinicaRepository.findById(1L)).thenReturn(Optional.of(clinica));
-        when(veterinarioRepository.existsByNrCrmv(anyString())).thenReturn(false);
+        when(veterinarioRepository.existsByNrCrmv("SP-12345")).thenReturn(false);
         when(passwordEncoder.encode(anyString())).thenReturn("hashed-pwd");
         when(veterinarioRepository.save(any(Veterinario.class))).thenAnswer(inv -> {
             Veterinario v = inv.getArgument(0);
@@ -64,10 +64,10 @@ class VeterinarioServiceTest {
         });
 
         VeterinarioService.NovoVeterinario novo =
-                veterinarioService.cadastrar("Dr. Pedro", "vet@clyvovet.com", "SenhaSegura123", 1L, null);
+                veterinarioService.cadastrar("Dr. Pedro", "vet@clyvovet.com", "SenhaSegura123", "SP-12345", 1L, null);
 
         assertThat(novo.veterinario().getIdVeterinario()).isEqualTo(10L);
-        assertThat(novo.veterinario().getNrCrmv()).matches("^\\d{6}$");
+        assertThat(novo.veterinario().getNrCrmv()).isEqualTo("SP-12345");
         verify(passwordEncoder).encode("SenhaSegura123");
     }
 
@@ -76,7 +76,7 @@ class VeterinarioServiceTest {
     void cadastrar_EmailDuplicado() {
         when(veterinarioRepository.existsByDsEmail("existente@vet.com")).thenReturn(true);
 
-        assertThatThrownBy(() -> veterinarioService.cadastrar("Nome", "existente@vet.com", "SenhaSegura123", 1L, null))
+        assertThatThrownBy(() -> veterinarioService.cadastrar("Nome", "existente@vet.com", "SenhaSegura123", "SP-12345", 1L, null))
                 .isInstanceOf(ResponseStatusException.class)
                 .hasMessageContaining("E-mail já cadastrado");
 
