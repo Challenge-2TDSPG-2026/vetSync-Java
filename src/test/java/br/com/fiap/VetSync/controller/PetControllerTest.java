@@ -104,6 +104,7 @@ class PetControllerTest {
     void listarPorTutor_VetSucesso() throws Exception {
         Pet pet = Pet.builder().idPet(2L).nmPet("Mel").dtNascimento(LocalDate.now().minusYears(3)).build();
         when(petService.listarPorTutor(5L)).thenReturn(List.of(pet));
+        when(petAccessSecurity.canVeterinarioViewTutor(eq(5L), any())).thenReturn(true);
 
         mockMvc.perform(get("/pets/tutor/5"))
                 .andExpect(status().isOk())
