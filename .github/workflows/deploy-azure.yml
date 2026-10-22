@@ -1,4 +1,4 @@
-name: CI/CD Java - Azure App Service
+name: Grupo de concorrência do workflow
 
 on:
   pull_request:
@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: vetsync-java-${{ github.ref }}
+  group: vetsync-java-api-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
