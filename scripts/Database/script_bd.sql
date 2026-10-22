@@ -1090,3 +1090,478 @@ ALTER TABLE TB_TIPO_VACINA ADD (id_clinica NUMBER(10));
 ALTER TABLE TB_TIPO_VACINA ADD CONSTRAINT fk_tipo_vacina_clinica
     FOREIGN KEY (id_clinica) REFERENCES TB_CLINICA(id_clinica);
 CREATE INDEX idx_tipo_vacina_clinica ON TB_TIPO_VACINA (id_clinica);
+
+-- ============================================================================
+-- V44__lancamento_pontos_estados_validade.sql
+-- ============================================================================
+
+-- Lançamentos de pontos: novos estados (BLOQUEADO, EXPIRADO), data de liberação e validade.
+-- A validade passa a contar a partir da liberação (padrão de 365 dias, configurável em app.pontos.validade-dias).
+-- O estado EXPIRADO é derivado na leitura (LIBERADO com dt_validade vencida), então nenhum job precisa gravá-lo.
+
+ALTER TABLE TB_LANCAMENTO_PONTOS ADD (
+    dt_liberacao       DATE,
+    dt_validade        DATE,
+    dt_bloqueio        DATE,
+    ds_motivo_bloqueio VARCHAR2(300),
+    id_admin_bloqueio  NUMBER(10)
+);
+
+ALTER TABLE TB_LANCAMENTO_PONTOS ADD CONSTRAINT fk_lancamento_admin_bloqueio
+    FOREIGN KEY (id_admin_bloqueio) REFERENCES TB_ADMIN(id_admin);
+
+ALTER TABLE TB_LANCAMENTO_PONTOS DROP CONSTRAINT ck_lancamento_status;
+ALTER TABLE TB_LANCAMENTO_PONTOS ADD CONSTRAINT ck_lancamento_status
+    CHECK (ds_status IN ('PENDENTE', 'LIBERADO', 'BLOQUEADO', 'EXPIRADO'));
+
+-- Backfill: lançamentos já liberados ganham liberação na data do lançamento e 365 dias de validade.
+UPDATE TB_LANCAMENTO_PONTOS
+SET dt_liberacao = dt_lancamento,
+    dt_validade  = dt_lancamento + 365
+WHERE ds_status = 'LIBERADO';
+
+CREATE INDEX idx_lancamento_validade ON TB_LANCAMENTO_PONTOS (id_clinica, ds_status, dt_validade);
+
+-- ============================================================================
+-- V45__resgate_snapshot_recompensa.sql
+-- ============================================================================
+
+-- Resgate passa a guardar uma cópia dos dados da recompensa e o custo aplicado NO MOMENTO do resgate.
+-- Assim, editar ou inativar a recompensa depois não altera o histórico nem o saldo de pontos de quem já resgatou.
+
+ALTER TABLE TB_RESGATE ADD (
+    nm_recompensa           VARCHAR2(150),
+    ds_descricao_recompensa VARCHAR2(500),
+    ds_tipo_recompensa      VARCHAR2(20),
+    nr_custo_pontos         NUMBER(10),
+    id_clinica              NUMBER(10)
+);
+
+-- Backfill: resgates já existentes recebem os valores atuais da recompensa (melhor informação disponível).
+UPDATE TB_RESGATE r SET
+                        nm_recompensa           = (SELECT x.nm_recompensa   FROM TB_RECOMPENSA x WHERE x.id_recompensa = r.id_recompensa),
+                        ds_descricao_recompensa = (SELECT x.ds_descricao    FROM TB_RECOMPENSA x WHERE x.id_recompensa = r.id_recompensa),
+                        ds_tipo_recompensa      = (SELECT x.ds_tipo         FROM TB_RECOMPENSA x WHERE x.id_recompensa = r.id_recompensa),
+                        nr_custo_pontos         = (SELECT x.nr_custo_pontos FROM TB_RECOMPENSA x WHERE x.id_recompensa = r.id_recompensa),
+                        id_clinica              = (SELECT x.id_clinica      FROM TB_RECOMPENSA x WHERE x.id_recompensa = r.id_recompensa);
+
+ALTER TABLE TB_RESGATE MODIFY (nm_recompensa NOT NULL, nr_custo_pontos NOT NULL);
+ALTER TABLE TB_RESGATE ADD CONSTRAINT ck_resgate_custo CHECK (nr_custo_pontos > 0);
+ALTER TABLE TB_RESGATE ADD CONSTRAINT ck_resgate_tipo CHECK (ds_tipo_recompensa IN ('PRODUTO','CUPOM_DESCONTO'));
+ALTER TABLE TB_RESGATE ADD CONSTRAINT fk_resgate_clinica
+    FOREIGN KEY (id_clinica) REFERENCES TB_CLINICA(id_clinica);
+CREATE INDEX idx_resgate_clinica ON TB_RESGATE (id_clinica, ds_status);
+
+-- ============================================================================
+-- V46__auditoria_contexto_clinica.sql
+-- ============================================================================
+
+-- Auditoria com contexto de clínica: a clínica em cujo contexto a ação ocorreu (id + nome da época).
+ALTER TABLE TB_AUDITORIA ADD (id_clinica NUMBER(19), nm_clinica VARCHAR2(150));
+CREATE INDEX ix_auditoria_clinica ON TB_AUDITORIA(id_clinica, dt_ocorrencia);
+CREATE INDEX ix_auditoria_acao ON TB_AUDITORIA(ds_acao, dt_ocorrencia);
+
+-- ============================================================================
+-- V47_1__admin_por_clinica.sql
+-- ============================================================================
+
+-- Contas existentes continuam administradores globais (id_clinica nulo).
+ALTER TABLE TB_CLINICA ADD (
+    ds_endereco VARCHAR2(240),
+    ds_telefone VARCHAR2(20),
+    ds_logo_mime VARCHAR2(80),
+    ds_logo BLOB
+);
+
+CREATE TABLE TB_CARGO_CLINICA (
+    id_cargo NUMBER(10) GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    id_clinica NUMBER(10) NOT NULL,
+    nm_cargo VARCHAR2(80) NOT NULL,
+    CONSTRAINT fk_cargo_clinica FOREIGN KEY (id_clinica) REFERENCES TB_CLINICA(id_clinica),
+    CONSTRAINT uq_cargo_clinica_nome UNIQUE (id_clinica, nm_cargo)
+);
+
+CREATE TABLE TB_CARGO_PERMISSAO (
+    id_cargo NUMBER(10) NOT NULL,
+    ds_permissao VARCHAR2(40) NOT NULL,
+    CONSTRAINT pk_cargo_permissao PRIMARY KEY (id_cargo, ds_permissao),
+    CONSTRAINT fk_permissao_cargo FOREIGN KEY (id_cargo) REFERENCES TB_CARGO_CLINICA(id_cargo) ON DELETE CASCADE
+);
+
+ALTER TABLE TB_ADMIN ADD (
+    id_clinica NUMBER(10),
+    id_cargo NUMBER(10),
+    fl_dono NUMBER(1) DEFAULT 0 NOT NULL,
+    fl_ativo NUMBER(1) DEFAULT 1 NOT NULL,
+    fl_troca_senha NUMBER(1) DEFAULT 0 NOT NULL
+);
+ALTER TABLE TB_ADMIN ADD CONSTRAINT fk_admin_clinica FOREIGN KEY (id_clinica) REFERENCES TB_CLINICA(id_clinica);
+ALTER TABLE TB_ADMIN ADD CONSTRAINT fk_admin_cargo FOREIGN KEY (id_cargo) REFERENCES TB_CARGO_CLINICA(id_cargo);
+ALTER TABLE TB_ADMIN ADD CONSTRAINT ck_admin_escopo CHECK (
+    (id_clinica IS NULL AND id_cargo IS NULL AND fl_dono = 0) OR
+    (id_clinica IS NOT NULL AND ((fl_dono = 1 AND id_cargo IS NULL) OR (fl_dono = 0 AND id_cargo IS NOT NULL)))
+);
+CREATE UNIQUE INDEX uq_dono_clinica ON TB_ADMIN (CASE WHEN fl_dono = 1 THEN id_clinica END);
+CREATE INDEX ix_admin_clinica ON TB_ADMIN (id_clinica, fl_ativo);
+
+CREATE TABLE TB_HORARIO_CLINICA (
+    id_horario NUMBER(10) GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    id_clinica NUMBER(10) NOT NULL,
+    nr_dia_semana NUMBER(1) NOT NULL,
+    hr_inicio VARCHAR2(5) NOT NULL,
+    hr_fim VARCHAR2(5) NOT NULL,
+    CONSTRAINT fk_horario_clinica FOREIGN KEY (id_clinica) REFERENCES TB_CLINICA(id_clinica) ON DELETE CASCADE,
+    CONSTRAINT ck_horario_dia CHECK (nr_dia_semana BETWEEN 1 AND 7),
+    CONSTRAINT ck_horario_intervalo CHECK (hr_inicio < hr_fim)
+);
+
+ALTER TABLE TB_TIPO_EVENTO ADD (id_clinica NUMBER(10));
+ALTER TABLE TB_TIPO_EVENTO ADD CONSTRAINT fk_tipo_evento_clinica FOREIGN KEY (id_clinica) REFERENCES TB_CLINICA(id_clinica);
+ALTER TABLE TB_TIPO_EVENTO DROP CONSTRAINT ck_tipo_evento_modalidade_agendamento;
+ALTER TABLE TB_TIPO_EVENTO ADD CONSTRAINT ck_tipo_evento_modalidade_agendamento
+    CHECK (ds_modalidade_agendamento IS NULL OR ds_modalidade_agendamento IN ('CLINICO_GERAL', 'SERVICO_CLINICA'));
+
+CREATE TABLE TB_SERVICO_CLINICA (
+    id_servico_clinica NUMBER(10) GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    id_clinica NUMBER(10) NOT NULL,
+    id_tipo_evento NUMBER(5) NOT NULL,
+    id_servico_base NUMBER(10),
+    nm_servico VARCHAR2(80) NOT NULL,
+    ds_categoria VARCHAR2(30) NOT NULL,
+    nr_duracao_minutos NUMBER(3) NOT NULL,
+    fl_ativo NUMBER(1) DEFAULT 1 NOT NULL,
+    CONSTRAINT fk_servico_clinica FOREIGN KEY (id_clinica) REFERENCES TB_CLINICA(id_clinica),
+    CONSTRAINT fk_servico_tipo FOREIGN KEY (id_tipo_evento) REFERENCES TB_TIPO_EVENTO(id_tipo_evento),
+    CONSTRAINT fk_servico_base FOREIGN KEY (id_servico_base) REFERENCES TB_SERVICO_ESTETICA(id_servico),
+    CONSTRAINT uq_servico_clinica_nome UNIQUE (id_clinica, nm_servico),
+    CONSTRAINT ck_servico_duracao CHECK (nr_duracao_minutos BETWEEN 5 AND 480)
+);
+
+ALTER TABLE TB_EVENTO_SAUDE ADD (id_servico_clinica NUMBER(10));
+ALTER TABLE TB_EVENTO_SAUDE ADD CONSTRAINT fk_evento_servico_clinica
+    FOREIGN KEY (id_servico_clinica) REFERENCES TB_SERVICO_CLINICA(id_servico_clinica);
+CREATE INDEX ix_evento_servico_clinica ON TB_EVENTO_SAUDE(id_servico_clinica);
+
+CREATE TABLE TB_SERVICO_PROFISSIONAL (
+    id_servico_profissional NUMBER(10) GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    id_servico_clinica NUMBER(10) NOT NULL,
+    id_veterinario NUMBER(10),
+    id_profissional_estetica NUMBER(10),
+    CONSTRAINT fk_sp_servico FOREIGN KEY (id_servico_clinica) REFERENCES TB_SERVICO_CLINICA(id_servico_clinica) ON DELETE CASCADE,
+    CONSTRAINT fk_sp_vet FOREIGN KEY (id_veterinario) REFERENCES TB_VETERINARIO(id_veterinario),
+    CONSTRAINT fk_sp_estetica FOREIGN KEY (id_profissional_estetica) REFERENCES TB_PROFISSIONAL_ESTETICA(id_profissional_estetica),
+    CONSTRAINT ck_sp_profissional CHECK ((id_veterinario IS NOT NULL AND id_profissional_estetica IS NULL) OR
+                                       (id_veterinario IS NULL AND id_profissional_estetica IS NOT NULL))
+);
+CREATE UNIQUE INDEX uq_sp_vet ON TB_SERVICO_PROFISSIONAL(id_servico_clinica, id_veterinario);
+CREATE UNIQUE INDEX uq_sp_estetica ON TB_SERVICO_PROFISSIONAL(id_servico_clinica, id_profissional_estetica);
+
+CREATE TABLE TB_CONVERSA_CLINICA (
+    id_conversa NUMBER(10) GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    id_clinica NUMBER(10) NOT NULL,
+    id_tutor NUMBER(10) NOT NULL,
+    dt_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    CONSTRAINT fk_conversa_clinica FOREIGN KEY (id_clinica) REFERENCES TB_CLINICA(id_clinica),
+    CONSTRAINT fk_conversa_tutor FOREIGN KEY (id_tutor) REFERENCES TB_TUTOR(id_tutor),
+    CONSTRAINT uq_conversa_clinica_tutor UNIQUE (id_clinica, id_tutor)
+);
+
+CREATE TABLE TB_MENSAGEM_CLINICA (
+    id_mensagem NUMBER(10) GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    id_conversa NUMBER(10) NOT NULL,
+    id_admin NUMBER(10),
+    ds_remetente VARCHAR2(20) NOT NULL,
+    ds_texto VARCHAR2(2000) NOT NULL,
+    dt_envio TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    CONSTRAINT fk_mensagem_conversa FOREIGN KEY (id_conversa) REFERENCES TB_CONVERSA_CLINICA(id_conversa),
+    CONSTRAINT fk_mensagem_admin FOREIGN KEY (id_admin) REFERENCES TB_ADMIN(id_admin),
+    CONSTRAINT ck_mensagem_remetente CHECK (ds_remetente IN ('TUTOR', 'CLINICA'))
+);
+CREATE INDEX ix_mensagem_conversa ON TB_MENSAGEM_CLINICA(id_conversa, dt_envio);
+
+-- ============================================================================
+-- V47__limpeza_geral_dados_operacionais.sql
+-- ============================================================================
+
+-- Limpeza única dos dados operacionais para reiniciar o ambiente de demonstração.
+--
+-- Preserva somente contas de ADMIN e catálogos de referência (espécies, raças,
+-- tipos de evento, serviços de estética e tipos de vacina). Não há CASCADE nas
+-- FKs do domínio; por isso as exclusões seguem a ordem dos dependentes para as
+-- entidades principais.
+--
+-- Esta migration é destrutiva e não deve ser usada para reinicializações futuras.
+-- Para um novo reset, crie uma nova migration deliberada ou restaure um backup.
+
+-- 1. Cancela apenas atendimentos ainda agendados antes de removê-los.
+UPDATE TB_EVENTO_SAUDE
+   SET ds_status = 'CANCELADO'
+ WHERE ds_status = 'AGENDADO';
+
+-- 2. Remove registros que dependem de eventos, planos, pets, tutores ou equipe.
+DELETE FROM TB_LINK_AGENDAMENTO_VET;
+DELETE FROM TB_RELATORIO_ESTETICA;
+DELETE FROM TB_EVENTO_SERVICO;
+DELETE FROM TB_PRESCRICAO;
+DELETE FROM TB_LANCAMENTO_PONTOS;
+DELETE FROM TB_RESGATE;
+DELETE FROM TB_PLANO_ITEM;
+DELETE FROM TB_PLANO_TRATAMENTO;
+DELETE FROM TB_VACINA_PET;
+DELETE FROM TB_PERFIL_SAUDE;
+DELETE FROM TB_HISTORICO_PESO;
+DELETE FROM TB_EVENTO_HISTORICO;
+DELETE FROM TB_EVENTO_ANEXO;
+DELETE FROM TB_CARTEIRA_COMPARTILHADA;
+DELETE FROM TB_PET_CONVITE;
+DELETE FROM TB_PET_ACESSO;
+DELETE FROM TB_TUTOR_RESPONSAVEL;
+DELETE FROM TB_DISPOSITIVO_PUSH;
+DELETE FROM TB_NOTIFICACAO;
+DELETE FROM TB_PREFERENCIA_NOTIFICACAO;
+
+-- 3. Fecha os vínculos de clínica removendo sessões e códigos antes das clínicas.
+DELETE FROM TB_VINCULO_TUTOR_CLINICA;
+DELETE FROM TB_SESSAO_VINCULO_CLINICA;
+DELETE FROM TB_CODIGO_VINCULO_CLINICA;
+
+-- 4. Remove agenda e especialidades associadas à equipe das clínicas.
+DELETE FROM TB_DISPONIBILIDADE;
+DELETE FROM TB_BLOQUEIO_AGENDA;
+DELETE FROM TB_DISPONIBILIDADE_ESTETICA;
+DELETE FROM TB_BLOQUEIO_AGENDA_ESTETICA;
+DELETE FROM TB_PROFISSIONAL_SERVICO;
+
+-- 5. Remove o histórico clínico, depois pets, usuários tutores e equipe.
+DELETE FROM TB_EVENTO_SAUDE;
+DELETE FROM TB_PET;
+DELETE FROM TB_TUTOR;
+DELETE FROM TB_PROFISSIONAL_ESTETICA;
+DELETE FROM TB_VETERINARIO;
+
+-- 6. Catálogos vinculados à clínica deixam de ter escopo após a limpeza.
+-- Recompensas são removidas porque resgates preservam cópias delas e já foram limpos.
+DELETE FROM TB_RECOMPENSA;
+UPDATE TB_MEDICAMENTO SET id_clinica = NULL;
+UPDATE TB_TIPO_VACINA SET id_clinica = NULL;
+
+-- 7. Com todas as referências removidas, elimina as clínicas e os dados auxiliares.
+DELETE FROM TB_CLINICA;
+DELETE FROM TB_ACAO_IA;
+DELETE FROM TB_AUDITORIA;
+DELETE FROM TB_LOG_ERROS;
+
+-- ============================================================================
+-- V48__cria_lista_espera_e_confirmacao.sql
+-- ============================================================================
+
+-- Lista de espera por vaga + etapa de confirmação do agendamento.
+
+CREATE TABLE TB_LISTA_ESPERA (
+                                 id_espera NUMBER(19) GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+                                 id_tutor NUMBER(10) NOT NULL,
+                                 id_pet NUMBER(10) NOT NULL,
+                                 id_servico_clinica NUMBER(10) NOT NULL,
+                                 id_veterinario NUMBER(10),
+                                 id_profissional_estetica NUMBER(10),
+                                 dt_desejada_inicio DATE NOT NULL,
+                                 dt_desejada_fim DATE NOT NULL,
+                                 hr_min VARCHAR2(5),
+                                 hr_max VARCHAR2(5),
+                                 ds_status VARCHAR2(20) DEFAULT 'AGUARDANDO' NOT NULL,
+                                 dt_vaga DATE,
+                                 hr_vaga VARCHAR2(5),
+                                 ds_tipo_profissional_vaga VARCHAR2(20),
+                                 id_profissional_vaga NUMBER(10),
+                                 dt_notificacao TIMESTAMP,
+                                 dt_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+                                 CONSTRAINT fk_espera_tutor FOREIGN KEY (id_tutor) REFERENCES TB_TUTOR(id_tutor),
+                                 CONSTRAINT fk_espera_pet FOREIGN KEY (id_pet) REFERENCES TB_PET(id_pet),
+                                 CONSTRAINT fk_espera_servico FOREIGN KEY (id_servico_clinica) REFERENCES TB_SERVICO_CLINICA(id_servico_clinica)
+);
+
+CREATE INDEX ix_espera_servico_status ON TB_LISTA_ESPERA (id_servico_clinica, ds_status);
+CREATE INDEX ix_espera_tutor_status ON TB_LISTA_ESPERA (id_tutor, ds_status);
+
+-- Eventos existentes continuam valendo como confirmados.
+ALTER TABLE TB_EVENTO_SAUDE ADD (
+    ds_confirmacao VARCHAR2(20) DEFAULT 'CONFIRMADO' NOT NULL,
+    dt_confirmacao TIMESTAMP
+);
+
+-- ============================================================================
+-- V49__cria_prontuario_clinico.sql
+-- ============================================================================
+
+-- Prontuário clínico completo: orientações, resultados de exames e compartilhamento por link.
+-- Rollback operacional (executar manualmente, nesta ordem):
+--   DROP TABLE TB_PRONTUARIO_COMPARTILHADO;
+--   DROP TABLE TB_RESULTADO_EXAME;
+--   DROP TABLE TB_ORIENTACAO_CLINICA;
+--   (e recriar os CHECKs de TB_PET_ACESSO / TB_PET_CONVITE sem 'VISUALIZAR_PRONTUARIO', como na V33;
+--    o alargamento das colunas ds_permissao para VARCHAR2(30) é compatível e pode ser mantido)
+
+CREATE TABLE TB_ORIENTACAO_CLINICA (
+                                       id_orientacao   NUMBER(19)     GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+                                       id_evento       NUMBER(10)     NOT NULL,
+                                       id_veterinario  NUMBER(10),
+                                       ds_titulo       VARCHAR2(120)  NOT NULL,
+                                       ds_texto        VARCHAR2(2000) NOT NULL,
+                                       ds_ator         VARCHAR2(150),
+                                       dt_criacao      TIMESTAMP      NOT NULL,
+                                       CONSTRAINT fk_orientacao_evento FOREIGN KEY (id_evento) REFERENCES TB_EVENTO_SAUDE(id_evento),
+                                       CONSTRAINT fk_orientacao_vet    FOREIGN KEY (id_veterinario) REFERENCES TB_VETERINARIO(id_veterinario)
+);
+CREATE INDEX ix_orientacao_evento ON TB_ORIENTACAO_CLINICA(id_evento);
+
+CREATE TABLE TB_RESULTADO_EXAME (
+                                    id_resultado     NUMBER(19)     GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+                                    id_pet           NUMBER(10)     NOT NULL,
+                                    id_evento        NUMBER(10),
+                                    id_veterinario   NUMBER(10),
+                                    nm_exame         VARCHAR2(120)  NOT NULL,
+                                    nm_laboratorio   VARCHAR2(120),
+                                    dt_coleta        DATE,
+                                    dt_resultado     DATE           NOT NULL,
+                                    ds_resultado     VARCHAR2(2000),
+                                    ds_interpretacao VARCHAR2(1000),
+                                    nm_arquivo       VARCHAR2(255),
+                                    ds_mime_type     VARCHAR2(100),
+                                    nr_tamanho       NUMBER(19),
+                                    ds_conteudo      BLOB,
+                                    ds_ator          VARCHAR2(150),
+                                    dt_criacao       TIMESTAMP      NOT NULL,
+                                    CONSTRAINT fk_exame_pet    FOREIGN KEY (id_pet) REFERENCES TB_PET(id_pet),
+                                    CONSTRAINT fk_exame_evento FOREIGN KEY (id_evento) REFERENCES TB_EVENTO_SAUDE(id_evento),
+                                    CONSTRAINT fk_exame_vet    FOREIGN KEY (id_veterinario) REFERENCES TB_VETERINARIO(id_veterinario)
+);
+CREATE INDEX ix_exame_pet ON TB_RESULTADO_EXAME(id_pet, dt_resultado);
+
+-- Link de compartilhamento do prontuário com outro atendimento.
+-- O token puro NUNCA é persistido: apenas o hash SHA-256 (hex, 64 chars).
+CREATE TABLE TB_PRONTUARIO_COMPARTILHADO (
+                                             id_compartilhamento NUMBER(19)    GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+                                             id_pet              NUMBER(10)    NOT NULL,
+                                             token_hash          VARCHAR2(64)  NOT NULL UNIQUE,
+                                             ds_secoes           VARCHAR2(200) NOT NULL,
+                                             ds_destinatario     VARCHAR2(150),
+                                             dt_periodo_inicio   DATE,
+                                             dt_periodo_fim      DATE,
+                                             id_usuario_criador  NUMBER(10)    NOT NULL,
+                                             criada_em           TIMESTAMP     NOT NULL,
+                                             expira_em           TIMESTAMP     NOT NULL,
+                                             revogada_em         TIMESTAMP,
+                                             ultimo_acesso_em    TIMESTAMP,
+                                             nr_acessos          NUMBER(10)    DEFAULT 0 NOT NULL,
+                                             CONSTRAINT fk_prontuario_comp_pet   FOREIGN KEY (id_pet) REFERENCES TB_PET(id_pet),
+                                             CONSTRAINT fk_prontuario_comp_tutor FOREIGN KEY (id_usuario_criador) REFERENCES TB_TUTOR(id_tutor)
+);
+CREATE INDEX ix_prontuario_comp_pet ON TB_PRONTUARIO_COMPARTILHADO(id_pet);
+
+-- Nova permissão granular de acesso compartilhado ao pet.
+-- A coluna nasceu como VARCHAR2(10) (V18) e não comporta nomes como VISUALIZAR_PERFIL/VISUALIZAR_PRONTUARIO.
+ALTER TABLE TB_PET_ACESSO MODIFY (ds_permissao VARCHAR2(30));
+ALTER TABLE TB_PET_CONVITE MODIFY (ds_permissao VARCHAR2(30));
+ALTER TABLE TB_PET_ACESSO DROP CONSTRAINT ck_acesso_permissao;
+ALTER TABLE TB_PET_ACESSO ADD CONSTRAINT ck_acesso_permissao
+    CHECK (ds_permissao IN ('LEITURA','EDICAO','VISUALIZAR_PERFIL','VISUALIZAR_AGENDA',
+                            'VISUALIZAR_CARTEIRA','CRIAR_EVENTO','EDITAR_PERFIL','VISUALIZAR_PRONTUARIO'));
+ALTER TABLE TB_PET_CONVITE DROP CONSTRAINT ck_convite_permissao;
+ALTER TABLE TB_PET_CONVITE ADD CONSTRAINT ck_convite_permissao
+    CHECK (ds_permissao IN ('LEITURA','EDICAO','VISUALIZAR_PERFIL','VISUALIZAR_AGENDA',
+                            'VISUALIZAR_CARTEIRA','CRIAR_EVENTO','EDITAR_PERFIL','VISUALIZAR_PRONTUARIO'));
+
+-- ============================================================================
+-- V50__cria_identidade_social.sql
+-- ============================================================================
+
+-- Identidades de login social (Google / Apple) vinculadas a um tutor.
+-- A identidade é (provedor, subject): o e-mail do provedor é apenas informativo.
+CREATE TABLE TB_IDENTIDADE_SOCIAL (
+    id_identidade_social NUMBER(10) GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    id_tutor NUMBER(10) NOT NULL,
+    ds_provedor VARCHAR2(20) NOT NULL,
+    ds_subject VARCHAR2(255) NOT NULL,
+    ds_email_provedor VARCHAR2(150),
+    dt_vinculo TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    CONSTRAINT fk_identidade_social_tutor FOREIGN KEY (id_tutor)
+        REFERENCES TB_TUTOR(id_tutor) ON DELETE CASCADE,
+    CONSTRAINT ck_identidade_social_provedor CHECK (ds_provedor IN ('GOOGLE', 'APPLE')),
+    -- Uma identidade externa pertence a no máximo um tutor.
+    CONSTRAINT uk_identidade_provedor_subject UNIQUE (ds_provedor, ds_subject),
+    -- Um tutor tem no máximo uma identidade por provedor.
+    CONSTRAINT uk_identidade_tutor_provedor UNIQUE (id_tutor, ds_provedor)
+);
+
+CREATE INDEX idx_identidade_social_tutor ON TB_IDENTIDADE_SOCIAL (id_tutor);
+
+-- ============================================================================
+-- V51__persiste_codigo_vinculo_clinica.sql
+-- ============================================================================
+
+ALTER TABLE TB_CODIGO_VINCULO_CLINICA ADD (
+    ds_codigo VARCHAR2(18)
+);
+
+-- ============================================================================
+-- V52__resumos_pre_consulta_sia.sql
+-- ============================================================================
+
+CREATE TABLE TB_SIA_RESUMO (
+    id_resumo NUMBER GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+    id_pet NUMBER NOT NULL REFERENCES TB_PET(id_pet),
+    id_evento NUMBER REFERENCES TB_EVENTO_SAUDE(id_evento),
+    ds_tutor_email VARCHAR2(150) NOT NULL,
+    ds_resumo CLOB NOT NULL,
+    ds_perguntas CLOB,
+    ds_origem VARCHAR2(30) DEFAULT 'IA_RASCUNHO' NOT NULL,
+    dt_criacao TIMESTAMP NOT NULL,
+    dt_compartilhamento TIMESTAMP,
+    dt_revogacao TIMESTAMP
+);
+
+CREATE INDEX IX_SIA_RESUMO_PET ON TB_SIA_RESUMO(id_pet, id_evento);
+
+-- ============================================================================
+-- V53__idempotencia_agendamento_evento.sql
+-- ============================================================================
+
+ALTER TABLE TB_EVENTO_SAUDE ADD ds_request_id VARCHAR2(64);
+CREATE UNIQUE INDEX UX_EVENTO_REQUEST_ID ON TB_EVENTO_SAUDE(ds_request_id);
+
+-- ============================================================================
+-- V54__conversas_sia.sql
+-- ============================================================================
+
+CREATE TABLE TB_SIA_CONVERSA (
+    id_conversa VARCHAR2(36) PRIMARY KEY,
+    id_pet NUMBER NOT NULL REFERENCES TB_PET(id_pet),
+    ds_tutor_email VARCHAR2(150) NOT NULL,
+    dt_criacao TIMESTAMP NOT NULL,
+    dt_atualizacao TIMESTAMP NOT NULL
+);
+
+CREATE INDEX IX_SIA_CONVERSA_TUTOR_PET ON TB_SIA_CONVERSA(ds_tutor_email, id_pet);
+
+CREATE TABLE TB_SIA_MENSAGEM (
+    id_mensagem NUMBER GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+    id_conversa VARCHAR2(36) NOT NULL REFERENCES TB_SIA_CONVERSA(id_conversa),
+    ds_autoria VARCHAR2(16) NOT NULL,
+    ds_texto CLOB NOT NULL,
+    dt_criacao TIMESTAMP NOT NULL
+);
+
+CREATE INDEX IX_SIA_MENSAGEM_CONVERSA ON TB_SIA_MENSAGEM(id_conversa, id_mensagem);
+
+-- ============================================================================
+-- V55__sessoes_agendamento_sia.sql
+-- ============================================================================
+
+CREATE TABLE TB_SIA_SESSAO_AGENDAMENTO (
+    id_sessao VARCHAR2(36) PRIMARY KEY,
+    ds_tutor_email VARCHAR2(150) NOT NULL,
+    ds_dados CLOB NOT NULL,
+    dt_expiracao TIMESTAMP NOT NULL
+);
+
+CREATE INDEX IX_SIA_SESSAO_EXPIRACAO ON TB_SIA_SESSAO_AGENDAMENTO(dt_expiracao);

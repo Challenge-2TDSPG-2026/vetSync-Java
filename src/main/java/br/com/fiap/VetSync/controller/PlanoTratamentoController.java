@@ -105,6 +105,15 @@ public class PlanoTratamentoController {
         return planos.stream().map(this::toResponse).toList();
     }
 
+    @GetMapping("/pet/{idPet}")
+    @PreAuthorize("hasRole('TUTOR') and @petAccessSecurity.canView(#idPet, authentication)")
+    @Operation(summary = "Listar planos registrados pelo veterinário para um pet do tutor")
+    public List<PlanoTratamentoResponse> listarPorPet(@PathVariable Long idPet, Authentication authentication) {
+        return planoTratamentoService.listarParaTutor(authentication.getName()).stream()
+                .filter(plano -> plano.getPet() != null && idPet.equals(plano.getPet().getIdPet()))
+                .map(this::toResponse).toList();
+    }
+
     @GetMapping("/{id}")
     @PreAuthorize("@planoTratamentoSecurity.isRelacionadoAoPlano(#id, authentication)")
     @Operation(summary = "Buscar plano por ID, com os itens da sequência (só tutor dono ou veterinário que prescreveu)")
