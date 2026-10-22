@@ -18,4 +18,7 @@ public interface PetConviteRepository extends JpaRepository<PetConvite, Long> {
 
     List<PetConvite> findByTutorOrigem_IdTutorAndDsEmailDestinoIgnoreCaseAndDsStatusAndTodosPetsTrue(
             Long idTutorOrigem, String dsEmailDestino, StatusConvitePet dsStatus);
+
+    List<PetConvite> findByDsEmailDestinoIgnoreCaseAndDsStatusOrderByDtCriacaoDesc(
+            String dsEmailDestino, StatusConvitePet dsStatus);
 }

@@ -113,18 +113,120 @@ class PetConviteServiceTest {
     }
 
     @Test
-    void criar_EmailJaTemConta_LancaConflict() {
+    void criar_EmailJaTemConta_CriaConviteEEnviaEmail() {
+        Tutor dono = dono();
+        Pet pet = petDoDono(dono);
+        Tutor existente = Tutor.builder().idTutor(2L).nmTutor("Ja Tenho").dsEmail("jatenho@teste.com").build();
+        when(petRepository.findById(10L)).thenReturn(Optional.of(pet));
+        when(tutorRepository.findByDsEmail("jatenho@teste.com")).thenReturn(Optional.of(existente));
+        when(tutorRepository.existsByDsEmail("jatenho@teste.com")).thenReturn(true);
+        when(petAcessoService.listarAtivosDoPet(10L)).thenReturn(List.of());
+        when(petConviteRepository.findByPet_IdPetAndDsEmailDestinoIgnoreCaseAndDsStatus(
+                10L, "jatenho@teste.com", StatusConvitePet.PENDENTE)).thenReturn(List.of());
+        when(petConviteRepository.save(any(PetConvite.class))).thenAnswer(i -> i.getArgument(0));
+
+        PetConvite convite = petConviteService.criar(
+                10L, 1L, "jatenho@teste.com", RelacaoPet.CONJUGE, PermissaoPet.EDICAO);
+
+        assertThat(convite.getDsStatus()).isEqualTo(StatusConvitePet.PENDENTE);
+        verify(emailService).enviarObrigatorio(eq("jatenho@teste.com"), anyString(), anyString());
+    }
+
+    @Test
+    void criar_ConvidarASiMesmo_LancaConflict() {
         Tutor dono = dono();
         Pet pet = petDoDono(dono);
         when(petRepository.findById(10L)).thenReturn(Optional.of(pet));
-        when(tutorRepository.existsByDsEmail("jatenho@teste.com")).thenReturn(true);
+        when(tutorRepository.findByDsEmail("dono@teste.com")).thenReturn(Optional.of(dono));
 
         assertThatThrownBy(() -> petConviteService.criar(
-                10L, 1L, "jatenho@teste.com", RelacaoPet.CONJUGE, PermissaoPet.EDICAO))
+                10L, 1L, "dono@teste.com", RelacaoPet.CONJUGE, PermissaoPet.EDICAO))
                 .isInstanceOf(PetConviteService.ConviteException.class)
                 .hasFieldOrPropertyWithValue("status", org.springframework.http.HttpStatus.CONFLICT);
 
         verify(petConviteRepository, never()).save(any());
+    }
+
+    @Test
+    void criar_PessoaJaTemAcessoAtivo_LancaConflict() {
+        Tutor dono = dono();
+        Pet pet = petDoDono(dono);
+        Tutor existente = Tutor.builder().idTutor(2L).dsEmail("jatenho@teste.com").build();
+        when(petRepository.findById(10L)).thenReturn(Optional.of(pet));
+        when(tutorRepository.findByDsEmail("jatenho@teste.com")).thenReturn(Optional.of(existente));
+        when(petAcessoService.listarAtivosDoPet(10L)).thenReturn(List.of(
+                br.com.fiap.VetSync.entity.PetAcesso.builder().tutor(existente).build()));
+
+        assertThatThrownBy(() -> petConviteService.criar(
+                10L, 1L, "jatenho@teste.com", RelacaoPet.CUIDADOR, PermissaoPet.LEITURA))
+                .isInstanceOf(PetConviteService.ConviteException.class)
+                .hasFieldOrPropertyWithValue("status", org.springframework.http.HttpStatus.CONFLICT);
+
+        verify(petConviteRepository, never()).save(any());
+    }
+
+    // ---------------------------------------------------------------
+    // Aceite logado (conta já existente)
+    // ---------------------------------------------------------------
+
+    private PetConvite convitePendente(String emailDestino) {
+        Tutor dono = dono();
+        return PetConvite.builder()
+                .idConvite(7L).pet(petDoDono(dono)).tutorOrigem(dono)
+                .dsEmailDestino(emailDestino)
+                .dsRelacao(RelacaoPet.CUIDADOR).dsPermissao(PermissaoPet.LEITURA)
+                .dsTokenHash("h").dsStatus(StatusConvitePet.PENDENTE)
+                .dtCriacao(LocalDateTime.now()).dtExpiracao(LocalDateTime.now().plusHours(1))
+                .build();
+    }
+
+    @Test
+    void aceitarRecebido_EmailConfere_ConcedeAcesso() {
+        PetConvite convite = convitePendente("jatenho@teste.com");
+        Tutor existente = Tutor.builder().idTutor(2L).nmTutor("Ja Tenho").dsEmail("jatenho@teste.com").build();
+        when(petConviteRepository.findById(7L)).thenReturn(Optional.of(convite));
+        when(tutorRepository.findByDsEmail("jatenho@teste.com")).thenReturn(Optional.of(existente));
+
+        petConviteService.aceitarRecebido(7L, "JaTenho@teste.com");
+
+        verify(petAcessoService).conceder(convite.getPet(), existente, RelacaoPet.CUIDADOR, PermissaoPet.LEITURA);
+        assertThat(convite.getDsStatus()).isEqualTo(StatusConvitePet.ACEITO);
+        assertThat(convite.getTutorDestino()).isEqualTo(existente);
+    }
+
+    @Test
+    void aceitarRecebido_ConviteDeOutroEmail_Lanca404() {
+        PetConvite convite = convitePendente("outro@teste.com");
+        when(petConviteRepository.findById(7L)).thenReturn(Optional.of(convite));
+
+        assertThatThrownBy(() -> petConviteService.aceitarRecebido(7L, "jatenho@teste.com"))
+                .isInstanceOf(PetConviteService.ConviteException.class)
+                .hasFieldOrPropertyWithValue("status", org.springframework.http.HttpStatus.NOT_FOUND);
+
+        verify(petAcessoService, never()).conceder(any(), any(), any(), any());
+    }
+
+    @Test
+    void aceitarComoTutorLogado_TokenDeOutroEmail_Lanca403() {
+        PetConvite convite = convitePendente("outro@teste.com");
+        when(petConviteRepository.findByDsTokenHash(anyString())).thenReturn(Optional.of(convite));
+
+        assertThatThrownBy(() -> petConviteService.aceitarComoTutorLogado("tok", "jatenho@teste.com"))
+                .isInstanceOf(PetConviteService.ConviteException.class)
+                .hasFieldOrPropertyWithValue("status", org.springframework.http.HttpStatus.FORBIDDEN);
+
+        verify(petAcessoService, never()).conceder(any(), any(), any(), any());
+    }
+
+    @Test
+    void recusarRecebido_MarcaComoRecusado() {
+        PetConvite convite = convitePendente("jatenho@teste.com");
+        when(petConviteRepository.findById(7L)).thenReturn(Optional.of(convite));
+
+        petConviteService.recusarRecebido(7L, "jatenho@teste.com");
+
+        assertThat(convite.getDsStatus()).isEqualTo(StatusConvitePet.RECUSADO);
+        verify(petAcessoService, never()).conceder(any(), any(), any(), any());
     }
 
     // ---------------------------------------------------------------
