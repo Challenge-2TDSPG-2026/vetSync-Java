@@ -10,6 +10,7 @@ public interface VeterinarioRepository extends JpaRepository<Veterinario, Long> 
     Optional<Veterinario> findByDsEmail(String dsEmail);
     boolean existsByDsEmail(String dsEmail);
     boolean existsByNrCrmv(String nrCrmv);
+    Optional<Veterinario> findByNrCrmv(String nrCrmv);
     List<Veterinario> findByDsEspecialidade(String dsEspecialidade);
     List<Veterinario> findByClinica_IdClinicaOrderByNmVeterinario(Long idClinica);
 }

@@ -171,23 +171,26 @@ public class AuthController {
     @PostMapping("/login")
     @Operation(summary = "Login — e-mail e senha. Funciona para tutor, veterinário, profissional de estética ou admin.")
     public AuthResponse login(@RequestBody LoginRequest req) {
-        String email = req.email() == null ? null : req.email().trim();
+        String identificador = req.email() == null ? null : req.email().trim();
         String senha = req.senha();
 
-        if (email == null || email.isBlank() || senha == null || senha.isBlank()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "E-mail e senha são obrigatórios");
+        if (identificador == null || identificador.isBlank() || senha == null || senha.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "E-mail ou CRMV e senha são obrigatórios");
         }
+
+        String login = veterinarioRepository.findByNrCrmv(identificador.toUpperCase(Locale.ROOT))
+                .map(v -> v.getDsEmail()).orElse(identificador.toLowerCase(Locale.ROOT));
 
         try {
             authManager.authenticate(
-                    new UsernamePasswordAuthenticationToken(email.toLowerCase(Locale.ROOT), senha)
+                    new UsernamePasswordAuthenticationToken(login, senha)
             );
         } catch (BadCredentialsException e) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "E-mail ou senha inválidos");
         } catch (AuthenticationException e) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Não foi possível autenticar o usuário");
         }
-        return montarAuthResponse(email.toLowerCase(Locale.ROOT), jwtService.gerarToken(email.toLowerCase(Locale.ROOT)));
+        return montarAuthResponse(login, jwtService.gerarToken(login));
     }
 
     @PostMapping("/registrar")

@@ -25,18 +25,20 @@ public class AppUserDetailsService implements UserDetailsService {
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
         String emailNormalizado = normalizeEmail(email);
 
+        var veterinario = veterinarioRepository.findByDsEmail(emailNormalizado)
+                .or(() -> veterinarioRepository.findByNrCrmv(email == null ? "" : email.trim().toUpperCase(Locale.ROOT)));
+        Optional<UserDetails> detalhesVeterinario = veterinario
+                .map(vet -> User.builder().username(vet.getDsEmail())
+                        .password(vet.getDsSenha() != null ? vet.getDsSenha() : "")
+                        .roles("VETERINARIO").build());
+
         return tutorRepository.findByDsEmail(emailNormalizado)
                 .map(tutor -> User.builder()
                         .username(tutor.getDsEmail())
                         .password(tutor.getDsSenha() != null ? tutor.getDsSenha() : "")
                         .roles("TUTOR")
                         .build())
-                .or(() -> veterinarioRepository.findByDsEmail(emailNormalizado)
-                        .map(vet -> User.builder()
-                                .username(vet.getDsEmail())
-                                .password(vet.getDsSenha() != null ? vet.getDsSenha() : "")
-                                .roles("VETERINARIO")
-                                .build()))
+                .or(() -> detalhesVeterinario)
                 .or(() -> profissionalEsteticaRepository.findByDsEmail(emailNormalizado)
                         .map(prof -> User.builder()
                                 .username(prof.getDsEmail())
