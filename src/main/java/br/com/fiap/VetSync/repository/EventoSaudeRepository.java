@@ -10,6 +10,7 @@ import java.time.LocalDate;
 import java.util.List;
 
 public interface EventoSaudeRepository extends JpaRepository<EventoSaude, Long> {
+    java.util.Optional<EventoSaude> findByRequestId(String requestId);
     /**
      * Projeção usada na carteira pública. Ela consulta apenas os dados que podem
      * ser exibidos no link compartilhável e não instancia EventoSaude.

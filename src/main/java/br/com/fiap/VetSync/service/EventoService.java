@@ -70,12 +70,36 @@ public class EventoService {
 
 
 
+    @Transactional
     public EventoSaude agendar(EventoSaude evento, Long idPet, Long idTipoEvento, Long idVeterinario) {
+        if (evento.getRequestId() != null) {
+            var anterior = eventoSaudeRepository.findByRequestId(evento.getRequestId());
+            if (anterior.isPresent()) {
+                EventoSaude salvo = anterior.get();
+                if (!salvo.getPet().getIdPet().equals(idPet)
+                        || !salvo.getTipoEvento().getIdTipoEvento().equals(idTipoEvento)
+                        || !salvo.getVeterinario().getIdVeterinario().equals(idVeterinario)
+                        || !salvo.getDtEvento().equals(evento.getDtEvento())
+                        || !salvo.getHrEvento().equals(evento.getHrEvento())) {
+                    throw new ResponseStatusException(HttpStatus.CONFLICT, "Chave de agendamento já utilizada");
+                }
+                if (salvo.getDsStatus() != StatusEvento.AGENDADO) {
+                    throw new ResponseStatusException(HttpStatus.CONFLICT, "Esse agendamento já mudou de estado; atualize a agenda");
+                }
+                return salvo;
+            }
+        }
         Pet pet = petService.buscarPorId(idPet);
         TipoEvento tipoEvento = tipoEventoRepository.findById(idTipoEvento).orElseThrow(
                 () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Tipo de evento não encontrado: " + idTipoEvento));
-        Veterinario vet = veterinarioRepository.findById(idVeterinario).orElseThrow(
+        Veterinario vet = veterinarioRepository.findByIdForBooking(idVeterinario).orElseThrow(
                 () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Veterinário não encontrado: " + idVeterinario));
+        if (evento.getRequestId() != null) {
+            var anterior = eventoSaudeRepository.findByRequestId(evento.getRequestId());
+            if (anterior.isPresent()) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "Solicitação de agendamento já processada; atualize a agenda");
+            }
+        }
 
         vinculoClinicaService.exigirClinicaAtivaDoTutor(pet.getTutor().getIdTutor(), vet.getClinica().getIdClinica());
         evento.setClinica(vet.getClinica());

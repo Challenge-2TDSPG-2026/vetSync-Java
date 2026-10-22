@@ -47,7 +47,8 @@ public class EventoController {
             @NotBlank(message = "hrEvento é obrigatória")
             @Pattern(regexp = "^([01]\\d|2[0-3]):[0-5]\\d$", message = "hrEvento deve estar no formato HH:mm, ex: 14:30")
             String hrEvento,
-            String dsObservacao
+            String dsObservacao,
+            String requestId
     ) {}
 
     public record EventoAgendarEsteticaRequest(
@@ -166,6 +167,10 @@ public class EventoController {
                 .dsObservacao(request.dsObservacao())
                 .dsObservacaoTutor(request.dsObservacao())
                 .build();
+        if (request.requestId() != null && !request.requestId().matches("[a-zA-Z0-9-]{8,64}")) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "requestId inválido");
+        }
+        evento.setRequestId(request.requestId());
         return toResponse(eventoService.agendar(evento, request.idPet(), request.idTipoEvento(), request.idVeterinario()));
     }
 

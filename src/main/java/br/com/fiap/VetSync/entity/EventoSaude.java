@@ -23,6 +23,9 @@ public class EventoSaude {
     @Column(name = "id_evento")
     private Long idEvento;
 
+    @Column(name = "ds_request_id", length = 64, unique = true)
+    private String requestId;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_pet", nullable = false)
     private Pet pet;
