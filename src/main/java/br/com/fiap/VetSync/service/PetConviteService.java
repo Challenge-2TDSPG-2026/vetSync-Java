@@ -70,7 +70,8 @@ public class PetConviteService {
     }
 
     public record ConvitePublico(
-            String email, String nomePet, RelacaoPet relacao, PermissaoPet permissao, LocalDateTime expiraEm
+            String email, String nomePet, RelacaoPet relacao, PermissaoPet permissao, LocalDateTime expiraEm,
+            boolean contaExistente
     ) {}
 
     @Transactional(readOnly = true)
@@ -114,9 +115,10 @@ public class PetConviteService {
                                     boolean todosPets) {
         String emailNormalizado = email.trim().toLowerCase(Locale.ROOT);
 
-        if (tutorRepository.existsByDsEmail(emailNormalizado)) {
-            throw new ConviteException(HttpStatus.CONFLICT, "Já existe uma conta cadastrada com esse e-mail");
-        }
+        // E-mail com conta é permitido: o convite vira um "aceite logado" (ver aceitarComoTutorLogado).
+        // Continuam proibidos: convidar a si mesmo e convidar quem já tem acesso ativo.
+        Tutor destinoExistente = tutorRepository.findByDsEmail(emailNormalizado).orElse(null);
+        validarDestinatario(pet, idTutorOrigem, emailNormalizado, destinoExistente, todosPets);
 
         List<PetConvite> pendentesAnteriores = todosPets
                 ? petConviteRepository
@@ -156,8 +158,27 @@ public class PetConviteService {
         return convite;
     }
 
+    private void validarDestinatario(Pet pet, Long idTutorOrigem, String email, Tutor destino, boolean todosPets) {
+        if (destino == null) {
+            return;
+        }
+        if (idTutorOrigem.equals(destino.getIdTutor())) {
+            throw new ConviteException(HttpStatus.CONFLICT, "Você não pode convidar a si mesmo");
+        }
+        boolean jaTemAcesso = todosPets
+                ? responsavelService.listarAtivos(idTutorOrigem).stream()
+                .anyMatch(v -> v.getTutorResponsavel() != null
+                        && destino.getIdTutor().equals(v.getTutorResponsavel().getIdTutor()))
+                : petAcessoService.listarAtivosDoPet(pet.getIdPet()).stream()
+                .anyMatch(a -> a.getTutor() != null && destino.getIdTutor().equals(a.getTutor().getIdTutor()));
+        if (jaTemAcesso) {
+            throw new ConviteException(HttpStatus.CONFLICT, "Essa pessoa já tem acesso a este pet");
+        }
+    }
+
     private void enviarEmailConvite(PetConvite convite, String tokenPuro) {
         String link = webInviteUrl + "?token=" + tokenPuro;
+        boolean contaExistente = tutorRepository.existsByDsEmail(convite.getDsEmailDestino());
         String escopo = convite.isTodosPets()
                 ? "todos os pets de " + convite.getTutorOrigem().getNmTutor()
                 : convite.getPet().getNmPet();
@@ -168,7 +189,10 @@ public class PetConviteService {
                 + convite.getTutorOrigem().getNmTutor() + " convidou você para acompanhar "
                 + escopo + " no VetSync"
                 + (convite.isTodosPets() ? ".\n\n" : ", como " + rotuloRelacao(convite.getDsRelacao()) + ".\n\n")
-                + "Para aceitar o convite, acesse o link abaixo e finalize seu cadastro:\n" + link + "\n\n"
+                + (contaExistente
+                    ? "Você já tem conta no VetSync com este e-mail. Abra o app (ou o link abaixo), entre na sua conta e aceite o convite:\n"
+                    : "Para aceitar o convite, acesse o link abaixo e finalize seu cadastro:\n")
+                + link + "\n\n"
                 + "Este link expira em " + expiracaoHoras + " horas.\n"
                 + "Se você não esperava este convite, pode ignorar este e-mail.";
         emailService.enviarObrigatorio(convite.getDsEmailDestino(), assunto, corpo);
@@ -194,7 +218,8 @@ public class PetConviteService {
                 convite.isTodosPets() ? "Todos os pets" : convite.getPet().getNmPet(),
                 convite.getDsRelacao(),
                 convite.getDsPermissao(),
-                convite.getDtExpiracao()
+                convite.getDtExpiracao(),
+                tutorRepository.existsByDsEmail(convite.getDsEmailDestino())
         );
     }
 
@@ -237,7 +262,8 @@ public class PetConviteService {
         String email = convite.getDsEmailDestino();
 
         if (tutorRepository.existsByDsEmail(email)) {
-            throw new ConviteException(HttpStatus.CONFLICT, "Já existe uma conta cadastrada com esse e-mail");
+            throw new ConviteException(HttpStatus.CONFLICT,
+                    "Já existe uma conta com esse e-mail. Entre na sua conta para aceitar o convite");
         }
 
         Tutor tutor = Tutor.builder()
@@ -249,12 +275,20 @@ public class PetConviteService {
                 .build();
         tutor = tutorRepository.save(tutor);
 
+        finalizarAceite(convite, tutor);
+
+        log.info("Convite {} aceito; escopo de acesso: {}", convite.getIdConvite(),
+                convite.isTodosPets() ? "todos os pets do tutor" : "pet " + convite.getPet().getIdPet());
+
+        return tutor;
+    }
+
+    /** Concede o acesso, marca o convite como ACEITO e audita. Compartilhado pelos dois fluxos de aceite. */
+    private void finalizarAceite(PetConvite convite, Tutor tutor) {
         if (convite.isTodosPets()) {
-            responsavelService.conceder(
-                    convite.getTutorOrigem(), tutor, convite.getDsPermissao());
+            responsavelService.conceder(convite.getTutorOrigem(), tutor, convite.getDsPermissao());
         } else {
-            petAcessoService.conceder(
-                    convite.getPet(), tutor, convite.getDsRelacao(), convite.getDsPermissao());
+            petAcessoService.conceder(convite.getPet(), tutor, convite.getDsRelacao(), convite.getDsPermissao());
         }
 
         convite.setDsStatus(StatusConvitePet.ACEITO);
@@ -265,10 +299,68 @@ public class PetConviteService {
         if (!convite.isTodosPets()) {
             auditarConvite(convite.getPet(), "CONVITE_ACEITO", null, tutor.getNmTutor());
         }
+    }
 
-        log.info("Convite {} aceito; escopo de acesso: {}", convite.getIdConvite(),
-                convite.isTodosPets() ? "todos os pets do tutor" : "pet " + convite.getPet().getIdPet());
+    // ---------------------------------------------------------------
+    // Quem JÁ tem conta aceita/recusa logado (sem cadastro)
+    // ---------------------------------------------------------------
 
+    @Transactional
+    public List<PetConvite> listarRecebidos(String emailTutorLogado) {
+        String email = emailTutorLogado.trim().toLowerCase(Locale.ROOT);
+        List<PetConvite> pendentes = petConviteRepository
+                .findByDsEmailDestinoIgnoreCaseAndDsStatusOrderByDtCriacaoDesc(email, StatusConvitePet.PENDENTE);
+        pendentes.stream().filter(PetConvite::isExpirado).forEach(c -> c.setDsStatus(StatusConvitePet.EXPIRADO));
+        petConviteRepository.saveAll(pendentes);
+        return pendentes.stream().filter(c -> c.getDsStatus() == StatusConvitePet.PENDENTE).toList();
+    }
+
+    @Transactional
+    public Tutor aceitarComoTutorLogado(String tokenPuro, String emailTutorLogado) {
+        return aceitarLogado(buscarValidoPorToken(tokenPuro), emailTutorLogado);
+    }
+
+    @Transactional
+    public Tutor aceitarRecebido(Long idConvite, String emailTutorLogado) {
+        return aceitarLogado(buscarRecebidoValido(idConvite, emailTutorLogado), emailTutorLogado);
+    }
+
+    @Transactional
+    public void recusarRecebido(Long idConvite, String emailTutorLogado) {
+        PetConvite convite = buscarRecebidoValido(idConvite, emailTutorLogado);
+        convite.setDsStatus(StatusConvitePet.RECUSADO);
+        petConviteRepository.save(convite);
+    }
+
+    private PetConvite buscarRecebidoValido(Long idConvite, String emailTutorLogado) {
+        PetConvite convite = petConviteRepository.findById(idConvite)
+                .orElseThrow(() -> new ConviteException(HttpStatus.NOT_FOUND, "Convite não encontrado"));
+        // 404 (e não 403) para não revelar a existência de convites de outras pessoas.
+        if (!convite.getDsEmailDestino().equalsIgnoreCase(emailTutorLogado.trim())) {
+            throw new ConviteException(HttpStatus.NOT_FOUND, "Convite não encontrado");
+        }
+        if (convite.getDsStatus() == StatusConvitePet.PENDENTE && convite.isExpirado()) {
+            convite.setDsStatus(StatusConvitePet.EXPIRADO);
+            petConviteRepository.save(convite);
+        }
+        if (convite.getDsStatus() == StatusConvitePet.EXPIRADO) {
+            throw new ConviteException(HttpStatus.GONE, "Convite expirado");
+        }
+        if (convite.getDsStatus() != StatusConvitePet.PENDENTE) {
+            throw new ConviteException(HttpStatus.GONE, "Convite não está mais disponível");
+        }
+        return convite;
+    }
+
+    private Tutor aceitarLogado(PetConvite convite, String emailTutorLogado) {
+        // A conta logada precisa ser a dona do e-mail convidado: o token sozinho não basta.
+        if (!convite.getDsEmailDestino().equalsIgnoreCase(emailTutorLogado.trim())) {
+            throw new ConviteException(HttpStatus.FORBIDDEN, "Este convite foi enviado para outro e-mail");
+        }
+        Tutor tutor = tutorRepository.findByDsEmail(convite.getDsEmailDestino())
+                .orElseThrow(() -> new ConviteException(HttpStatus.NOT_FOUND, "Conta não encontrada"));
+        finalizarAceite(convite, tutor);
+        log.info("Convite {} aceito por conta existente", convite.getIdConvite());
         return tutor;
     }
 
