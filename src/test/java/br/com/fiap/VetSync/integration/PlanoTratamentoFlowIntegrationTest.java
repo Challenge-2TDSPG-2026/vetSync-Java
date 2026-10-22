@@ -117,7 +117,7 @@ class PlanoTratamentoFlowIntegrationTest {
                 .header("Authorization", "Bearer " + adminToken)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(new VeterinarioController.VeterinarioRequest(
-                        "Dr. Paulo", "paulo.vet@vetsync.com", "SenhaVet123", clinica.getIdClinica())))).andReturn();
+                        "Dr. Paulo", "paulo.vet@vetsync.com", "SenhaVet123", "SP-654321", clinica.getIdClinica())))).andReturn();
         JsonNode vetNode = objectMapper.readTree(vetRes.getResponse().getContentAsString());
         Long idVet = vetNode.get("idVeterinario").asLong();
         String vetPwd = "SenhaVet123";

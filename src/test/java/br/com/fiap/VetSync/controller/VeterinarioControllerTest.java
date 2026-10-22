@@ -67,7 +67,7 @@ class VeterinarioControllerTest {
         when(veterinarioService.cadastrar("Dr. Lucas", "lucas@vet.com", "SenhaSegura123", "SP-654321", 1L, null))
                 .thenReturn(new VeterinarioService.NovoVeterinario(vet));
 
-        var req = new VeterinarioController.VeterinarioRequest("Dr. Lucas", "lucas@vet.com", "SenhaSegura123", 1L);
+        var req = new VeterinarioController.VeterinarioRequest("Dr. Lucas", "lucas@vet.com", "SenhaSegura123", "SP-654321", 1L);
 
         mockMvc.perform(post("/veterinarios")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -82,7 +82,7 @@ class VeterinarioControllerTest {
     @DisplayName("POST /veterinarios - TUTOR não tem permissão (403)")
     @WithMockUser(roles = "TUTOR")
     void cadastrar_TutorNegado() throws Exception {
-        var req = new VeterinarioController.VeterinarioRequest("Dr. Lucas", "lucas@vet.com", "SenhaSegura123", 1L);
+        var req = new VeterinarioController.VeterinarioRequest("Dr. Lucas", "lucas@vet.com", "SenhaSegura123", "SP-654321", 1L);
 
         mockMvc.perform(post("/veterinarios")
                         .contentType(MediaType.APPLICATION_JSON)

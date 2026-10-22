@@ -49,7 +49,12 @@ public class EventoController {
             String hrEvento,
             String dsObservacao,
             String requestId
-    ) {}
+    ) {
+        public EventoAgendarRequest(Long idPet, Long idTipoEvento, Long idVeterinario,
+                                    LocalDate dtEvento, String hrEvento, String dsObservacao) {
+            this(idPet, idTipoEvento, idVeterinario, dtEvento, hrEvento, dsObservacao, null);
+        }
+    }
 
     public record EventoAgendarEsteticaRequest(
             @NotNull(message = "idPet é obrigatório") Long idPet,
