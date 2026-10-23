@@ -95,11 +95,11 @@ public class SecurityConfig {
                 "http://127.0.0.1:*",
                 "http://10.0.2.2:*",
                 "https://vetsync-theta.vercel.app",
+		"https://vetsync.site",
 		"https://vetsync-76c0e.web.app",
 		"https://vetsync-76c0e.firebaseapp.com"
         ));
-        // Origem do site web (tela pública de aceite de convite), configurável via env var
-        // APP_CORS_WEB_ORIGIN — nunca fixada no código.
+        // Origens web adicionais podem ser configuradas via APP_CORS_WEB_ORIGIN.
         if (corsWebOrigin != null && !corsWebOrigin.isBlank()) {
             for (String origem : corsWebOrigin.split(",")) {
                 String o = origem.trim();
