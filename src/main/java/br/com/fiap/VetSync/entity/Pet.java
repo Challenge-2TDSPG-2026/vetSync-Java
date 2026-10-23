@@ -8,6 +8,7 @@ import lombok.*;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "TB_PET")
@@ -37,6 +38,9 @@ public class Pet {
     @Column(name = "nr_peso_kg", precision = 5, scale = 2)
     private BigDecimal nrPesoKg;
 
+    @Column(name = "dt_cadastro", updatable = false)
+    private LocalDateTime criadoEm;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_tutor", nullable = false)
     private Tutor tutor;
@@ -59,4 +63,9 @@ public class Pet {
 
     @Column(name = "ds_foto_tipo", length = 100)
     private String dsFotoTipo;
+
+    @PrePersist
+    private void registrarDataCadastro() {
+        if (criadoEm == null) criadoEm = LocalDateTime.now();
+    }
 }

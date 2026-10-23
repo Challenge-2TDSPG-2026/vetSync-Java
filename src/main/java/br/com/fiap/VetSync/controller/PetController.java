@@ -24,6 +24,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @RestController
@@ -69,7 +70,8 @@ public class PetController {
             String nmTutor,
             String emailTutor,
             String telefoneTutor,
-            String fotoUrl
+            String fotoUrl,
+            LocalDateTime criadoEm
     ) {}
 
     private PetResponse toResponse(Pet pet) {
@@ -89,7 +91,8 @@ public class PetController {
                 pet.getTutor() != null ? pet.getTutor().getNmTutor() : null,
                 pet.getTutor() != null ? pet.getTutor().getDsEmail() : null,
                 pet.getTutor() != null ? pet.getTutor().getNrTelefone() : null,
-                pet.getDsFoto() != null ? "/pets/" + pet.getIdPet() + "/foto" : null
+                pet.getDsFoto() != null ? "/pets/" + pet.getIdPet() + "/foto" : null,
+                pet.getCriadoEm()
         );
     }
 
