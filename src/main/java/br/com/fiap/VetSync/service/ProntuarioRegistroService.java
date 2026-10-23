@@ -22,6 +22,8 @@ import java.util.Set;
 public class ProntuarioRegistroService {
 
     static final long TAMANHO_MAXIMO_ARQUIVO = 10L * 1024 * 1024; // 10 MB (igual aos anexos de evento)
+    /** Consultas antigas enviadas pelo tutor são guardadas como exame com este prefixo (sem veterinário). */
+    public static final String PREFIXO_PRONTUARIO_ANTERIOR = "Prontuário anterior · ";
     static final Set<String> TIPOS_ARQUIVO_PERMITIDOS = Set.of(
             "application/pdf", "image/jpeg", "image/png", "image/webp");
 
@@ -82,16 +84,7 @@ public class ProntuarioRegistroService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.FORBIDDEN, "Veterinário não encontrado"));
 
         String nome = obrigatorio(dados.nome(), "nome do exame", 120);
-        if (dados.resultadoEm() == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Data do resultado é obrigatória");
-        }
-        if (dados.resultadoEm().isAfter(LocalDate.now())) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Data do resultado não pode ser futura");
-        }
-        if (dados.coletadoEm() != null && dados.coletadoEm().isAfter(dados.resultadoEm())) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "Data da coleta não pode ser depois da data do resultado");
-        }
+        validarDatasDoExame(dados);
         EventoSaude evento = null;
         if (dados.idEvento() != null) {
             evento = buscarEvento(dados.idEvento());
@@ -112,10 +105,57 @@ public class ProntuarioRegistroService {
         return salvo;
     }
 
+    /**
+     * O tutor envia uma consulta antiga (data, motivo e detalhes). Fica no prontuário como exame com o prefixo
+     * {@link #PREFIXO_PRONTUARIO_ANTERIOR}, sem veterinário, e o autor registrado é o e-mail do tutor.
+     * Não há vínculo com atendimento.
+     */
+    @Transactional
+    public ResultadoExame registrarProntuarioAnterior(Long idPet, DadosExame dados, String emailTutor) {
+        Pet pet = petRepository.findById(idPet)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Pet não encontrado"));
+        String motivo = obrigatorio(dados.nome(), "motivo da consulta", 120);
+        if (motivo.startsWith(PREFIXO_PRONTUARIO_ANTERIOR)) {
+            motivo = motivo.substring(PREFIXO_PRONTUARIO_ANTERIOR.length()).trim();
+        }
+        String nome = obrigatorio(PREFIXO_PRONTUARIO_ANTERIOR + motivo, "motivo da consulta", 120);
+        validarDatasDoExame(dados);
+
+        ResultadoExame salvo = exameRepository.save(ResultadoExame.builder()
+                .pet(pet).nmExame(nome)
+                .nmLaboratorio(opcional(dados.laboratorio(), "clínica", 120))
+                .dtColeta(null).dtResultado(dados.resultadoEm())
+                .dsResultado(opcional(dados.resultado(), "resultado", 2000))
+                .dsInterpretacao(opcional(dados.interpretacao(), "observações", 1000))
+                .dsAtor(emailTutor).dtCriacao(LocalDateTime.now()).build());
+        auditar(idPet, "PRONTUARIO_ANTERIOR_ENVIADO", null, nome);
+        return salvo;
+    }
+
+    @Transactional
+    public ResultadoExame anexarArquivoProntuarioAnterior(Long idPet, Long idExame, MultipartFile arquivo,
+                                                          String emailTutor) {
+        ResultadoExame exame = buscarExame(idPet, idExame);
+        exigirAutorTutor(exame, emailTutor);
+        return gravarArquivo(idPet, exame, arquivo, "PRONTUARIO_ANTERIOR_ARQUIVO_ANEXADO");
+    }
+
+    @Transactional
+    public void removerProntuarioAnterior(Long idPet, Long idExame, String emailTutor) {
+        ResultadoExame exame = buscarExame(idPet, idExame);
+        exigirAutorTutor(exame, emailTutor);
+        exameRepository.delete(exame);
+        auditar(idPet, "PRONTUARIO_ANTERIOR_REMOVIDO", exame.getNmExame(), null);
+    }
+
     @Transactional
     public ResultadoExame anexarArquivo(Long idPet, Long idExame, MultipartFile arquivo, String emailVeterinario) {
         ResultadoExame exame = buscarExame(idPet, idExame);
         exigirAutor(exame, emailVeterinario);
+        return gravarArquivo(idPet, exame, arquivo, "EXAME_ARQUIVO_ANEXADO");
+    }
+
+    private ResultadoExame gravarArquivo(Long idPet, ResultadoExame exame, MultipartFile arquivo, String acao) {
         if (arquivo == null || arquivo.isEmpty()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Arquivo é obrigatório");
         }
@@ -141,7 +181,7 @@ public class ProntuarioRegistroService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Não foi possível ler o arquivo", e);
         }
         ResultadoExame salvo = exameRepository.save(exame);
-        auditar(idPet, "EXAME_ARQUIVO_ANEXADO", null, exame.getNmExame());
+        auditar(idPet, acao, null, exame.getNmExame());
         return salvo;
     }
 
@@ -196,6 +236,30 @@ public class ProntuarioRegistroService {
         if (!autor) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN,
                     "Somente o veterinário que registrou o exame pode alterá-lo");
+        }
+    }
+
+    /** Só quem enviou o prontuário anterior (o tutor autor, sem veterinário) pode anexar arquivo ou removê-lo. */
+    private void exigirAutorTutor(ResultadoExame exame, String email) {
+        boolean anterior = exame.getVeterinario() == null && exame.getNmExame() != null
+                && exame.getNmExame().startsWith(PREFIXO_PRONTUARIO_ANTERIOR);
+        boolean autor = email != null && exame.getDsAtor() != null && exame.getDsAtor().equalsIgnoreCase(email);
+        if (!anterior || !autor) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                    "Somente quem enviou o prontuário anterior pode alterá-lo");
+        }
+    }
+
+    private static void validarDatasDoExame(DadosExame dados) {
+        if (dados.resultadoEm() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Data do resultado é obrigatória");
+        }
+        if (dados.resultadoEm().isAfter(LocalDate.now())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Data do resultado não pode ser futura");
+        }
+        if (dados.coletadoEm() != null && dados.coletadoEm().isAfter(dados.resultadoEm())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Data da coleta não pode ser depois da data do resultado");
         }
     }
 

@@ -22,6 +22,7 @@ import java.util.Set;
  *   <li>Cuidador/cônjuge: só com permissão {@code VISUALIZAR_PRONTUARIO} ou {@code EDICAO}.</li>
  *   <li>Veterinário: se já atendeu o pet OU se é da clínica ativa/contratante do tutor.</li>
  * </ul>
+ * Enviar prontuário anterior (consultas antigas) é permitido ao tutor proprietário e ao cuidador com {@code EDICAO}.
  */
 @Component("prontuarioSecurity")
 @RequiredArgsConstructor
@@ -64,11 +65,24 @@ public class ProntuarioSecurity {
         return autenticado(authentication) && idPet != null && isVeterinarioDoPet(idPet, authentication);
     }
 
+    /** Pode enviar prontuário anterior: tutor proprietário ou cuidador com permissão de edição. */
+    public boolean canEnviarAnterior(Long idPet, Authentication authentication) {
+        if (!autenticado(authentication) || idPet == null || !PerfilUtils.isTutor(authentication)) {
+            return false;
+        }
+        return isProprietario(idPet, authentication)
+                || temPermissaoDeCuidador(idPet, authentication, Set.of(PermissaoPet.EDICAO));
+    }
+
     private boolean temPermissaoDeCuidador(Long idPet, Authentication authentication) {
+        return temPermissaoDeCuidador(idPet, authentication, PERMISSOES_PRONTUARIO);
+    }
+
+    private boolean temPermissaoDeCuidador(Long idPet, Authentication authentication, Set<PermissaoPet> permitidas) {
         return petAcessoRepository.findByPet_IdPetAndDsStatus(idPet, StatusAcessoPet.ATIVO).stream()
                 .anyMatch(acesso -> acesso.getTutor() != null && acesso.getTutor().getDsEmail() != null
                         && acesso.getTutor().getDsEmail().equalsIgnoreCase(authentication.getName())
-                        && PERMISSOES_PRONTUARIO.contains(acesso.getDsPermissao()));
+                        && permitidas.contains(acesso.getDsPermissao()));
     }
 
     private boolean isVeterinarioDoPet(Long idPet, Authentication authentication) {
