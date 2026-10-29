@@ -43,6 +43,7 @@
 - [Arquitetura](#-arquitetura)
 - [Decisões de design e justificativas](#-decisões-de-design-e-justificativas)
 - [Integração multidisciplinar](#-integração-multidisciplinar)
+- [Diagramas e evidências](#-diagramas-e-evidências)
 - [Estrutura do projeto](#-estrutura-do-projeto)
 - [Pré-requisitos](#-pré-requisitos)
 - [Como executar](#-como-executar)
@@ -214,12 +215,36 @@ Como as demais disciplinas do semestre foram aplicadas nesta solução:
 | Disciplina | Aplicação no projeto | Evidência |
 |------------|----------------------|-----------|
 | **Java Advanced** | API Spring Boot completa: Security/JWT, Flyway, validações, testes | Este repositório |
-| **Mastering Relational and Non-Relational Database** | Modelagem relacional em Oracle com 45 tabelas, versionada por migrations Flyway | [`scripts/Database/script_bd.sql`](scripts/Database/script_bd.sql) · [`src/main/resources/db/migration`](src/main/resources/db/migration) |
+| **Mastering Relational and Non-Relational Database** | Modelagem relacional em Oracle com 61 tabelas, versionada por migrations Flyway | [`scripts/Database/script_bd.sql`](scripts/Database/script_bd.sql) · [`src/main/resources/db/migration`](src/main/resources/db/migration) |
 | **DevOps Tools & Cloud Computing** | Pipeline GitHub Actions com build, testes e deploy no Azure App Service via OIDC; infraestrutura criada por Azure CLI; segredos no Key Vault | [`.github/workflows/deploy-azure.yml`](.github/workflows/deploy-azure.yml) · [`azure-pipelines.yml`](azure-pipelines.yml) · [`scripts/`](scripts) · [`Dockerfile`](Dockerfile) |
 | **Mobile Application Development** | O app React Native/Expo consome esta API (JWT, push via Expo, carteira, agenda) | _PREENCHER: link do repositório mobile_ |
 | **Disruptive Architectures: IoT, IoB & Generative IA** | Módulo de ações assistidas por IA com preview e confirmação | [`AcaoIaController`](src/main/java/br/com/fiap/VetSync/controller/AcaoIaController.java) · migration `V30__cria_acoes_ia.sql` |
 | **Compliance, Quality Assurance & Tests** | Testes automatizados (unitários, de controller, de segurança e de integração) executados no CI; coleção Postman | [`src/test`](src/test) · [`documentos/JornadaPet_Postman_Collection.json`](documentos/JornadaPet_Postman_Collection.json) · _PREENCHER: link do Azure Boards_ |
 
+## 🗺 Diagramas e evidências
+
+Visão geral da arquitetura (diagramas completos de CI/CD e domínios em [`documentos/arquitetura.md`](documentos/arquitetura.md)):
+
+```mermaid
+flowchart LR
+    APP[App mobile / Site web] -->|HTTPS + JWT| API[API Spring Boot<br/>Azure App Service]
+    API --> DB[(Oracle FIAP<br/>Flyway)]
+    API --> EXPO[Expo Push]
+    API --> SMTP[SMTP]
+    KV[(Azure Key Vault)] -.-> API
+    GH[GitHub Actions] -->|build + testes + deploy OIDC| API
+```
+
+| Evidência | Onde |
+|-----------|------|
+| Diagramas de arquitetura, CI/CD e domínios | [`documentos/arquitetura.md`](documentos/arquitetura.md) |
+| Modelo físico (DDL) | [`scripts/Database/script_bd.sql`](scripts/Database/script_bd.sql) |
+| Evolução do esquema | [`src/main/resources/db/migration`](src/main/resources/db/migration) |
+| Coleção Postman | [`documentos/JornadaPet_Postman_Collection.json`](documentos/JornadaPet_Postman_Collection.json) |
+| Mapa de endpoints | [`documentos/endpoints.txt`](documentos/endpoints.txt) |
+| Roteiro do vídeo de apresentação | [`documentos/roteiro-video.md`](documentos/roteiro-video.md) |
+| Checklist de rubrica e penalidades | [`documentos/checklist-sprint4.md`](documentos/checklist-sprint4.md) |
+| Contas fictícias de demonstração | [`scripts/usuarios_demo.md`](scripts/usuarios_demo.md) |
 ## 📂 Estrutura do projeto
 
 ```
@@ -227,7 +252,7 @@ vetSync-Java/
 ├── .github/workflows/        # Pipeline CI/CD (deploy-azure.yml)
 ├── azure-pipelines.yml       # Pipeline equivalente para Azure DevOps
 ├── .mvn/                     # Maven Wrapper
-├── documentos/               # Coleção Postman, cronograma e imagens
+├── documentos/               # Postman, roadmap, diagramas, roteiro do vídeo e checklist
 ├── scripts/                  # Provisionamento Azure e DDL Oracle
 │   └── Database/script_bd.sql
 ├── src/
@@ -242,7 +267,7 @@ vetSync-Java/
 │   │   │   ├── service/      # Regras de negócio
 │   │   │   └── social/       # Verificação de tokens Google/Apple
 │   │   └── resources/
-│   │       ├── db/migration/ # Migrations Flyway (V1 a V51)
+│   │       ├── db/migration/ # Migrations Flyway (V1 a V56)
 │   │       ├── static/       # Console de testes (index.html)
 │   │       ├── templates/    # Páginas públicas (Thymeleaf)
 │   │       └── application.properties
@@ -349,7 +374,7 @@ Consulte o Swagger para o formato do corpo e do cabeçalho esperados.
 | `MAIL_HOST` / `MAIL_PORT` | | `localhost` / `587` | Servidor SMTP |
 | `MAIL_USERNAME` / `MAIL_PASSWORD` | | — | Credenciais SMTP (recuperação de senha) |
 | `APP_CORS_WEB_ORIGIN` | | — | Origens web extras liberadas no CORS (separadas por vírgula) |
-| `WEB_INVITE_URL` | | `https://vetsync-theta.vercel.app/convite` | Página web que trata o aceite de convites |
+| `WEB_INVITE_URL` | | `https://vetsync.site/convite` | Página web que trata o aceite de convites |
 | `PET_CONVITE_EXPIRACAO_HORAS` | | `72` | Validade do convite de acesso ao pet |
 | `CARTEIRA_COMPARTILHADA_EXPIRACAO_DIAS` | | `30` | Validade do link da carteira compartilhada |
 | `PRONTUARIO_COMPARTILHAMENTO_EXPIRACAO_DIAS` | | `7` | Validade do link de prontuário compartilhado |
@@ -367,9 +392,9 @@ Parâmetros fixos relevantes: validade dos pontos de **365 dias**, upload máxim
 ## 🗄 Banco de dados e migrations
 
 - O esquema é gerenciado **exclusivamente pelo Flyway** (`spring.jpa.hibernate.ddl-auto=none`).
-- As migrations ficam em `src/main/resources/db/migration` (de `V1__create_tables.sql` até `V51__persiste_codigo_vinculo_clinica.sql`).
+- As migrations ficam em `src/main/resources/db/migration` (de `V1__create_tables.sql` até `V56__adiciona_data_cadastro_pet.sql`).
 - O pool Hikari é limitado a **2 conexões** para respeitar a cota `SESSIONS_PER_USER` do Oracle FIAP.
-- O DDL consolidado (45 tabelas) está em `scripts/Database/script_bd.sql`.
+- O DDL consolidado (61 tabelas) está em `scripts/Database/script_bd.sql`.
 - Nos testes é usado **H2 em modo Oracle**, sem dependência de banco externo.
 
 ## 📡 Documentação da API
@@ -429,7 +454,7 @@ A resposta do login traz `token`, `idUsuario`, `email`, `nome`, `perfil` e `temV
 
 ## 🧪 Testes
 
-O projeto possui testes de **repositório**, **serviço**, **controller (MockMvc)**, **segurança (CORS e controle de acesso)** e **integração** (fluxo de autenticação, bootstrap de admin, planos de tratamento, prontuário e pontos/recompensas), somando cerca de **385 métodos de teste em 59 classes**.
+O projeto possui testes de **repositório**, **serviço**, **controller (MockMvc)**, **segurança (CORS e controle de acesso)** e **integração** (fluxo de autenticação, bootstrap de admin, planos de tratamento, prontuário e pontos/recompensas), somando mais de **370 métodos de teste em 58 classes**.
 
 ```bash
 # Executar todos os testes
@@ -460,9 +485,13 @@ Scripts de infraestrutura (Azure CLI) na pasta [`scripts/`](scripts):
 
 ## 📚 Documentação complementar
 
-- [`implementaçõesBACKEND.md`](implementaçõesBACKEND.md): roadmap de evolução do backend (notificações, próximas ações, vacinação, auditoria, relatórios e SIA)
+- [`documentos/roadmap-backend.md`](documentos/roadmap-backend.md): roadmap de evolução do backend (notificações, próximas ações, vacinação, auditoria, relatórios e SIA)
 - [`documentos/cronograma-sprint1.md`](documentos/cronograma-sprint1.md): cronograma e divisão de responsabilidades da Sprint 1
 - [`documentos/JornadaPet_Postman_Collection.json`](documentos/JornadaPet_Postman_Collection.json): coleção Postman
+- [`documentos/arquitetura.md`](documentos/arquitetura.md): diagramas de arquitetura, CI/CD e domínios
+- [`documentos/roteiro-video.md`](documentos/roteiro-video.md): roteiro do vídeo de apresentação
+- [`documentos/checklist-sprint4.md`](documentos/checklist-sprint4.md): checklist de rubrica e penalidades
+- [`scripts/usuarios_demo.md`](scripts/usuarios_demo.md): contas fictícias de demonstração
 
 ## 👨‍💻 Equipe
 
