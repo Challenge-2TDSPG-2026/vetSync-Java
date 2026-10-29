@@ -10,3 +10,8 @@ data/
 *.mv.db
 *.trace.db
 flyway-info.json
+.backup-*/
+*.bak
+*.log
+.DS_Store
+Thumbs.db

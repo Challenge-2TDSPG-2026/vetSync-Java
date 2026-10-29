@@ -93,7 +93,11 @@
         button.go.secondary { background: none; border: 1px solid var(--line); color: var(--text); }
         button.go.secondary:hover { border-color: var(--accent-dim); }
         button.go.danger { background: none; border: 1px solid var(--err); color: var(--err); }
-    </style>
+            header .doc-links { margin-left: auto; display: flex; gap: 14px; }
+        header .doc-links a { color: var(--muted); font-size: 12.5px; text-decoration: none; }
+        header .doc-links a:hover { color: var(--accent); text-decoration: underline; }
+        header .doc-links + button.logout { margin-left: 0; }
+</style>
 </head>
 <body>
 
@@ -138,6 +142,7 @@
         <span class="origin" id="origin-label"></span>
         <span class="perfil-badge" id="perfil-badge">deslogado</span>
         <span class="who" id="who-label"></span>
+        <span class="doc-links"><a href="/swagger-ui.html" target="_blank" rel="noopener">Swagger</a><a href="/actuator/health" target="_blank" rel="noopener">Health</a></span>
         <button class="logout" id="logout-btn">sair</button>
     </header>
 

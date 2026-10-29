@@ -1,4 +1,4 @@
-name: Grupo de concorrência do workflow
+name: CI/CD VetSync - Build, testes e deploy no Azure
 
 on:
   pull_request:
