@@ -29,7 +29,7 @@
 | 🎥 Vídeo de apresentação (máx. 15 min) | _PREENCHER: link do vídeo_ |
 | 📬 Coleção Postman | [`documentos/JornadaPet_Postman_Collection.json`](documentos/JornadaPet_Postman_Collection.json) |
 | 📱 Aplicativo mobile (React Native / Expo) | [Repositorio mobile](https://github.com/Challenge-2TDSPG-2026/vetSync-Mobile.git) |
-| 🖥 Site web | _PREENCHER: link do site (ex.: Vercel/Firebase)_ |
+| 🖥 Site web | _PREENCHER: https://vetsync-76c0e.web.app/login |
 
 ---
 
