@@ -1,5 +1,7 @@
 package br.com.fiap.VetSync.service;
 
+import br.com.fiap.VetSync.security.RegrasSenha;
+
 import br.com.fiap.VetSync.security.TokenUtils;
 import br.com.fiap.VetSync.repository.AdminRepository;
 import br.com.fiap.VetSync.repository.ProfissionalEsteticaRepository;
@@ -44,8 +46,6 @@ public class PasswordResetService {
 
     @Value("${app.reset-senha.expiracao-minutos:15}")
     private int expiracaoMinutos;
-
-    private static final int SENHA_MIN_LENGTH = 6;
 
     /** Passo 1: se o e-mail existir, gera e envia o código de verificação. */
     public void solicitarCodigo(String email) {
@@ -92,9 +92,9 @@ public class PasswordResetService {
 
     /** Passo 3: confere o código novamente e efetiva a troca de senha. */
     public void redefinirSenha(String email, String codigo, String novaSenha, String confirmarSenha) {
-        if (novaSenha == null || novaSenha.length() < SENHA_MIN_LENGTH) {
+        if (RegrasSenha.invalida(novaSenha)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "A nova senha deve ter pelo menos " + SENHA_MIN_LENGTH + " caracteres");
+                    "A nova senha deve ter pelo menos " + RegrasSenha.TAMANHO_MINIMO + " caracteres");
         }
         if (!novaSenha.equals(confirmarSenha)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "As senhas não coincidem");

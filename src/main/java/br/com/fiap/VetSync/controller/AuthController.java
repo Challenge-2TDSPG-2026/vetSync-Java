@@ -1,5 +1,7 @@
 package br.com.fiap.VetSync.controller;
 
+import br.com.fiap.VetSync.security.RegrasSenha;
+
 import br.com.fiap.VetSync.entity.Tutor;
 import br.com.fiap.VetSync.repository.AdminRepository;
 import br.com.fiap.VetSync.repository.IdentidadeSocialRepository;
@@ -49,8 +51,6 @@ public class AuthController {
     private final PasswordResetService passwordResetService;
     private final VinculoClinicaService vinculoClinicaService;
     private final IdentidadeSocialRepository identidadeSocialRepository;
-
-    private static final int SENHA_MIN_LENGTH = 6;
 
     public record LoginRequest(String email, String senha) {}
 
@@ -198,9 +198,9 @@ public class AuthController {
     @Operation(summary = "Cadastrar novo tutor",
             description = "Registro público é só para TUTOR. Contas de veterinário e de profissional de estética são criadas pelo ADMIN.")
     public AuthResponse registrar(@Valid @RequestBody RegistrarRequest req) {
-        if (req.senha() == null || req.senha().length() < SENHA_MIN_LENGTH) {
+        if (RegrasSenha.invalida(req.senha())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "A senha deve ter pelo menos " + SENHA_MIN_LENGTH + " caracteres");
+                    "A senha deve ter pelo menos " + RegrasSenha.TAMANHO_MINIMO + " caracteres");
         }
 
         String emailNormalizado = req.email() == null ? null : req.email().trim().toLowerCase(Locale.ROOT);
@@ -282,7 +282,7 @@ public class AuthController {
         if (!passwordEncoder.matches(req.senhaAtual(), admin.getDsSenha())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Senha atual inválida");
         }
-        if (req.novaSenha().length() < SENHA_MIN_LENGTH || req.novaSenha().equals(req.senhaAtual())) {
+        if (RegrasSenha.invalida(req.novaSenha()) || req.novaSenha().equals(req.senhaAtual())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Informe uma senha nova com pelo menos 6 caracteres");
         }
         admin.setDsSenha(passwordEncoder.encode(req.novaSenha()));
