@@ -1,5 +1,6 @@
 package br.com.fiap.VetSync.service;
 
+import br.com.fiap.VetSync.exception.Erros;
 import br.com.fiap.VetSync.entity.*;
 import br.com.fiap.VetSync.repository.*;
 import br.com.fiap.VetSync.security.ClinicaAdminAccess;
@@ -46,7 +47,7 @@ public class MensagensClinicaService {
         if (tutor(auth)) {
             destino = tutorAtual(auth);
             VinculoTutorClinica vinculo = vinculoRepository.findByTutor_IdTutorAndDtEncerramentoIsNull(destino.getIdTutor())
-                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.FORBIDDEN, "Tutor sem clínica vinculada"));
+                    .orElseThrow(Erros::tutorSemClinicaVinculada);
             clinica = vinculo.getClinica();
         } else {
             Admin admin = access.exigir(auth, PermissaoClinica.MENSAGENS_INICIAR);
@@ -55,7 +56,7 @@ public class MensagensClinicaService {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Selecione um tutor");
             }
             destino = tutorRepository.findById(idTutor).orElseThrow(
-                    () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Tutor não encontrado"));
+                    Erros::tutorNaoEncontrado);
             if (!vinculoRepository.existsByTutor_IdTutorAndClinica_IdClinicaAndDtEncerramentoIsNull(
                     destino.getIdTutor(), clinica.getIdClinica())) {
                 throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Tutor não vinculado a esta clínica");
@@ -112,7 +113,7 @@ public class MensagensClinicaService {
 
     private Tutor tutorAtual(Authentication auth) {
         return tutorRepository.findByDsEmail(auth.getName()).orElseThrow(
-                () -> new ResponseStatusException(HttpStatus.FORBIDDEN, "Conta de tutor necessária"));
+                Erros::contaDeTutorNecessaria);
     }
 
     private ConversaDados dados(ConversaClinica c) {

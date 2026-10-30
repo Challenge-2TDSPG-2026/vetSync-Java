@@ -1,5 +1,7 @@
 package br.com.fiap.VetSync.service;
 
+import br.com.fiap.VetSync.security.TokenUtils;
+import br.com.fiap.VetSync.exception.Erros;
 import br.com.fiap.VetSync.entity.*;
 import br.com.fiap.VetSync.repository.*;
 import jakarta.transaction.Transactional;
@@ -10,22 +12,15 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.util.HashMap;
-import java.util.HexFormat;
 import java.util.List;
 import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
 public class VinculoClinicaService {
-    private static final SecureRandom RANDOM = new SecureRandom();
     private static final int DURACAO_SESSAO_MINUTOS = 15;
-    private static final String ALFABETO = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 
     private final ClinicaRepository clinicaRepository;
     private final TutorRepository tutorRepository;
@@ -64,9 +59,9 @@ public class VinculoClinicaService {
         }
         // Emitir outro código revoga o anterior (e as sessões ainda abertas dele).
         revogar(codigoRepository.findByClinica_IdClinicaAndStAtivo(idClinica, "A"), "substituído por novo código");
-        String codigo = gerarSegredo(18);
+        String codigo = TokenUtils.gerarCodigo(18);
         CodigoVinculoClinica emitido = codigoRepository.saveAndFlush(CodigoVinculoClinica.builder()
-                .clinica(clinica).dsCodigoHash(hash(codigo)).dsCodigo(codigo).build());
+                .clinica(clinica).dsCodigoHash(TokenUtils.sha256Hex(codigo)).dsCodigo(codigo).build());
         // O código em si (e o hash) nunca vão para a auditoria.
         auditar(AuditoriaTipos.CODIGO_VINCULO, emitido.getIdCodigoVinculo(), "CODIGO_EMITIDO", clinica, null, "ATIVO", null, null);
         return new CodigoEmitido(codigo, clinica);
@@ -94,14 +89,14 @@ public class VinculoClinicaService {
 
     @Transactional
     public CodigoValidado validarCodigo(String codigoInformado) {
-        CodigoVinculoClinica codigo = codigoRepository.findByDsCodigoHash(hash(normalizarCodigo(codigoInformado)))
+        CodigoVinculoClinica codigo = codigoRepository.findByDsCodigoHash(TokenUtils.sha256Hex(normalizarCodigo(codigoInformado)))
                 .orElseThrow(() -> erroCodigo("Código da clínica inválido"));
         if (!codigo.estaAtivo()) throw erroCodigo("Este código da clínica foi revogado");
         if (!codigo.getClinica().estaContratanteAtiva()) throw erroCodigo("Esta clínica não está com contrato ativo");
-        String token = gerarSegredo(32);
+        String token = TokenUtils.gerarCodigo(32);
         LocalDateTime expiraEm = LocalDateTime.now().plusMinutes(DURACAO_SESSAO_MINUTOS);
         sessaoRepository.save(SessaoVinculoClinica.builder().clinica(codigo.getClinica()).codigoVinculo(codigo)
-                .dsTokenHash(hash(token)).dtExpiracao(expiraEm).build());
+                .dsTokenHash(TokenUtils.sha256Hex(token)).dtExpiracao(expiraEm).build());
         return new CodigoValidado(token, codigo.getClinica(), expiraEm);
     }
 
@@ -118,7 +113,7 @@ public class VinculoClinicaService {
 
     @Transactional
     public VinculoTutorClinica trocarVinculo(String emailTutor, String sessaoVinculo) {
-        Tutor tutor = tutorRepository.findByDsEmail(emailTutor).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Tutor não encontrado"));
+        Tutor tutor = tutorRepository.findByDsEmail(emailTutor).orElseThrow(Erros::tutorNaoEncontrado);
         if (eventoRepository.existsByPet_Tutor_IdTutorAndDsStatus(tutor.getIdTutor(), StatusEvento.AGENDADO)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Conclua ou cancele todos os atendimentos agendados antes de trocar de clínica");
         }
@@ -159,7 +154,7 @@ public class VinculoClinicaService {
      */
     private SessaoConsumida consumirSessao(String token) {
         if (token == null || token.isBlank()) throw erroCodigo("Confirme o código da clínica antes de continuar");
-        String hashToken = hash(token);
+        String hashToken = TokenUtils.sha256Hex(token);
         if (sessaoRepository.consumir(hashToken, LocalDateTime.now()) == 0) {
             throw erroCodigo("A confirmação do código é inválida, expirou ou já foi utilizada. Leia ou informe o código novamente");
         }
@@ -188,9 +183,7 @@ public class VinculoClinicaService {
         }
     }
 
-    private Clinica buscarClinicaParaAtualizacao(Long id) { return clinicaRepository.findByIdParaAtualizacao(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Clínica não encontrada")); }
+    private Clinica buscarClinicaParaAtualizacao(Long id) { return clinicaRepository.findByIdParaAtualizacao(id).orElseThrow(Erros::clinicaNaoEncontrada); }
     private ResponseStatusException erroCodigo(String mensagem) { return new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY, mensagem); }
-    private String gerarSegredo(int tamanho) { StringBuilder valor = new StringBuilder(tamanho); for (int i = 0; i < tamanho; i++) valor.append(ALFABETO.charAt(RANDOM.nextInt(ALFABETO.length()))); return valor.toString(); }
     private String normalizarCodigo(String codigo) { return codigo == null ? "" : codigo.replaceAll("[^A-Za-z0-9]", "").toUpperCase(); }
-    private String hash(String valor) { try { return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(valor.getBytes(StandardCharsets.UTF_8))); } catch (NoSuchAlgorithmException ex) { throw new IllegalStateException("SHA-256 indisponível", ex); } }
 }

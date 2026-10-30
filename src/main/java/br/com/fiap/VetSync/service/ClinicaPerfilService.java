@@ -1,5 +1,6 @@
 package br.com.fiap.VetSync.service;
 
+import br.com.fiap.VetSync.exception.Erros;
 import br.com.fiap.VetSync.entity.*;
 import br.com.fiap.VetSync.repository.*;
 import br.com.fiap.VetSync.security.ClinicaAdminAccess;
@@ -93,9 +94,9 @@ public class ClinicaPerfilService {
 
     private Clinica clinicaVinculada(Authentication authentication) {
         Tutor tutor = tutorRepository.findByDsEmail(authentication.getName()).orElseThrow(
-                () -> new ResponseStatusException(HttpStatus.FORBIDDEN, "Conta de tutor necessária"));
+                Erros::contaDeTutorNecessaria);
         VinculoTutorClinica vinculo = vinculoRepository.findByTutor_IdTutorAndDtEncerramentoIsNull(tutor.getIdTutor())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.FORBIDDEN, "Tutor sem clínica vinculada"));
+                .orElseThrow(Erros::tutorSemClinicaVinculada);
         if (!vinculo.getClinica().estaContratanteAtiva()) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Clínica com contrato inativo");
         }

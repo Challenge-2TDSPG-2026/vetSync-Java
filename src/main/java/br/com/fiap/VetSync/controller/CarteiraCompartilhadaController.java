@@ -1,5 +1,6 @@
 package br.com.fiap.VetSync.controller;
 
+import br.com.fiap.VetSync.exception.Erros;
 import br.com.fiap.VetSync.entity.CarteiraCompartilhada;
 import br.com.fiap.VetSync.entity.Tutor;
 import br.com.fiap.VetSync.service.CarteiraCompartilhadaService;
@@ -34,7 +35,7 @@ public class CarteiraCompartilhadaController {
 
     private Long idTutorAutenticado(Authentication authentication) {
         Tutor tutor = tutorService.buscarPorEmail(authentication.getName())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Tutor autenticado não encontrado"));
+                .orElseThrow(Erros::tutorAutenticadoNaoEncontrado);
         return tutor.getIdTutor();
     }
 

@@ -1,5 +1,6 @@
 package br.com.fiap.VetSync.service;
 
+import br.com.fiap.VetSync.exception.Erros;
 import br.com.fiap.VetSync.entity.*;
 import br.com.fiap.VetSync.repository.AdminRepository;
 import br.com.fiap.VetSync.repository.LancamentoPontosRepository;
@@ -247,7 +248,7 @@ public class PontosService {
 
     private Admin buscarAdmin(Long idAdmin) {
         return adminRepository.findById(idAdmin).orElseThrow(
-                () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Admin não encontrado"));
+                Erros::adminNaoEncontrado);
     }
 
     // ------------------------------------------------------------------ saldo

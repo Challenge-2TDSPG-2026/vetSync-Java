@@ -1,5 +1,6 @@
 package br.com.fiap.VetSync.controller;
 
+import br.com.fiap.VetSync.exception.Erros;
 import br.com.fiap.VetSync.entity.Admin;
 import br.com.fiap.VetSync.entity.RelatorioEstetica;
 import br.com.fiap.VetSync.repository.AdminRepository;
@@ -70,7 +71,7 @@ public class RelatorioEsteticaController {
     private Long idAdminAutenticado(Authentication authentication) {
         return adminRepository.findByDsEmail(authentication.getName())
                 .map(Admin::getIdAdmin)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Admin autenticado não encontrado"));
+                .orElseThrow(Erros::adminAutenticadoNaoEncontrado);
     }
 
     @PostMapping

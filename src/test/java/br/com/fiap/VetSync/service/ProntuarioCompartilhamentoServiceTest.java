@@ -1,5 +1,6 @@
 package br.com.fiap.VetSync.service;
 
+import br.com.fiap.VetSync.security.TokenUtils;
 import br.com.fiap.VetSync.entity.*;
 import br.com.fiap.VetSync.repository.ProntuarioCompartilhadoRepository;
 import org.junit.jupiter.api.Test;
@@ -62,7 +63,7 @@ class ProntuarioCompartilhamentoServiceTest {
         assertThat(criado.tokenPuro()).hasSizeGreaterThanOrEqualTo(43); // 32 bytes em base64url
         ProntuarioCompartilhado salvo = criado.compartilhamento();
         assertThat(salvo.getTokenHash()).hasSize(64).isNotEqualTo(criado.tokenPuro());
-        assertThat(salvo.getTokenHash()).isEqualTo(ProntuarioCompartilhamentoService.calcularHash(criado.tokenPuro()));
+        assertThat(salvo.getTokenHash()).isEqualTo(TokenUtils.sha256Hex(criado.tokenPuro()));
         assertThat(salvo.getDsDestinatario()).isEqualTo("Clínica Norte");
         assertThat(salvo.secoes()).containsExactly(SecaoProntuario.EXAMES);
         assertThat(salvo.getExpiraEm()).isBetween(LocalDateTime.now().plusDays(3).minusMinutes(1),

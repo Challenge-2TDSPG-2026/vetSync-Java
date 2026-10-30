@@ -1,5 +1,6 @@
 package br.com.fiap.VetSync.service;
 
+import br.com.fiap.VetSync.security.TokenUtils;
 import br.com.fiap.VetSync.controller.AuthController.AuthResponse;
 import br.com.fiap.VetSync.controller.SocialAuthController.SocialRegistrarRequest;
 import br.com.fiap.VetSync.controller.SocialAuthController.SocialVincularRequest;
@@ -24,8 +25,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.security.SecureRandom;
-import java.util.Base64;
 import java.util.Locale;
 
 /**
@@ -50,7 +49,6 @@ public class SocialAuthService {
     /** Exatamente um dos dois campos é não nulo. */
     public record ResultadoLogin(AuthResponse sessao, PendenciaSocial pendencia) {}
 
-    private static final SecureRandom RANDOM = new SecureRandom();
 
     private final SocialTokenVerifier verifier;
     private final IdentidadeSocialRepository identidadeRepository;
@@ -177,9 +175,7 @@ public class SocialAuthService {
 
     /** Senha inutilizável: a conta social não entra por senha (pode definir uma via "esqueci minha senha"). */
     private String senhaAleatoria() {
-        byte[] bytes = new byte[32];
-        RANDOM.nextBytes(bytes);
-        return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
+        return TokenUtils.gerarTokenUrlSeguro(32);
     }
 
     private SocialProvider parseProvider(String provider) {

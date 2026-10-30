@@ -1,5 +1,6 @@
 package br.com.fiap.VetSync.service;
 
+import br.com.fiap.VetSync.exception.Erros;
 import br.com.fiap.VetSync.entity.*;
 import br.com.fiap.VetSync.repository.PetRepository;
 import br.com.fiap.VetSync.repository.PlanoItemRepository;
@@ -37,7 +38,7 @@ public class PlanoTratamentoService {
         Pet pet = petRepository.findById(idPet).orElseThrow(
                 () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Pet não encontrado: " + idPet));
         Veterinario vet = veterinarioRepository.findById(idVeterinarioAutenticado).orElseThrow(
-                () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Veterinário não encontrado"));
+                Erros::veterinarioNaoEncontrado);
 
         // O plano só pode ser feito na clínica em que o tutor está vinculado, e fica na clínica do veterinário
         // que o está criando (que precisa ser essa mesma clínica).
@@ -121,7 +122,7 @@ public class PlanoTratamentoService {
             return; // plano legado, criado antes do escopo por clínica
         }
         Veterinario vet = veterinarioRepository.findById(idVeterinario).orElseThrow(
-                () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Veterinário não encontrado"));
+                Erros::veterinarioNaoEncontrado);
         if (!plano.getClinica().getIdClinica().equals(vet.getClinica().getIdClinica())) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN,
                     "Os itens do plano só podem ser agendados na clínica em que o plano foi criado");

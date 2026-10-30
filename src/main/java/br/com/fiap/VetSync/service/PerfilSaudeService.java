@@ -1,5 +1,6 @@
 package br.com.fiap.VetSync.service;
 
+import br.com.fiap.VetSync.exception.Erros;
 import br.com.fiap.VetSync.entity.*;
 import br.com.fiap.VetSync.repository.*;
 import lombok.RequiredArgsConstructor;
@@ -43,7 +44,7 @@ public class PerfilSaudeService {
         perfil.setObservacoesImportantes(dados.getObservacoesImportantes());
         perfil.setContatoEmergencia(dados.getContatoEmergencia());
         perfil.setVeterinarioPreferencial(idVeterinario == null ? null : veterinarioRepository.findById(idVeterinario)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Veterinário não encontrado")));
+                .orElseThrow(Erros::veterinarioNaoEncontrado));
         pet.setNrPesoKg(dados.getPesoAtual());
         return perfilRepository.save(perfil);
     }

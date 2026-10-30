@@ -1,5 +1,6 @@
 package br.com.fiap.VetSync.controller;
 
+import br.com.fiap.VetSync.exception.Erros;
 import br.com.fiap.VetSync.entity.EspecieCategoria;
 import br.com.fiap.VetSync.entity.Pet;
 import br.com.fiap.VetSync.entity.RacaCatalogo;
@@ -98,7 +99,7 @@ public class PetController {
 
     private Long idTutorAutenticado(Authentication authentication) {
         Tutor tutor = tutorService.buscarPorEmail(authentication.getName())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Tutor autenticado não encontrado"));
+                .orElseThrow(Erros::tutorAutenticadoNaoEncontrado);
         return tutor.getIdTutor();
     }
 

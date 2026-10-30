@@ -5,6 +5,7 @@ import br.com.fiap.VetSync.repository.EventoSaudeRepository;
 import br.com.fiap.VetSync.repository.ServicoClinicaRepository;
 import br.com.fiap.VetSync.security.ClinicaAdminAccess;
 import br.com.fiap.VetSync.security.PermissaoClinica;
+import br.com.fiap.VetSync.service.EventoCancelamentoService;
 import br.com.fiap.VetSync.service.EventoService;
 import br.com.fiap.VetSync.service.PontosService;
 import jakarta.validation.Valid;
@@ -28,6 +29,7 @@ public class ClinicaOperacaoController {
     private final EventoSaudeRepository eventoRepository;
     private final ServicoClinicaRepository servicoRepository;
     private final EventoService eventoService;
+    private final EventoCancelamentoService eventoCancelamentoService;
     private final PontosService pontosService;
 
     public record EventoDia(Long idEvento, Long idPet, String nomePet, String nomeTutor,
@@ -76,14 +78,14 @@ public class ClinicaOperacaoController {
     public void reagendar(Authentication auth, @PathVariable Long idEvento, @Valid @RequestBody ReagendarRequest req) {
         Admin admin = access.exigir(auth, PermissaoClinica.AGENDA_REAGENDAR);
         exigirEventoDaClinica(admin, eventoService.buscarPorId(idEvento));
-        eventoService.reagendar(idEvento, req.data(), req.hora());
+        eventoCancelamentoService.reagendar(idEvento, req.data(), req.hora());
     }
 
     @PatchMapping("/agenda/{idEvento}/cancelar")
     public void cancelar(Authentication auth, @PathVariable Long idEvento, @Valid @RequestBody CancelarRequest req) {
         Admin admin = access.exigir(auth, PermissaoClinica.AGENDA_CANCELAR);
         exigirEventoDaClinica(admin, eventoService.buscarPorId(idEvento));
-        eventoService.cancelar(idEvento, req.motivo(), null, null);
+        eventoCancelamentoService.cancelar(idEvento, req.motivo(), null, null);
     }
 
     @GetMapping("/pontos")

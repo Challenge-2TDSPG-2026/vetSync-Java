@@ -1,5 +1,6 @@
 package br.com.fiap.VetSync.service;
 
+import br.com.fiap.VetSync.exception.Erros;
 import br.com.fiap.VetSync.entity.Clinica;
 import br.com.fiap.VetSync.entity.Veterinario;
 import br.com.fiap.VetSync.repository.ClinicaRepository;
@@ -41,7 +42,7 @@ public class VeterinarioService {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "CRMV já cadastrado");
         }
         Clinica clinica = clinicaRepository.findById(idClinica)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Clínica não encontrada"));
+                .orElseThrow(Erros::clinicaNaoEncontrada);
 
         Veterinario vet = Veterinario.builder()
                 .nmVeterinario(nome)
@@ -75,7 +76,7 @@ public class VeterinarioService {
 
     public Veterinario buscarAutenticado(Authentication authentication) {
         return veterinarioRepository.findByDsEmail(authentication.getName()).orElseThrow(
-                () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Veterinário autenticado não encontrado")
+                Erros::veterinarioAutenticadoNaoEncontrado
         );
     }
 
@@ -90,7 +91,7 @@ public class VeterinarioService {
         }
         if (idClinica != null) {
             Clinica clinica = clinicaRepository.findById(idClinica)
-                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Clínica não encontrada"));
+                    .orElseThrow(Erros::clinicaNaoEncontrada);
             vet.setClinica(clinica);
         }
         if (especialidade != null && !especialidade.isBlank()) {

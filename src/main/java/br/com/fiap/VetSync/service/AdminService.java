@@ -1,5 +1,6 @@
 package br.com.fiap.VetSync.service;
 
+import br.com.fiap.VetSync.security.TokenUtils;
 import br.com.fiap.VetSync.entity.Admin;
 import br.com.fiap.VetSync.repository.AdminRepository;
 import br.com.fiap.VetSync.repository.TutorRepository;
@@ -12,7 +13,6 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.security.SecureRandom;
 import java.util.Locale;
 
 @Service
@@ -29,8 +29,6 @@ public class AdminService {
     @Value("${app.admin.bootstrap-key}")
     private String bootstrapKey;
 
-    private static final SecureRandom RANDOM = new SecureRandom();
-    private static final String CARACTERES_SENHA = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";
 
     public record NovoAdmin(Admin admin, String senhaTemporaria) {}
 
@@ -75,10 +73,6 @@ public class AdminService {
     }
 
     private String gerarSenhaTemporaria() {
-        StringBuilder sb = new StringBuilder(10);
-        for (int i = 0; i < 10; i++) {
-            sb.append(CARACTERES_SENHA.charAt(RANDOM.nextInt(CARACTERES_SENHA.length())));
-        }
-        return sb.toString();
+        return TokenUtils.gerarSenhaTemporaria(10);
     }
 }

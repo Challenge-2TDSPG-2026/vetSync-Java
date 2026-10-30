@@ -1,5 +1,7 @@
 package br.com.fiap.VetSync.service;
 
+import br.com.fiap.VetSync.security.TokenUtils;
+import br.com.fiap.VetSync.exception.Erros;
 import br.com.fiap.VetSync.entity.*;
 import br.com.fiap.VetSync.repository.*;
 import br.com.fiap.VetSync.security.ClinicaAdminAccess;
@@ -12,14 +14,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.security.SecureRandom;
 import java.util.*;
 
 @Service
 @RequiredArgsConstructor
 public class EquipeClinicaService {
-    private static final SecureRandom RANDOM = new SecureRandom();
-    private static final String CARACTERES = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";
     private final AdminRepository adminRepository;
     private final ClinicaRepository clinicaRepository;
     private final CargoClinicaRepository cargoRepository;
@@ -37,7 +36,7 @@ public class EquipeClinicaService {
     @Transactional
     public MembroDados criarDono(Long idClinica, String nome, String email) {
         Clinica clinica = clinicaRepository.findById(idClinica).orElseThrow(
-                () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Clínica não encontrada"));
+                Erros::clinicaNaoEncontrada);
         if (adminRepository.existsByClinica_IdClinicaAndDonoTrue(idClinica)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "A clínica já possui Dono");
         }
@@ -56,7 +55,7 @@ public class EquipeClinicaService {
                                 boolean senhaTemporaria, String senhaInformada) {
         Admin solicitante = access.exigir(authentication, PermissaoClinica.EQUIPE_CONVIDAR);
         CargoClinica cargo = cargoRepository.findById(idCargo).orElseThrow(
-                () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Cargo não encontrado"));
+                Erros::cargoNaoEncontrado);
         if (!cargo.getClinica().getIdClinica().equals(solicitante.getClinica().getIdClinica())) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Cargo de outra clínica");
         }
@@ -114,7 +113,7 @@ public class EquipeClinicaService {
             cargo = CargoClinica.builder().clinica(dono.getClinica()).build();
         } else {
             cargo = cargoRepository.findById(idCargo).orElseThrow(
-                    () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Cargo não encontrado"));
+                    Erros::cargoNaoEncontrado);
             if (!cargo.getClinica().getIdClinica().equals(dono.getClinica().getIdClinica())) {
                 throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Cargo de outra clínica");
             }
@@ -134,7 +133,7 @@ public class EquipeClinicaService {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Membro não pode ser alterado");
         }
         CargoClinica cargo = cargoRepository.findById(idCargo).orElseThrow(
-                () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Cargo não encontrado"));
+                Erros::cargoNaoEncontrado);
         if (!cargo.getClinica().getIdClinica().equals(dono.getClinica().getIdClinica())) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Cargo de outra clínica");
         }
@@ -156,9 +155,7 @@ public class EquipeClinicaService {
     }
 
     private String senhaAleatoria() {
-        StringBuilder valor = new StringBuilder(16);
-        for (int i = 0; i < 16; i++) valor.append(CARACTERES.charAt(RANDOM.nextInt(CARACTERES.length())));
-        return valor.toString();
+        return TokenUtils.gerarSenhaTemporaria(16);
     }
 
     private void enviarCredenciais(Admin admin, String senha, boolean temporaria) {

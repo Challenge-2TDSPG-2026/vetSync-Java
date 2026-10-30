@@ -1,5 +1,6 @@
 package br.com.fiap.VetSync.controller;
 
+import br.com.fiap.VetSync.exception.Erros;
 import br.com.fiap.VetSync.entity.ProntuarioCompartilhado;
 import br.com.fiap.VetSync.entity.SecaoProntuario;
 import br.com.fiap.VetSync.entity.Tutor;
@@ -23,7 +24,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.util.UriComponentsBuilder;
 import org.thymeleaf.context.Context;
 import org.thymeleaf.spring6.SpringTemplateEngine;
@@ -133,7 +133,7 @@ public class ProntuarioController {
         CompartilharRequest dados = request != null ? request
                 : new CompartilharRequest(null, null, null, null, null);
         Tutor tutor = tutorService.buscarPorEmail(authentication.getName())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Tutor autenticado não encontrado"));
+                .orElseThrow(Erros::tutorAutenticadoNaoEncontrado);
         var criado = compartilhamentoService.criar(idPet, tutor.getIdTutor(), dados.secoes(), dados.destinatario(),
                 dados.validadeDias(), dados.periodoInicio(), dados.periodoFim());
         String url = UriComponentsBuilder.newInstance()
