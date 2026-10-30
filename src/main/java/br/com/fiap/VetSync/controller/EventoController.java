@@ -7,6 +7,10 @@ import br.com.fiap.VetSync.entity.EventoAnexo;
 import br.com.fiap.VetSync.security.PerfilUtils;
 import br.com.fiap.VetSync.security.PetAccessSecurity;
 import br.com.fiap.VetSync.service.EventoService;
+import br.com.fiap.VetSync.service.EventoConsultaService;
+import br.com.fiap.VetSync.service.EventoConclusaoService;
+import br.com.fiap.VetSync.service.EventoCancelamentoService;
+import br.com.fiap.VetSync.service.EventoAnexoService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -37,6 +41,10 @@ import java.util.List;
 public class EventoController {
 
     private final EventoService eventoService;
+    private final EventoConsultaService eventoConsultaService;
+    private final EventoCancelamentoService eventoCancelamentoService;
+    private final EventoConclusaoService eventoConclusaoService;
+    private final EventoAnexoService eventoAnexoService;
     private final PetAccessSecurity petAccessSecurity;
 
     public record EventoAgendarRequest(
@@ -205,11 +213,11 @@ public class EventoController {
     public List<EventoResponse> listar(Authentication authentication) {
         List<EventoSaude> eventos;
         if (PerfilUtils.isVeterinario(authentication)) {
-            eventos = eventoService.listarParaVeterinario(authentication.getName());
+            eventos = eventoConsultaService.listarParaVeterinario(authentication.getName());
         } else if (PerfilUtils.isProfissionalEstetica(authentication)) {
-            eventos = eventoService.listarParaProfissionalEstetica(authentication.getName());
+            eventos = eventoConsultaService.listarParaProfissionalEstetica(authentication.getName());
         } else {
-            eventos = eventoService.listarParaTutor(authentication.getName());
+            eventos = eventoConsultaService.listarParaTutor(authentication.getName());
         }
         return eventos.stream().map(this::toResponse).toList();
     }
@@ -230,13 +238,13 @@ public class EventoController {
     @GetMapping("/{id}/historico")
     @PreAuthorize("@eventoSecurity.isRelacionado(#id, authentication)")
     public List<HistoricoResponse> historico(@PathVariable Long id) {
-        return eventoService.historico(id).stream().map(this::toHistoricoResponse).toList();
+        return eventoConsultaService.historico(id).stream().map(this::toHistoricoResponse).toList();
     }
 
     @PatchMapping("/{id}/reagendar")
     @PreAuthorize("hasRole('TUTOR') and @eventoSecurity.isTutorComEdicao(#id, authentication)")
     public EventoResponse reagendar(@PathVariable Long id, @Valid @RequestBody ReagendarRequest request) {
-        return toResponse(eventoService.reagendar(id, request.data(), request.hora()));
+        return toResponse(eventoCancelamentoService.reagendar(id, request.data(), request.hora()));
     }
 
     @PostMapping(value = "/{id}/anexos", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -244,19 +252,19 @@ public class EventoController {
     @ResponseStatus(HttpStatus.CREATED)
     public AnexoResponse adicionarAnexo(@PathVariable Long id, @RequestPart("arquivo") MultipartFile arquivo,
                                         Authentication authentication) {
-        return toAnexoResponse(eventoService.adicionarAnexo(id, arquivo, authentication.getName()));
+        return toAnexoResponse(eventoAnexoService.adicionar(id, arquivo, authentication.getName()));
     }
 
     @GetMapping("/{id}/anexos")
     @PreAuthorize("@eventoSecurity.isRelacionado(#id, authentication)")
     public List<AnexoResponse> anexos(@PathVariable Long id) {
-        return eventoService.listarAnexos(id).stream().map(this::toAnexoResponse).toList();
+        return eventoAnexoService.listar(id).stream().map(this::toAnexoResponse).toList();
     }
 
     @GetMapping("/{id}/anexos/{idAnexo}")
     @PreAuthorize("@eventoSecurity.isRelacionado(#id, authentication)")
     public ResponseEntity<byte[]> baixarAnexo(@PathVariable Long id, @PathVariable Long idAnexo) {
-        EventoAnexo anexo = eventoService.buscarAnexo(id, idAnexo);
+        EventoAnexo anexo = eventoAnexoService.buscar(id, idAnexo);
         return ResponseEntity.ok().contentType(MediaType.parseMediaType(anexo.getDsMimeType()))
                 .header("Content-Disposition", "attachment; filename=\"" + anexo.getNmArquivo() + "\"")
                 .body(anexo.getDsConteudo());
@@ -266,7 +274,7 @@ public class EventoController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @PreAuthorize("@eventoSecurity.isTutorComEdicao(#id, authentication) or @eventoSecurity.isVeterinarioResponsavel(#id, authentication)")
     public void removerAnexo(@PathVariable Long id, @PathVariable Long idAnexo) {
-        eventoService.removerAnexo(id, idAnexo);
+        eventoAnexoService.remover(id, idAnexo);
     }
 
     private HistoricoResponse toHistoricoResponse(EventoHistorico h) {
@@ -286,14 +294,14 @@ public class EventoController {
             "or (hasRole('PROFISSIONAL_ESTETICA') and @eventoSecurity.isProfissionalEsteticaResponsavel(#id, authentication))")
     @Operation(summary = "Veterinário ou profissional de estética conclui um evento AGENDADO, com observações e custo final")
     public EventoResponse concluir(@PathVariable Long id, @Valid @RequestBody EventoConcluirRequest request) {
-        return toResponse(eventoService.concluir(id, request.dsObservacao(), request.vlCusto()));
+        return toResponse(eventoConclusaoService.concluir(id, request.dsObservacao(), request.vlCusto()));
     }
 
     @PatchMapping("/{id}/cancelar")
     @PreAuthorize("hasRole('TUTOR') and @eventoSecurity.isTutorComEdicao(#id, authentication)")
     @Operation(summary = "Tutor cancela um evento AGENDADO", description = "Motivo é obrigatório. Se 'reagendarPara' vier preenchido, já cria um novo evento AGENDADO na nova data, no mesmo pet/tipo/profissional.")
     public EventoCancelarResponse cancelar(@PathVariable Long id, @Valid @RequestBody EventoCancelarRequest request) {
-        EventoService.ResultadoCancelamento resultado = eventoService.cancelar(id, request.motivo(), request.reagendarPara(), request.horaReagendarPara());
+        EventoCancelamentoService.ResultadoCancelamento resultado = eventoCancelamentoService.cancelar(id, request.motivo(), request.reagendarPara(), request.horaReagendarPara());
         return new EventoCancelarResponse(
                 toResponse(resultado.eventoCancelado()),
                 resultado.novoEvento() != null ? toResponse(resultado.novoEvento()) : null
@@ -312,13 +320,13 @@ public class EventoController {
     @PreAuthorize("@petAccessSecurity.canVeterinarioView(#idPet, authentication) or @petAccessSecurity.canView(#idPet, authentication)")
     @Operation(summary = "Somar o gasto total (só eventos CONCLUIDOS) de um pet")
     public BigDecimal gastoTotal(@PathVariable Long idPet) {
-        return eventoService.calcularGastoTotal(idPet);
+        return eventoConsultaService.calcularGastoTotal(idPet);
     }
 
     @GetMapping("/pet/{idPet}/alertas")
     @PreAuthorize("@petAccessSecurity.canVeterinarioView(#idPet, authentication) or @petAccessSecurity.canView(#idPet, authentication)")
     @Operation(summary = "Histórico + alerta de atraso por tipo de evento (só considera eventos CONCLUIDOS)")
-    public List<EventoService.AlertaEvento> alertas(@PathVariable Long idPet) {
-        return eventoService.gerarAlertas(idPet);
+    public List<EventoConsultaService.AlertaEvento> alertas(@PathVariable Long idPet) {
+        return eventoConsultaService.gerarAlertas(idPet);
     }
 }

@@ -1,5 +1,6 @@
 package br.com.fiap.VetSync.service;
 
+import br.com.fiap.VetSync.exception.Erros;
 import br.com.fiap.VetSync.entity.*;
 import br.com.fiap.VetSync.repository.AdminRepository;
 import br.com.fiap.VetSync.repository.LinkAgendamentoVetRepository;
@@ -71,7 +72,7 @@ public class RelatorioEsteticaService {
                     "Esse relatório já foi " + relatorio.getDsStatus());
         }
         Admin admin = adminRepository.findById(idAdmin).orElseThrow(
-                () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Admin não encontrado"));
+                Erros::adminNaoEncontrado);
 
         relatorio.setAdminValidador(admin);
         relatorio.setDsStatus(aprovado ? StatusRelatorioEstetica.LIBERADO : StatusRelatorioEstetica.NEGADO);

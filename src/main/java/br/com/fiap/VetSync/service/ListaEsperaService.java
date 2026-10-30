@@ -1,5 +1,6 @@
 package br.com.fiap.VetSync.service;
 
+import br.com.fiap.VetSync.exception.Erros;
 import br.com.fiap.VetSync.entity.*;
 import br.com.fiap.VetSync.repository.*;
 import lombok.RequiredArgsConstructor;
@@ -65,12 +66,12 @@ public class ListaEsperaService {
 
         ServicoClinica servico = servicoClinicaRepository
                 .findByIdServicoClinicaAndClinica_IdClinica(dados.idServico(), idClinica)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Serviço não encontrado"));
+                .orElseThrow(Erros::servicoNaoEncontrado);
         if (!Boolean.TRUE.equals(servico.getAtivo())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Serviço indisponível");
         }
         Pet pet = petRepository.findById(dados.idPet())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Pet não encontrado"));
+                .orElseThrow(Erros::petNaoEncontrado);
 
         validarJanela(dados);
 
@@ -252,12 +253,12 @@ public class ListaEsperaService {
 
     private Tutor tutorDoUsuario(String email) {
         return tutorRepository.findByDsEmail(email).orElseThrow(
-                () -> new ResponseStatusException(HttpStatus.FORBIDDEN, "Conta de tutor necessária"));
+                Erros::contaDeTutorNecessaria);
     }
 
     private Long clinicaDoTutor(Tutor tutor) {
         VinculoTutorClinica vinculo = vinculoRepository.findByTutor_IdTutorAndDtEncerramentoIsNull(tutor.getIdTutor())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.FORBIDDEN, "Tutor sem clínica vinculada"));
+                .orElseThrow(Erros::tutorSemClinicaVinculada);
         if (!vinculo.getClinica().estaContratanteAtiva()) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Clínica com contrato inativo");
         }

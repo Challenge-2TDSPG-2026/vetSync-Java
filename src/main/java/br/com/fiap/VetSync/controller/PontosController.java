@@ -1,5 +1,6 @@
 package br.com.fiap.VetSync.controller;
 
+import br.com.fiap.VetSync.exception.Erros;
 import br.com.fiap.VetSync.entity.*;
 import br.com.fiap.VetSync.repository.AdminRepository;
 import br.com.fiap.VetSync.security.PerfilUtils;
@@ -13,11 +14,9 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -125,12 +124,12 @@ public class PontosController {
     private Long idAdminAutenticado(Authentication authentication) {
         return adminRepository.findByDsEmail(authentication.getName())
                 .map(Admin::getIdAdmin)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Admin autenticado não encontrado"));
+                .orElseThrow(Erros::adminAutenticadoNaoEncontrado);
     }
 
     private Long idTutorAutenticado(Authentication authentication) {
         return tutorService.buscarPorEmail(authentication.getName())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Tutor autenticado não encontrado"))
+                .orElseThrow(Erros::tutorAutenticadoNaoEncontrado)
                 .getIdTutor();
     }
 

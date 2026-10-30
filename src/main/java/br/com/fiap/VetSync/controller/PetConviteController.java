@@ -1,5 +1,6 @@
 package br.com.fiap.VetSync.controller;
 
+import br.com.fiap.VetSync.exception.Erros;
 import br.com.fiap.VetSync.entity.PermissaoPet;
 import br.com.fiap.VetSync.entity.PetAcesso;
 import br.com.fiap.VetSync.entity.PetConvite;
@@ -25,7 +26,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
@@ -128,7 +128,7 @@ public class PetConviteController {
 
     private Long idTutorAutenticado(Authentication authentication) {
         Tutor tutor = tutorService.buscarPorEmail(authentication.getName())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Tutor autenticado não encontrado"));
+                .orElseThrow(Erros::tutorAutenticadoNaoEncontrado);
         return tutor.getIdTutor();
     }
 

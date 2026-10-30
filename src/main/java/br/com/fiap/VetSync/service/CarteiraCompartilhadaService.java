@@ -1,5 +1,6 @@
 package br.com.fiap.VetSync.service;
 
+import br.com.fiap.VetSync.security.TokenUtils;
 import br.com.fiap.VetSync.entity.CarteiraCompartilhada;
 import br.com.fiap.VetSync.entity.Pet;
 import br.com.fiap.VetSync.entity.StatusEvento;
@@ -11,13 +12,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.security.SecureRandom;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.Base64;
 import java.util.Comparator;
 import java.util.List;
 
@@ -31,7 +27,6 @@ public class CarteiraCompartilhadaService {
     private final CarteiraCompartilhadaRepository carteiraCompartilhadaRepository;
     private final EventoSaudeRepository eventoSaudeRepository;
     private final PetService petService;
-    private final SecureRandom secureRandom = new SecureRandom();
 
     @Value("${app.carteira-compartilhada.expiracao-dias:30}")
     private int expiracaoDias;
@@ -54,8 +49,8 @@ public class CarteiraCompartilhadaService {
 
         revogarAtivasDoPet(idPet);
 
-        String tokenPuro = gerarTokenAleatorio();
-        String hash = calcularHash(tokenPuro);
+        String tokenPuro = TokenUtils.gerarTokenUrlSeguro(TOKEN_BYTES);
+        String hash = TokenUtils.sha256Hex(tokenPuro);
 
         LocalDateTime agora = LocalDateTime.now();
         CarteiraCompartilhada carteira = CarteiraCompartilhada.builder()
@@ -105,7 +100,7 @@ public class CarteiraCompartilhadaService {
         if (tokenPuro == null || tokenPuro.isBlank()) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND);
         }
-        String hash = calcularHash(tokenPuro);
+        String hash = TokenUtils.sha256Hex(tokenPuro);
         CarteiraCompartilhada carteira = carteiraCompartilhadaRepository.findByTokenHash(hash).orElse(null);
 
         if (carteira == null) {
@@ -145,7 +140,7 @@ public class CarteiraCompartilhadaService {
         if (tokenPuro == null || tokenPuro.isBlank()) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND);
         }
-        CarteiraCompartilhada carteira = carteiraCompartilhadaRepository.findByTokenHash(calcularHash(tokenPuro)).orElse(null);
+        CarteiraCompartilhada carteira = carteiraCompartilhadaRepository.findByTokenHash(TokenUtils.sha256Hex(tokenPuro)).orElse(null);
         if (carteira == null) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND);
         }
@@ -170,23 +165,4 @@ public class CarteiraCompartilhadaService {
         return new VacinaPublica(vacina.getNome(), vacina.getData(), status);
     }
 
-    private String gerarTokenAleatorio() {
-        byte[] bytes = new byte[TOKEN_BYTES];
-        secureRandom.nextBytes(bytes);
-        return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
-    }
-
-    private String calcularHash(String tokenPuro) {
-        try {
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            byte[] hashBytes = digest.digest(tokenPuro.getBytes(StandardCharsets.UTF_8));
-            StringBuilder sb = new StringBuilder(hashBytes.length * 2);
-            for (byte b : hashBytes) {
-                sb.append(String.format("%02x", b));
-            }
-            return sb.toString();
-        } catch (NoSuchAlgorithmException e) {
-            throw new IllegalStateException("Algoritmo SHA-256 indisponível", e);
-        }
-    }
 }

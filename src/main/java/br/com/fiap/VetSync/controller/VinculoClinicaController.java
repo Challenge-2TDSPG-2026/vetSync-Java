@@ -1,5 +1,6 @@
 package br.com.fiap.VetSync.controller;
 
+import br.com.fiap.VetSync.exception.Erros;
 import br.com.fiap.VetSync.entity.Clinica;
 import br.com.fiap.VetSync.entity.VinculoTutorClinica;
 import br.com.fiap.VetSync.repository.TutorRepository;
@@ -52,7 +53,7 @@ public class VinculoClinicaController {
     @PreAuthorize("hasRole('TUTOR')")
     public VinculoResponse meuVinculo(Authentication authentication) {
         Long idTutor = tutorRepository.findByDsEmail(authentication.getName())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Tutor não encontrado")).getIdTutor();
+                .orElseThrow(Erros::tutorNaoEncontrado).getIdTutor();
         VinculoTutorClinica vinculo = vinculoService.buscarVinculoAtivo(idTutor);
         if (vinculo == null || !vinculo.getClinica().estaContratanteAtiva()) throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Nenhuma clínica ativa vinculada");
         return toResponse(vinculo);

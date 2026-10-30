@@ -1,5 +1,6 @@
 package br.com.fiap.VetSync.service;
 
+import br.com.fiap.VetSync.security.TokenUtils;
 import br.com.fiap.VetSync.repository.AdminRepository;
 import br.com.fiap.VetSync.repository.ProfissionalEsteticaRepository;
 import br.com.fiap.VetSync.repository.TutorRepository;
@@ -14,7 +15,6 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.Locale;
@@ -41,8 +41,6 @@ public class PasswordResetService {
     private final EmailService emailService;
     private final CodigoRedefinicaoStore codigoStore;
     private final TokenBlacklist tokenBlacklist;
-
-    private final SecureRandom random = new SecureRandom();
 
     @Value("${app.reset-senha.expiracao-minutos:15}")
     private int expiracaoMinutos;
@@ -162,7 +160,7 @@ public class PasswordResetService {
     }
 
     private String gerarCodigo() {
-        int numero = 100000 + random.nextInt(900000); // sempre 6 dígitos: 100000 a 999999
+        int numero = 100000 + TokenUtils.inteiroAleatorio(900000); // sempre 6 dígitos: 100000 a 999999
         return String.valueOf(numero);
     }
 }

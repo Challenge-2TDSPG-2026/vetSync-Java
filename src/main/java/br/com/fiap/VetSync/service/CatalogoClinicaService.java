@@ -1,5 +1,6 @@
 package br.com.fiap.VetSync.service;
 
+import br.com.fiap.VetSync.exception.Erros;
 import br.com.fiap.VetSync.entity.*;
 import br.com.fiap.VetSync.repository.*;
 import br.com.fiap.VetSync.security.ClinicaAdminAccess;
@@ -96,7 +97,7 @@ public class CatalogoClinicaService {
             servico = ServicoClinica.builder().clinica(clinica).tipoEvento(tipo).baseEstetica(base).build();
         } else {
             servico = servicoRepository.findByIdServicoClinicaAndClinica_IdClinica(idServico, clinica.getIdClinica())
-                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Serviço não encontrado"));
+                    .orElseThrow(Erros::servicoNaoEncontrado);
             if ((modelo != null && !modelo.nomeTipoEvento().equals(servico.getTipoEvento().getNmTipoEvento()))
                     || (modelo == null && servico.getTipoEvento().getClinica() == null)) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "O tipo de um serviço existente não pode ser trocado");
@@ -121,7 +122,7 @@ public class CatalogoClinicaService {
         profissionalRepository.flush();
         for (Long idVet : vets) {
             Veterinario vet = veterinarioRepository.findById(idVet).orElseThrow(
-                    () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Veterinário não encontrado"));
+                    Erros::veterinarioNaoEncontrado);
             if (!vet.getClinica().getIdClinica().equals(clinica.getIdClinica())) {
                 throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Veterinário de outra clínica");
             }

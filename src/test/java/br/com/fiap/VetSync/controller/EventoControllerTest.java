@@ -2,6 +2,7 @@ package br.com.fiap.VetSync.controller;
 
 import br.com.fiap.VetSync.entity.*;
 import br.com.fiap.VetSync.security.PetAccessSecurity;
+import br.com.fiap.VetSync.service.EventoConsultaService;
 import br.com.fiap.VetSync.service.EventoService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
@@ -36,6 +37,10 @@ class EventoControllerTest {
 
     @MockBean
     private EventoService eventoService;
+
+    // Listagens, gasto total e alertas agora vivem em EventoConsultaService.
+    @MockBean
+    private EventoConsultaService eventoConsultaService;
 
     // Substitui o bean real (que consultaria o banco de verdade) para os testes
     // conseguirem simular proprietário/cuidador sem persistir Pet/PetAcesso.
@@ -129,7 +134,7 @@ class EventoControllerTest {
     void listar_Tutor() throws Exception {
         TipoEvento tipo = TipoEvento.builder().nmTipoEvento("Banho").build();
         EventoSaude ev = EventoSaude.builder().idEvento(10L).tipoEvento(tipo).dsStatus(StatusEvento.AGENDADO).build();
-        when(eventoService.listarParaTutor("tutor@teste.com")).thenReturn(List.of(ev));
+        when(eventoConsultaService.listarParaTutor("tutor@teste.com")).thenReturn(List.of(ev));
 
         mockMvc.perform(get("/eventos"))
                 .andExpect(status().isOk())
@@ -142,7 +147,7 @@ class EventoControllerTest {
     @WithMockUser(roles = "TUTOR")
     void gastoTotal_Sucesso() throws Exception {
         when(petAccessSecurity.canView(eq(1L), any())).thenReturn(true);
-        when(eventoService.calcularGastoTotal(1L)).thenReturn(new BigDecimal("250.00"));
+        when(eventoConsultaService.calcularGastoTotal(1L)).thenReturn(new BigDecimal("250.00"));
 
         mockMvc.perform(get("/eventos/pet/1/gasto-total"))
                 .andExpect(status().isOk())
@@ -164,8 +169,8 @@ class EventoControllerTest {
     @WithMockUser(roles = "TUTOR")
     void alertas_Sucesso() throws Exception {
         when(petAccessSecurity.canView(eq(1L), any())).thenReturn(true);
-        var alerta = new EventoService.AlertaEvento("Vacina", LocalDate.now().minusMonths(13), 13, true, "Atrasado");
-        when(eventoService.gerarAlertas(1L)).thenReturn(List.of(alerta));
+        var alerta = new EventoConsultaService.AlertaEvento("Vacina", LocalDate.now().minusMonths(13), 13, true, "Atrasado");
+        when(eventoConsultaService.gerarAlertas(1L)).thenReturn(List.of(alerta));
 
         mockMvc.perform(get("/eventos/pet/1/alertas"))
                 .andExpect(status().isOk())

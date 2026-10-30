@@ -1,5 +1,6 @@
 package br.com.fiap.VetSync.service;
 
+import br.com.fiap.VetSync.security.TokenUtils;
 import br.com.fiap.VetSync.entity.Pet;
 import br.com.fiap.VetSync.entity.PermissaoPet;
 import br.com.fiap.VetSync.entity.PetConvite;
@@ -18,12 +19,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.security.SecureRandom;
 import java.time.LocalDateTime;
-import java.util.Base64;
 import java.util.List;
 import java.util.Locale;
 
@@ -45,7 +41,6 @@ public class PetConviteService {
     private final ResponsavelService responsavelService;
     private final EmailService emailService;
     private final PasswordEncoder passwordEncoder;
-    private final SecureRandom secureRandom = new SecureRandom();
     @Autowired(required = false)
     private AuditoriaService auditoriaService;
 
@@ -131,7 +126,7 @@ public class PetConviteService {
             petConviteRepository.saveAll(pendentesAnteriores);
         }
 
-        String tokenPuro = gerarTokenAleatorio();
+        String tokenPuro = TokenUtils.gerarTokenUrlSeguro(TOKEN_BYTES);
         LocalDateTime agora = LocalDateTime.now();
 
         PetConvite convite = PetConvite.builder()
@@ -140,7 +135,7 @@ public class PetConviteService {
                 .dsEmailDestino(emailNormalizado)
                 .dsRelacao(relacao)
                 .dsPermissao(permissao)
-                .dsTokenHash(calcularHash(tokenPuro))
+                .dsTokenHash(TokenUtils.sha256Hex(tokenPuro))
                 .dsStatus(StatusConvitePet.PENDENTE)
                 .dtCriacao(agora)
                 .dtExpiracao(agora.plusHours(expiracaoHoras))
@@ -232,7 +227,7 @@ public class PetConviteService {
         if (tokenPuro == null || tokenPuro.isBlank()) {
             throw new ConviteException(HttpStatus.NOT_FOUND, "Convite não encontrado");
         }
-        String hash = calcularHash(tokenPuro);
+        String hash = TokenUtils.sha256Hex(tokenPuro);
         PetConvite convite = petConviteRepository.findByDsTokenHash(hash)
                 .orElseThrow(() -> new ConviteException(HttpStatus.NOT_FOUND, "Convite não encontrado"));
 
@@ -394,23 +389,4 @@ public class PetConviteService {
     // Helpers de token
     // ---------------------------------------------------------------
 
-    private String gerarTokenAleatorio() {
-        byte[] bytes = new byte[TOKEN_BYTES];
-        secureRandom.nextBytes(bytes);
-        return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
-    }
-
-    private String calcularHash(String tokenPuro) {
-        try {
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            byte[] hashBytes = digest.digest(tokenPuro.getBytes(StandardCharsets.UTF_8));
-            StringBuilder sb = new StringBuilder(hashBytes.length * 2);
-            for (byte b : hashBytes) {
-                sb.append(String.format("%02x", b));
-            }
-            return sb.toString();
-        } catch (NoSuchAlgorithmException e) {
-            throw new IllegalStateException("Algoritmo SHA-256 indisponível", e);
-        }
-    }
 }

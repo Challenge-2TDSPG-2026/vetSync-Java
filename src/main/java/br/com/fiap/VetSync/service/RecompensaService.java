@@ -1,5 +1,6 @@
 package br.com.fiap.VetSync.service;
 
+import br.com.fiap.VetSync.exception.Erros;
 import br.com.fiap.VetSync.entity.*;
 import br.com.fiap.VetSync.repository.RecompensaRepository;
 import br.com.fiap.VetSync.repository.ResgateRepository;
@@ -284,7 +285,7 @@ public class RecompensaService {
                     "Esse resgate já foi " + resgate.getDsStatus());
         }
         Veterinario vet = veterinarioRepository.findById(idVeterinario).orElseThrow(
-                () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Veterinário não encontrado")
+                Erros::veterinarioNaoEncontrado
         );
 
         Long idClinicaResgate = clinicaDoResgateConsistente(resgate);

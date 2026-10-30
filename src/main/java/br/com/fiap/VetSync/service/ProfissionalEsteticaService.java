@@ -1,5 +1,7 @@
 package br.com.fiap.VetSync.service;
 
+import br.com.fiap.VetSync.security.TokenUtils;
+import br.com.fiap.VetSync.exception.Erros;
 import br.com.fiap.VetSync.entity.Clinica;
 import br.com.fiap.VetSync.entity.ProfissionalEstetica;
 import br.com.fiap.VetSync.repository.ClinicaRepository;
@@ -14,7 +16,6 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.security.SecureRandom;
 import java.util.List;
 import java.util.Locale;
 
@@ -31,8 +32,6 @@ public class ProfissionalEsteticaService {
     private final EmailService emailService;
     private final ServicoEsteticaService servicoEsteticaService;
 
-    private static final SecureRandom RANDOM = new SecureRandom();
-    private static final String CARACTERES_SENHA = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";
 
 
     public record NovoProfissionalEstetica(ProfissionalEstetica profissional, String senhaTemporaria) {}
@@ -44,7 +43,7 @@ public class ProfissionalEsteticaService {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "E-mail já cadastrado");
         }
         Clinica clinica = clinicaRepository.findById(idClinica)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Clínica não encontrada"));
+                .orElseThrow(Erros::clinicaNaoEncontrada);
 
         String registro = gerarRegistroUnico();
         String senhaTemporaria = gerarSenhaTemporaria();
@@ -75,17 +74,13 @@ public class ProfissionalEsteticaService {
     private String gerarRegistroUnico() {
         String registro;
         do {
-            registro = "PE" + String.format("%06d", RANDOM.nextInt(1_000_000));
+            registro = "PE" + String.format("%06d", TokenUtils.inteiroAleatorio(1_000_000));
         } while (profissionalEsteticaRepository.existsByNrRegistro(registro));
         return registro;
     }
 
     private String gerarSenhaTemporaria() {
-        StringBuilder sb = new StringBuilder(10);
-        for (int i = 0; i < 10; i++) {
-            sb.append(CARACTERES_SENHA.charAt(RANDOM.nextInt(CARACTERES_SENHA.length())));
-        }
-        return sb.toString();
+        return TokenUtils.gerarSenhaTemporaria(10);
     }
 
     public ProfissionalEstetica buscarPorId(Long id) {
@@ -111,7 +106,7 @@ public class ProfissionalEsteticaService {
         }
         if (idClinica != null) {
             Clinica clinica = clinicaRepository.findById(idClinica)
-                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Clínica não encontrada"));
+                    .orElseThrow(Erros::clinicaNaoEncontrada);
             profissional.setClinica(clinica);
         }
         return profissionalEsteticaRepository.save(profissional);

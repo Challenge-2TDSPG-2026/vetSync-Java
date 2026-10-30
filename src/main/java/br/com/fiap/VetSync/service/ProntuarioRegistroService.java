@@ -1,5 +1,6 @@
 package br.com.fiap.VetSync.service;
 
+import br.com.fiap.VetSync.exception.Erros;
 import br.com.fiap.VetSync.entity.*;
 import br.com.fiap.VetSync.repository.*;
 import lombok.RequiredArgsConstructor;
@@ -77,9 +78,9 @@ public class ProntuarioRegistroService {
     @Transactional
     public ResultadoExame registrarExame(Long idPet, DadosExame dados, String emailVeterinario) {
         Pet pet = petRepository.findById(idPet)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Pet não encontrado"));
+                .orElseThrow(Erros::petNaoEncontrado);
         Veterinario vet = veterinarioRepository.findByDsEmail(emailVeterinario)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.FORBIDDEN, "Veterinário não encontrado"));
+                .orElseThrow(Erros::acessoNegadoVeterinarioNaoEncontrado);
 
         String nome = obrigatorio(dados.nome(), "nome do exame", 120);
         if (dados.resultadoEm() == null) {

@@ -1,5 +1,6 @@
 package br.com.fiap.VetSync.controller;
 
+import br.com.fiap.VetSync.exception.Erros;
 import br.com.fiap.VetSync.entity.Clinica;
 import br.com.fiap.VetSync.entity.Recompensa;
 import br.com.fiap.VetSync.entity.Resgate;
@@ -148,19 +149,19 @@ public class RecompensaController {
 
     private Long idTutorAutenticado(Authentication authentication) {
         return tutorService.buscarPorEmail(authentication.getName())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Tutor autenticado não encontrado"))
+                .orElseThrow(Erros::tutorAutenticadoNaoEncontrado)
                 .getIdTutor();
     }
 
     private Long idClinicaDoVeterinario(Authentication authentication) {
         return veterinarioRepository.findByDsEmail(authentication.getName())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Veterinário autenticado não encontrado"))
+                .orElseThrow(Erros::veterinarioAutenticadoNaoEncontrado)
                 .getClinica().getIdClinica();
     }
 
     private Long idVeterinarioAutenticado(Authentication authentication) {
         return veterinarioRepository.findByDsEmail(authentication.getName())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Veterinário autenticado não encontrado"))
+                .orElseThrow(Erros::veterinarioAutenticadoNaoEncontrado)
                 .getIdVeterinario();
     }
 

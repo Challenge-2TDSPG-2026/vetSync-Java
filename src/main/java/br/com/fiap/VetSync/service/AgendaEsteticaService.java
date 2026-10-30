@@ -1,5 +1,6 @@
 package br.com.fiap.VetSync.service;
 
+import br.com.fiap.VetSync.exception.Erros;
 import br.com.fiap.VetSync.entity.BloqueioAgendaEstetica;
 import br.com.fiap.VetSync.entity.DisponibilidadeEstetica;
 import br.com.fiap.VetSync.entity.ProfissionalEstetica;
@@ -44,7 +45,7 @@ public class AgendaEsteticaService {
 
     public void removerDisponibilidade(Long idProfissionalEstetica, Long idDisponibilidade) {
         DisponibilidadeEstetica disponibilidade = disponibilidadeEsteticaRepository.findById(idDisponibilidade).orElseThrow(
-                () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Disponibilidade não encontrada")
+                Erros::disponibilidadeNaoEncontrada
         );
         verificarPertence(disponibilidade.getProfissionalEstetica().getIdProfissionalEstetica(), idProfissionalEstetica);
         disponibilidadeEsteticaRepository.delete(disponibilidade);
@@ -70,7 +71,7 @@ public class AgendaEsteticaService {
 
     public void removerBloqueio(Long idProfissionalEstetica, Long idBloqueio) {
         BloqueioAgendaEstetica bloqueio = bloqueioAgendaEsteticaRepository.findById(idBloqueio).orElseThrow(
-                () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Bloqueio não encontrado")
+                Erros::bloqueioNaoEncontrado
         );
         verificarPertence(bloqueio.getProfissionalEstetica().getIdProfissionalEstetica(), idProfissionalEstetica);
         bloqueioAgendaEsteticaRepository.delete(bloqueio);

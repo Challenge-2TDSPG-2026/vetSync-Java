@@ -26,7 +26,7 @@ Use este arquivo para conferir a entrega antes de submeter no portal. Marque cad
 
 | Penalidade | Desconto | Como conferir |
 |------------|----------|---------------|
-| Violação evidente de boas práticas (SOLID, Clean Code) | -10 por ocorrência | Revisar classes grandes (ex.: `EventoService`, ~660 linhas) |
+| Violação evidente de boas práticas (SOLID, Clean Code) | -10 por ocorrência | Revisar classes grandes (o `EventoService` foi dividido por responsabilidade; restam `PetConviteService`, `PontosService`, `PetConviteController`, `AuthController`) |
 | Repetição de código extraível | -5 por ocorrência | Buscar blocos repetidos entre services/controllers |
 | Ausência de evidência de colaboração | -10 | `git shortlog -sn` mostra os 3 membros |
 | Falhas graves de usabilidade | -5 por ocorrência | Percorrer o console e as páginas públicas antes de gravar |

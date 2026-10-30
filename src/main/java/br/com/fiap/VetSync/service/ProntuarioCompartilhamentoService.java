@@ -1,5 +1,6 @@
 package br.com.fiap.VetSync.service;
 
+import br.com.fiap.VetSync.security.TokenUtils;
 import br.com.fiap.VetSync.entity.Pet;
 import br.com.fiap.VetSync.entity.ProntuarioCompartilhado;
 import br.com.fiap.VetSync.entity.ResultadoExame;
@@ -12,13 +13,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.security.SecureRandom;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.Base64;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
@@ -41,7 +37,6 @@ public class ProntuarioCompartilhamentoService {
     private final ProntuarioRegistroService registroService;
     private final PetService petService;
     private final AuditoriaService auditoriaService;
-    private final SecureRandom secureRandom = new SecureRandom();
 
     @Value("${app.prontuario.compartilhamento.expiracao-dias:7}")
     private int expiracaoPadraoDias = 7;
@@ -78,10 +73,10 @@ public class ProntuarioCompartilhamentoService {
         Set<SecaoProntuario> escopo = (secoes == null || secoes.isEmpty())
                 ? ProntuarioService.todasAsSecoes() : EnumSet.copyOf(secoes);
 
-        String tokenPuro = gerarTokenAleatorio();
+        String tokenPuro = TokenUtils.gerarTokenUrlSeguro(TOKEN_BYTES);
         LocalDateTime agora = LocalDateTime.now();
         ProntuarioCompartilhado salvo = repository.save(ProntuarioCompartilhado.builder()
-                .pet(pet).tokenHash(calcularHash(tokenPuro))
+                .pet(pet).tokenHash(TokenUtils.sha256Hex(tokenPuro))
                 .dsSecoes(ProntuarioCompartilhado.serializarSecoes(escopo))
                 .dsDestinatario(dest).dtPeriodoInicio(de).dtPeriodoFim(ate)
                 .idUsuarioCriador(idTutorCriador).criadaEm(agora).expiraEm(agora.plusDays(dias)).build());
@@ -152,7 +147,7 @@ public class ProntuarioCompartilhamentoService {
         if (tokenPuro == null || tokenPuro.isBlank()) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND);
         }
-        ProntuarioCompartilhado link = repository.findByTokenHash(calcularHash(tokenPuro))
+        ProntuarioCompartilhado link = repository.findByTokenHash(TokenUtils.sha256Hex(tokenPuro))
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
         if (!link.isAtivo()) {
             throw new ResponseStatusException(HttpStatus.GONE);
@@ -165,22 +160,4 @@ public class ProntuarioCompartilhamentoService {
                 "LINK_PUBLICO", "EXTERNO");
     }
 
-    private String gerarTokenAleatorio() {
-        byte[] bytes = new byte[TOKEN_BYTES];
-        secureRandom.nextBytes(bytes);
-        return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
-    }
-
-    static String calcularHash(String tokenPuro) {
-        try {
-            byte[] hash = MessageDigest.getInstance("SHA-256").digest(tokenPuro.getBytes(StandardCharsets.UTF_8));
-            StringBuilder sb = new StringBuilder(hash.length * 2);
-            for (byte b : hash) {
-                sb.append(String.format("%02x", b));
-            }
-            return sb.toString();
-        } catch (NoSuchAlgorithmException e) {
-            throw new IllegalStateException("Algoritmo SHA-256 indisponível", e);
-        }
-    }
 }

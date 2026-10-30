@@ -1,5 +1,6 @@
 package br.com.fiap.VetSync.service;
 
+import br.com.fiap.VetSync.exception.Erros;
 import br.com.fiap.VetSync.entity.Clinica;
 import br.com.fiap.VetSync.entity.Pet;
 import br.com.fiap.VetSync.entity.PetAcesso;
@@ -71,7 +72,7 @@ public class PetAcessoService {
 
     public void revogar(Long idPet, Long idAcesso) {
         PetAcesso acesso = petAcessoRepository.findById(idAcesso)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Acesso não encontrado"));
+                .orElseThrow(Erros::acessoNaoEncontrado);
 
         if (acesso.getPet() == null || !idPet.equals(acesso.getPet().getIdPet())) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Acesso não encontrado para esse pet");
@@ -103,7 +104,7 @@ public class PetAcessoService {
 
     public PetAcesso atualizar(Long idPet, Long idAcesso, RelacaoPet relacao, PermissaoPet permissao) {
         PetAcesso acesso = petAcessoRepository.findById(idAcesso)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Acesso não encontrado"));
+                .orElseThrow(Erros::acessoNaoEncontrado);
         if (acesso.getPet() == null || !idPet.equals(acesso.getPet().getIdPet())) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Acesso não encontrado para esse pet");
         }

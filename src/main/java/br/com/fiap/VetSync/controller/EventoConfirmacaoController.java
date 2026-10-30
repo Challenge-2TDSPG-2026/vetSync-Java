@@ -1,7 +1,7 @@
 package br.com.fiap.VetSync.controller;
 
 import br.com.fiap.VetSync.entity.EventoSaude;
-import br.com.fiap.VetSync.service.EventoService;
+import br.com.fiap.VetSync.service.EventoConfirmacaoService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.*;
 @Tag(name = "Confirmação de agendamentos", description = "A clínica confirma ou recusa solicitações de agendamento. O tutor é avisado por push.")
 public class EventoConfirmacaoController {
 
-    private final EventoService eventoService;
+    private final EventoConfirmacaoService eventoConfirmacaoService;
 
     public record RecusarRequest(@NotBlank(message = "motivo da recusa é obrigatório") String motivo) {}
 
@@ -27,7 +27,7 @@ public class EventoConfirmacaoController {
             "or (hasRole('PROFISSIONAL_ESTETICA') and @eventoSecurity.isProfissionalEsteticaResponsavel(#id, authentication))")
     @Operation(summary = "Confirma um agendamento pendente", description = "Só vale para eventos AGENDADO com confirmação PENDENTE. Avisa o tutor.")
     public ConfirmacaoResponse confirmar(@PathVariable Long id) {
-        return toResponse(eventoService.confirmar(id));
+        return toResponse(eventoConfirmacaoService.confirmar(id));
     }
 
     @PatchMapping("/{id}/recusar")
@@ -35,7 +35,7 @@ public class EventoConfirmacaoController {
             "or (hasRole('PROFISSIONAL_ESTETICA') and @eventoSecurity.isProfissionalEsteticaResponsavel(#id, authentication))")
     @Operation(summary = "Recusa um agendamento pendente", description = "Cancela o evento com o motivo informado, libera o horário (e avisa a lista de espera) e avisa o tutor.")
     public ConfirmacaoResponse recusar(@PathVariable Long id, @Valid @RequestBody RecusarRequest request) {
-        return toResponse(eventoService.recusar(id, request.motivo()));
+        return toResponse(eventoConfirmacaoService.recusar(id, request.motivo()));
     }
 
     private ConfirmacaoResponse toResponse(EventoSaude e) {

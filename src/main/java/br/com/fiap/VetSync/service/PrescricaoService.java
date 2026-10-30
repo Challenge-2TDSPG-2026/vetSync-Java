@@ -1,6 +1,7 @@
 // PrescricaoService.java
 package br.com.fiap.VetSync.service;
 
+import br.com.fiap.VetSync.exception.Erros;
 import br.com.fiap.VetSync.entity.*;
 import br.com.fiap.VetSync.repository.AdminRepository;
 import br.com.fiap.VetSync.repository.MedicamentoRepository;
@@ -121,7 +122,7 @@ public class PrescricaoService {
                     "Essa prescrição já foi " + prescricao.getDsStatus());
         }
         Admin admin = adminRepository.findById(idAdmin).orElseThrow(
-                () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Admin não encontrado"));
+                Erros::adminNaoEncontrado);
 
         prescricao.setAdminValidador(admin);
         prescricao.setDsStatus(aprovado ? StatusPrescricao.LIBERADO : StatusPrescricao.NEGADO);
