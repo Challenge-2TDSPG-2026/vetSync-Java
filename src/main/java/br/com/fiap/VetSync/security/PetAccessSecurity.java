@@ -15,18 +15,13 @@ import org.springframework.stereotype.Component;
 public class PetAccessSecurity {
 
     private final PetRepository petRepository;
+    private final PetSecurity petSecurity;
     private final PetAcessoRepository petAcessoRepository;
     private final VeterinarioRepository veterinarioRepository;
     private final VinculoTutorClinicaRepository vinculoRepository;
 
     public boolean isOwner(Long idPet, Authentication authentication) {
-        if (authentication == null || idPet == null) {
-            return false;
-        }
-        return petRepository.findById(idPet)
-                .map(pet -> pet.getTutor() != null
-                        && pet.getTutor().getDsEmail().equalsIgnoreCase(authentication.getName()))
-                .orElse(false);
+        return petSecurity.isOwner(idPet, authentication);
     }
 
     public boolean canView(Long idPet, Authentication authentication) {
@@ -36,25 +31,18 @@ public class PetAccessSecurity {
         return temAcessoAtivo(idPet, authentication, null);
     }
 
-    /** Veterinário só acessa dados de pets cujos tutores têm vínculo ativo com sua clínica contratante. */
+    /** Veterinario so acessa dados de pets cujos tutores tem vinculo ativo com sua clinica contratante. */
     public boolean canVeterinarioView(Long idPet, Authentication authentication) {
-        if (authentication == null || idPet == null || !PerfilUtils.isVeterinario(authentication)) {
+        if (idPet == null) {
             return false;
         }
-        Long idClinica = veterinarioRepository.findByDsEmail(authentication.getName())
-                .map(v -> v.getClinica() != null ? v.getClinica().getIdClinica() : null)
-                .orElse(null);
-        if (idClinica == null) return false;
         return petRepository.findById(idPet)
                 .map(pet -> pet.getTutor() != null
-                        && vinculoRepository.findByTutor_IdTutorAndDtEncerramentoIsNull(pet.getTutor().getIdTutor())
-                        .map(v -> v.getClinica().estaContratanteAtiva()
-                                && idClinica.equals(v.getClinica().getIdClinica()))
-                        .orElse(false))
+                        && canVeterinarioViewTutor(pet.getTutor().getIdTutor(), authentication))
                 .orElse(false);
     }
 
-    /** Escopo para a listagem de pets de um tutor por veterinário: mesmo vínculo clínico ativo. */
+    /** Escopo para a listagem de pets de um tutor por veterinario: mesmo vinculo clinico ativo. */
     public boolean canVeterinarioViewTutor(Long idTutor, Authentication authentication) {
         if (authentication == null || idTutor == null || !PerfilUtils.isVeterinario(authentication)) {
             return false;
@@ -68,7 +56,6 @@ public class PetAccessSecurity {
                         && idClinica.equals(v.getClinica().getIdClinica()))
                 .orElse(false);
     }
-
     public boolean canEdit(Long idPet, Authentication authentication) {
         if (isOwner(idPet, authentication)) {
             return true;
