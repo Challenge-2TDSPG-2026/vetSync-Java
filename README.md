@@ -28,7 +28,7 @@
 | ❤️ Health check | https://app-vetsync-rm563197.azurewebsites.net/actuator/health |
 | 🎥 Vídeo de apresentação (máx. 15 min) | _PREENCHER: link do vídeo_ |
 | 📬 Coleção Postman | [`documentos/JornadaPet_Postman_Collection.json`](documentos/JornadaPet_Postman_Collection.json) |
-| 📱 Aplicativo mobile (React Native / Expo) | _PREENCHER: link do repositório mobile_ |
+| 📱 Aplicativo mobile (React Native / Expo) | [Repositorio mobile](https://github.com/Challenge-2TDSPG-2026/vetSync-Mobile.git) |
 | 🖥 Site web | _PREENCHER: link do site (ex.: Vercel/Firebase)_ |
 
 ---
@@ -217,7 +217,7 @@ Como as demais disciplinas do semestre foram aplicadas nesta solução:
 | **Java Advanced** | API Spring Boot completa: Security/JWT, Flyway, validações, testes | Este repositório |
 | **Mastering Relational and Non-Relational Database** | Modelagem relacional em Oracle com 61 tabelas, versionada por migrations Flyway | [`scripts/Database/script_bd.sql`](scripts/Database/script_bd.sql) · [`src/main/resources/db/migration`](src/main/resources/db/migration) |
 | **DevOps Tools & Cloud Computing** | Pipeline GitHub Actions com build, testes e deploy no Azure App Service via OIDC; infraestrutura criada por Azure CLI; segredos no Key Vault | [`.github/workflows/deploy-azure.yml`](.github/workflows/deploy-azure.yml) · [`azure-pipelines.yml`](azure-pipelines.yml) · [`scripts/`](scripts) · [`Dockerfile`](Dockerfile) |
-| **Mobile Application Development** | O app React Native/Expo consome esta API (JWT, push via Expo, carteira, agenda) | _PREENCHER: link do repositório mobile_ |
+| **Mobile Application Development** | O app React Native/Expo consome esta API (JWT, push via Expo, carteira, agenda) | [Repositorio mobile](https://github.com/Challenge-2TDSPG-2026/vetSync-Mobile.git) |
 | **Disruptive Architectures: IoT, IoB & Generative IA** | Módulo de ações assistidas por IA com preview e confirmação | [`AcaoIaController`](src/main/java/br/com/fiap/VetSync/controller/AcaoIaController.java) · migration `V30__cria_acoes_ia.sql` |
 | **Compliance, Quality Assurance & Tests** | Testes automatizados (unitários, de controller, de segurança e de integração) executados no CI; coleção Postman | [`src/test`](src/test) · [`documentos/JornadaPet_Postman_Collection.json`](documentos/JornadaPet_Postman_Collection.json) · _PREENCHER: link do Azure Boards_ |
 

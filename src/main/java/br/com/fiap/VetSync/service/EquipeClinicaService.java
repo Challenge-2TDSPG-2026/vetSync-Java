@@ -1,5 +1,7 @@
 package br.com.fiap.VetSync.service;
 
+import br.com.fiap.VetSync.security.RegrasSenha;
+
 import br.com.fiap.VetSync.security.TokenUtils;
 import br.com.fiap.VetSync.exception.Erros;
 import br.com.fiap.VetSync.entity.*;
@@ -61,7 +63,7 @@ public class EquipeClinicaService {
         }
         validarEmailLivre(email);
         String senha = senhaTemporaria ? senhaAleatoria() : senhaInformada;
-        if (senha == null || senha.length() < 6) {
+        if (RegrasSenha.invalida(senha)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "A senha deve ter pelo menos 6 caracteres");
         }
         Admin admin = adminRepository.save(Admin.builder().nmAdmin(nome.trim()).dsEmail(normalizar(email))
