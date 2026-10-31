@@ -68,7 +68,7 @@ public class ListaEsperaService {
                 .findByIdServicoClinicaAndClinica_IdClinica(dados.idServico(), idClinica)
                 .orElseThrow(Erros::servicoNaoEncontrado);
         if (!Boolean.TRUE.equals(servico.getAtivo())) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Serviço indisponível");
+            throw Erros.servicoIndisponivel();
         }
         Pet pet = petRepository.findById(dados.idPet())
                 .orElseThrow(Erros::petNaoEncontrado);
@@ -260,7 +260,7 @@ public class ListaEsperaService {
         VinculoTutorClinica vinculo = vinculoRepository.findByTutor_IdTutorAndDtEncerramentoIsNull(tutor.getIdTutor())
                 .orElseThrow(Erros::tutorSemClinicaVinculada);
         if (!vinculo.getClinica().estaContratanteAtiva()) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Clínica com contrato inativo");
+            throw Erros.clinicaContratoInativo();
         }
         return vinculo.getClinica().getIdClinica();
     }

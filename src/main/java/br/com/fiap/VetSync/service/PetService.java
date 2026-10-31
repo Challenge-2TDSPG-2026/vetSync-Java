@@ -1,5 +1,7 @@
 package br.com.fiap.VetSync.service;
 
+import br.com.fiap.VetSync.exception.Erros;
+
 import br.com.fiap.VetSync.entity.Especie;
 import br.com.fiap.VetSync.entity.EspecieCategoria;
 import br.com.fiap.VetSync.entity.Pet;
@@ -150,15 +152,14 @@ public class PetService {
         }
         String contentType = foto.getContentType();
         if (contentType == null || !TIPOS_FOTO_PERMITIDOS.contains(contentType.toLowerCase())) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "Formato de imagem inválido. Envie um arquivo JPEG, PNG ou WEBP");
+            throw Erros.formatoImagemInvalido();
         }
 
         byte[] bytes;
         try {
             bytes = foto.getBytes();
         } catch (IOException e) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Não foi possível ler o arquivo de imagem enviado");
+            throw Erros.imagemIlegivel();
         }
         // O Content-Type vem do cliente e pode ser falsificado: confere também a assinatura real do arquivo.
         String tipoReal = detectarTipoImagem(bytes);

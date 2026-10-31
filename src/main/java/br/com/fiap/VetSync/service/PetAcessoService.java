@@ -75,10 +75,10 @@ public class PetAcessoService {
                 .orElseThrow(Erros::acessoNaoEncontrado);
 
         if (acesso.getPet() == null || !idPet.equals(acesso.getPet().getIdPet())) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Acesso não encontrado para esse pet");
+            throw Erros.acessoNaoEncontradoParaPet();
         }
         if (acesso.getDsStatus() == StatusAcessoPet.REVOGADO) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Esse acesso já está revogado");
+            throw Erros.acessoJaRevogado();
         }
         acesso.setDsStatus(StatusAcessoPet.REVOGADO);
         acesso.setDtRevogado(LocalDateTime.now());
@@ -106,10 +106,10 @@ public class PetAcessoService {
         PetAcesso acesso = petAcessoRepository.findById(idAcesso)
                 .orElseThrow(Erros::acessoNaoEncontrado);
         if (acesso.getPet() == null || !idPet.equals(acesso.getPet().getIdPet())) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Acesso não encontrado para esse pet");
+            throw Erros.acessoNaoEncontradoParaPet();
         }
         if (acesso.getDsStatus() == StatusAcessoPet.REVOGADO) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Esse acesso já está revogado");
+            throw Erros.acessoJaRevogado();
         }
         if (relacao != null) acesso.setDsRelacao(relacao);
         if (permissao != null) acesso.setDsPermissao(permissao);

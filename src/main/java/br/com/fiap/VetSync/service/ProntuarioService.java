@@ -1,5 +1,7 @@
 package br.com.fiap.VetSync.service;
 
+import br.com.fiap.VetSync.exception.Erros;
+
 import br.com.fiap.VetSync.entity.*;
 import br.com.fiap.VetSync.repository.*;
 import lombok.RequiredArgsConstructor;
@@ -83,7 +85,7 @@ public class ProntuarioService {
     public Prontuario montar(Long idPet, Set<SecaoProntuario> secoes, LocalDate de, LocalDate ate,
                              boolean apenasReceitasLiberadas) {
         if (de != null && ate != null && de.isAfter(ate)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "'de' não pode ser depois de 'ate'");
+            throw Erros.periodoInvertido();
         }
         Set<SecaoProntuario> escopo = (secoes == null || secoes.isEmpty())
                 ? todasAsSecoes() : EnumSet.copyOf(secoes);

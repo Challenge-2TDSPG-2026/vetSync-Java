@@ -52,7 +52,7 @@ public class AdminService {
         email = email.trim().toLowerCase(Locale.ROOT);
         if (adminRepository.findByDsEmail(email).isPresent() || tutorRepository.existsByDsEmail(email)
                 || veterinarioRepository.existsByDsEmail(email) || esteticaRepository.existsByDsEmail(email)) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "E-mail já cadastrado");
+            throw Erros.emailJaCadastrado();
         }
         String senhaTemporaria = gerarSenhaTemporaria();
         Admin admin = Admin.builder()

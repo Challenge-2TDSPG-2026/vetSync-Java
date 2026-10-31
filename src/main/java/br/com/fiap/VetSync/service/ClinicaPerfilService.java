@@ -73,7 +73,7 @@ public class ClinicaPerfilService {
     public Clinica logo(Authentication authentication) {
         Admin admin = access.exigir(authentication, PermissaoClinica.PERFIL_VER);
         if (admin.getClinica().getDsLogo() == null) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Logo não cadastrada");
+            throw Erros.logoNaoCadastrada();
         }
         return admin.getClinica();
     }
@@ -87,7 +87,7 @@ public class ClinicaPerfilService {
     public Clinica logoDoTutor(Authentication authentication) {
         Clinica clinica = clinicaVinculada(authentication);
         if (clinica.getDsLogo() == null) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Logo não cadastrada");
+            throw Erros.logoNaoCadastrada();
         }
         return clinica;
     }
@@ -98,7 +98,7 @@ public class ClinicaPerfilService {
         VinculoTutorClinica vinculo = vinculoRepository.findByTutor_IdTutorAndDtEncerramentoIsNull(tutor.getIdTutor())
                 .orElseThrow(Erros::tutorSemClinicaVinculada);
         if (!vinculo.getClinica().estaContratanteAtiva()) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Clínica com contrato inativo");
+            throw Erros.clinicaContratoInativo();
         }
         return vinculo.getClinica();
     }

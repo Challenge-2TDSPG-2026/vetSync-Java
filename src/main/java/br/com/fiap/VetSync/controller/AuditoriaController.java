@@ -1,5 +1,7 @@
 package br.com.fiap.VetSync.controller;
 
+import br.com.fiap.VetSync.exception.Erros;
+
 import br.com.fiap.VetSync.security.PerfilUtils;
 import br.com.fiap.VetSync.service.AuditoriaService;
 import br.com.fiap.VetSync.service.AuditoriaTipos;
@@ -36,7 +38,7 @@ public class AuditoriaController {
                                           @RequestParam(required = false) String acao,
                                           @RequestParam(required = false) Integer limite) {
         if (de != null && ate != null && de.isAfter(ate)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "'de' não pode ser depois de 'ate'");
+            throw Erros.periodoInvertido();
         }
         if (!PerfilUtils.isAdmin(authentication)) {
             // Compatibilidade: sem perfil ADMIN só vale a consulta antiga, por entidade+id, dos tipos que já existiam.

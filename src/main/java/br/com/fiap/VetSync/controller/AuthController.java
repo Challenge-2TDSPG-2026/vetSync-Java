@@ -1,5 +1,7 @@
 package br.com.fiap.VetSync.controller;
 
+import br.com.fiap.VetSync.exception.Erros;
+
 import br.com.fiap.VetSync.security.RegrasSenha;
 
 import br.com.fiap.VetSync.entity.Tutor;
@@ -175,7 +177,7 @@ public class AuthController {
                     new UsernamePasswordAuthenticationToken(login, senha)
             );
         } catch (BadCredentialsException e) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "E-mail ou senha inválidos");
+            throw Erros.emailOuSenhaInvalidos();
         } catch (AuthenticationException e) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Não foi possível autenticar o usuário");
         }
@@ -194,10 +196,10 @@ public class AuthController {
 
         String emailNormalizado = req.email() == null ? null : req.email().trim().toLowerCase(Locale.ROOT);
         if (emailNormalizado == null || emailNormalizado.isBlank()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "E-mail é obrigatório");
+            throw Erros.emailObrigatorio();
         }
         if (contaUsuarioService.emailJaCadastrado(emailNormalizado)) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "E-mail já cadastrado");
+            throw Erros.emailJaCadastrado();
         }
         var tutor = Tutor.builder()
                 .nmTutor(req.nome())
@@ -259,7 +261,7 @@ public class AuthController {
     @Operation(summary = "Trocar a senha temporária da conta de clínica no primeiro acesso")
     public void trocarSenhaInicial(@Valid @RequestBody TrocarSenhaInicialRequest req, Authentication authentication) {
         if (authentication == null) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Autenticação necessária");
+            throw Erros.autenticacaoNecessaria();
         }
         contaUsuarioService.trocarSenhaInicial(authentication.getName(), req.senhaAtual(), req.novaSenha());
     }

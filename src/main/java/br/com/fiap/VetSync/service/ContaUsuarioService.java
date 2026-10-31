@@ -1,5 +1,7 @@
 package br.com.fiap.VetSync.service;
 
+import br.com.fiap.VetSync.exception.Erros;
+
 import br.com.fiap.VetSync.repository.AdminRepository;
 import br.com.fiap.VetSync.repository.IdentidadeSocialRepository;
 import br.com.fiap.VetSync.repository.ProfissionalEsteticaRepository;
@@ -76,7 +78,7 @@ public class ContaUsuarioService {
                     a.getCargo() == null ? Set.of() : a.getCargo().getPermissoes(),
                     Boolean.TRUE.equals(a.getTrocaSenhaObrigatoria()));
         }
-        throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuário não encontrado");
+        throw Erros.usuarioNaoEncontrado();
     }
 
     public void trocarSenhaInicial(String emailAdmin, String senhaAtual, String novaSenha) {

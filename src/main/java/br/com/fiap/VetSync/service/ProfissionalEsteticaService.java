@@ -40,7 +40,7 @@ public class ProfissionalEsteticaService {
         email = email.trim().toLowerCase(Locale.ROOT);
         if (profissionalEsteticaRepository.existsByDsEmail(email) || tutorRepository.existsByDsEmail(email)
                 || veterinarioRepository.existsByDsEmail(email) || adminRepository.findByDsEmail(email).isPresent()) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "E-mail já cadastrado");
+            throw Erros.emailJaCadastrado();
         }
         Clinica clinica = clinicaRepository.findById(idClinica)
                 .orElseThrow(Erros::clinicaNaoEncontrada);

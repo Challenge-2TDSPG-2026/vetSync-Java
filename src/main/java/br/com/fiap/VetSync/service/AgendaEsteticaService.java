@@ -24,10 +24,10 @@ public class AgendaEsteticaService {
 
     public DisponibilidadeEstetica adicionarDisponibilidade(Long idProfissionalEstetica, Integer nrDiaSemana, String hrInicio, String hrFim) {
         if (nrDiaSemana == null || nrDiaSemana < 1 || nrDiaSemana > 7) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Dia da semana deve ser entre 1 (segunda) e 7 (domingo)");
+            throw Erros.diaSemanaInvalido();
         }
         if (hrInicio == null || hrFim == null || hrInicio.compareTo(hrFim) >= 0) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Horário de início deve ser antes do horário de fim");
+            throw Erros.horarioInicioDepoisDoFim();
         }
         ProfissionalEstetica prof = profissionalEsteticaService.buscarPorId(idProfissionalEstetica);
         DisponibilidadeEstetica disponibilidade = DisponibilidadeEstetica.builder()
@@ -53,7 +53,7 @@ public class AgendaEsteticaService {
 
     public BloqueioAgendaEstetica adicionarBloqueio(Long idProfissionalEstetica, LocalDate dtInicio, LocalDate dtFim, String dsMotivo) {
         if (dtInicio == null || dtFim == null || dtFim.isBefore(dtInicio)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Data de fim deve ser igual ou depois da data de início");
+            throw Erros.dataFimAnteriorAoInicio();
         }
         ProfissionalEstetica prof = profissionalEsteticaService.buscarPorId(idProfissionalEstetica);
         BloqueioAgendaEstetica bloqueio = BloqueioAgendaEstetica.builder()
