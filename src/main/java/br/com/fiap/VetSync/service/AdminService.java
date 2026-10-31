@@ -1,5 +1,6 @@
 package br.com.fiap.VetSync.service;
 
+import br.com.fiap.VetSync.exception.Erros;
 import br.com.fiap.VetSync.security.TokenUtils;
 import br.com.fiap.VetSync.entity.Admin;
 import br.com.fiap.VetSync.repository.AdminRepository;
@@ -70,6 +71,13 @@ public class AdminService {
                         + "Recomendamos alterar essa senha assim que possível."
         );
         return new NovoAdmin(admin, senhaTemporaria);
+    }
+
+    /** Id do admin autenticado a partir do e-mail do token. */
+    public Long idPorEmail(String email) {
+        return adminRepository.findByDsEmail(email)
+                .map(Admin::getIdAdmin)
+                .orElseThrow(Erros::adminAutenticadoNaoEncontrado);
     }
 
     private String gerarSenhaTemporaria() {

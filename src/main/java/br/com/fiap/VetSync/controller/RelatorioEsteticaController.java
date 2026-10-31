@@ -3,7 +3,7 @@ package br.com.fiap.VetSync.controller;
 import br.com.fiap.VetSync.exception.Erros;
 import br.com.fiap.VetSync.entity.Admin;
 import br.com.fiap.VetSync.entity.RelatorioEstetica;
-import br.com.fiap.VetSync.repository.AdminRepository;
+import br.com.fiap.VetSync.service.AdminService;
 import br.com.fiap.VetSync.security.PerfilUtils;
 import br.com.fiap.VetSync.service.ProfissionalEsteticaService;
 import br.com.fiap.VetSync.service.RelatorioEsteticaService;
@@ -29,7 +29,7 @@ public class RelatorioEsteticaController {
 
     private final RelatorioEsteticaService relatorioEsteticaService;
     private final ProfissionalEsteticaService profissionalEsteticaService;
-    private final AdminRepository adminRepository;
+    private final AdminService adminService;
 
     public record RelatorioRequest(
             @NotNull(message = "idEvento é obrigatório") Long idEvento,
@@ -66,12 +66,6 @@ public class RelatorioEsteticaController {
                 clinica != null ? clinica.getIdClinica() : null,
                 clinica != null ? clinica.getNmClinica() : null
         );
-    }
-
-    private Long idAdminAutenticado(Authentication authentication) {
-        return adminRepository.findByDsEmail(authentication.getName())
-                .map(Admin::getIdAdmin)
-                .orElseThrow(Erros::adminAutenticadoNaoEncontrado);
     }
 
     @PostMapping
@@ -120,7 +114,7 @@ public class RelatorioEsteticaController {
             description = "Se aprovado=true, gera um link de agendamento e envia e-mail ao tutor com a observação e o link para escolher data/veterinário.")
     public RelatorioResponse liberar(@PathVariable Long id, Authentication authentication,
                                      @RequestBody RelatorioLiberarRequest request) {
-        RelatorioEstetica relatorio = relatorioEsteticaService.liberar(id, idAdminAutenticado(authentication), request.aprovado());
+        RelatorioEstetica relatorio = relatorioEsteticaService.liberar(id, adminService.idPorEmail(authentication.getName()), request.aprovado());
         return toResponse(relatorio);
     }
 }

@@ -3,7 +3,7 @@ package br.com.fiap.VetSync.controller;
 import br.com.fiap.VetSync.exception.Erros;
 import br.com.fiap.VetSync.entity.Clinica;
 import br.com.fiap.VetSync.entity.VinculoTutorClinica;
-import br.com.fiap.VetSync.repository.TutorRepository;
+import br.com.fiap.VetSync.service.TutorService;
 import br.com.fiap.VetSync.service.VinculoClinicaService;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -25,7 +25,7 @@ import java.util.List;
 @Tag(name = "Vínculos de clínica", description = "Cadastro e troca de clínica vinculada ao tutor")
 public class VinculoClinicaController {
     private final VinculoClinicaService vinculoService;
-    private final TutorRepository tutorRepository;
+    private final TutorService tutorService;
 
     public record CodigoRequest(@NotBlank(message = "Código da clínica é obrigatório") String codigo) {}
     public record SessaoResponse(String sessaoVinculo, Long idClinica, String nomeClinica, LocalDateTime expiraEm) {}
@@ -52,7 +52,7 @@ public class VinculoClinicaController {
     @GetMapping("/me")
     @PreAuthorize("hasRole('TUTOR')")
     public VinculoResponse meuVinculo(Authentication authentication) {
-        Long idTutor = tutorRepository.findByDsEmail(authentication.getName())
+        Long idTutor = tutorService.buscarPorEmail(authentication.getName())
                 .orElseThrow(Erros::tutorNaoEncontrado).getIdTutor();
         VinculoTutorClinica vinculo = vinculoService.buscarVinculoAtivo(idTutor);
         if (vinculo == null || !vinculo.getClinica().estaContratanteAtiva()) throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Nenhuma clínica ativa vinculada");

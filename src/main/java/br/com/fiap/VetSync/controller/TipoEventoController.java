@@ -1,7 +1,7 @@
 package br.com.fiap.VetSync.controller;
 
 import br.com.fiap.VetSync.entity.TipoEvento;
-import br.com.fiap.VetSync.repository.TipoEventoRepository;
+import br.com.fiap.VetSync.service.TipoEventoService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -17,7 +17,7 @@ import java.util.List;
 @Tag(name = "Tipos de Evento", description = "Catálogo de tipos de evento de saúde e seus pontos de fidelidade")
 public class TipoEventoController {
 
-    private final TipoEventoRepository tipoEventoRepository;
+    private final TipoEventoService tipoEventoService;
 
     public record TipoEventoResponse(
             Long idTipoEvento,
@@ -42,6 +42,6 @@ public class TipoEventoController {
     @GetMapping
     @Operation(summary = "Listar catálogo de tipos de evento", description = "Usado pelo app para popular o seletor de tipo ao solicitar um evento de saúde.")
     public List<TipoEventoResponse> listar() {
-        return tipoEventoRepository.findByClinicaIsNull().stream().map(this::toResponse).toList();
+        return tipoEventoService.listarCatalogoGlobal().stream().map(this::toResponse).toList();
     }
 }

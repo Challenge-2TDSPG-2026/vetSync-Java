@@ -2,7 +2,7 @@ package br.com.fiap.VetSync.controller;
 
 import br.com.fiap.VetSync.exception.Erros;
 import br.com.fiap.VetSync.entity.*;
-import br.com.fiap.VetSync.repository.AdminRepository;
+import br.com.fiap.VetSync.service.AdminService;
 import br.com.fiap.VetSync.security.PerfilUtils;
 import br.com.fiap.VetSync.service.PontosService;
 import br.com.fiap.VetSync.service.PontosService.SaldoPontos;
@@ -29,7 +29,7 @@ import java.util.List;
 public class PontosController {
 
     private final PontosService pontosService;
-    private final AdminRepository adminRepository;
+    private final AdminService adminService;
     private final TutorService tutorService;
 
     public record LancamentoPontosResponse(
@@ -121,12 +121,6 @@ public class PontosController {
                 p.pontosResgatados(), p.pontosReservados(), p.saldoDisponivel());
     }
 
-    private Long idAdminAutenticado(Authentication authentication) {
-        return adminRepository.findByDsEmail(authentication.getName())
-                .map(Admin::getIdAdmin)
-                .orElseThrow(Erros::adminAutenticadoNaoEncontrado);
-    }
-
     private Long idTutorAutenticado(Authentication authentication) {
         return tutorService.buscarPorEmail(authentication.getName())
                 .orElseThrow(Erros::tutorAutenticadoNaoEncontrado)
@@ -170,7 +164,7 @@ public class PontosController {
     public LancamentoPontosResponse liberar(@PathVariable Long id,
                                             @RequestParam("idClinica") Long idClinica,
                                             Authentication authentication) {
-        return toResponse(pontosService.liberar(id, idClinica, idAdminAutenticado(authentication)));
+        return toResponse(pontosService.liberar(id, idClinica, adminService.idPorEmail(authentication.getName())));
     }
 
     @PatchMapping("/{id}/bloquear")
@@ -181,7 +175,7 @@ public class PontosController {
                                              @RequestParam("idClinica") Long idClinica,
                                              @Valid @RequestBody BloquearRequest request,
                                              Authentication authentication) {
-        return toResponse(pontosService.bloquear(id, idClinica, request.motivo(), idAdminAutenticado(authentication)));
+        return toResponse(pontosService.bloquear(id, idClinica, request.motivo(), adminService.idPorEmail(authentication.getName())));
     }
 
     @PatchMapping("/{id}/desbloquear")
@@ -191,6 +185,6 @@ public class PontosController {
     public LancamentoPontosResponse desbloquear(@PathVariable Long id,
                                                 @RequestParam("idClinica") Long idClinica,
                                                 Authentication authentication) {
-        return toResponse(pontosService.desbloquear(id, idClinica, idAdminAutenticado(authentication)));
+        return toResponse(pontosService.desbloquear(id, idClinica, adminService.idPorEmail(authentication.getName())));
     }
 }

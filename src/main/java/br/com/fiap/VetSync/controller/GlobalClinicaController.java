@@ -1,7 +1,7 @@
 package br.com.fiap.VetSync.controller;
 
 import br.com.fiap.VetSync.entity.Clinica;
-import br.com.fiap.VetSync.repository.ClinicaRepository;
+import br.com.fiap.VetSync.service.ClinicaService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
@@ -17,7 +17,7 @@ import java.util.Locale;
 @PreAuthorize("hasRole('ADMIN')")
 @RequiredArgsConstructor
 public class GlobalClinicaController {
-    private final ClinicaRepository repository;
+    private final ClinicaService clinicaService;
 
     public record CriarRequest(@NotBlank String nome,
                                @NotBlank @Pattern(regexp = "^\\d{14}$") String cnpj,
@@ -28,11 +28,7 @@ public class GlobalClinicaController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public ClinicaCriada criar(@Valid @RequestBody CriarRequest req) {
-        if (req.nome().length() > 150 || req.cidade().length() > 80 || repository.existsByDsCnpj(req.cnpj())) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Clínica ou CNPJ inválido ou já cadastrado");
-        }
-        Clinica clinica = repository.save(Clinica.builder().nmClinica(req.nome().trim()).dsCnpj(req.cnpj())
-                .dsCidade(req.cidade().trim()).dsUf(req.uf().toUpperCase(Locale.ROOT)).build());
+        Clinica clinica = clinicaService.criar(req.nome(), req.cnpj(), req.cidade(), req.uf());
         return new ClinicaCriada(clinica.getIdClinica(), clinica.getNmClinica(), "INATIVO");
     }
 }
