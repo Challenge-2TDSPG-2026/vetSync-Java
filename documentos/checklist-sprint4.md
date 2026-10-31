@@ -6,19 +6,19 @@ Use este arquivo para conferir a entrega antes de submeter no portal. Marque cad
 
 | Critério | Pontos | Evidência no repositório / entrega | OK |
 |----------|-------:|------------------------------------|----|
-| Demonstração técnica: aplicação online (deploy) | 40 | URL do App Service no README, `/actuator/health` respondendo `UP` | [ ] |
+| Demonstração técnica: aplicação online (deploy) | 40 | URL do App Service no README, `/actuator/health` respondendo `UP` | [x] |
 | Demonstração técnica: principais fluxos navegados | | Roteiro em `documentos/roteiro-video.md` | [ ] |
-| Demonstração técnica: conceitos da disciplina contextualizados | | Spring Security, Flyway, validações, testes, JaCoCo | [ ] |
+| Demonstração técnica: conceitos da disciplina contextualizados | | Spring Security, Flyway, validações, testes, JaCoCo | [x] |
 | Demonstração técnica: boa UI e UX | | Console (`static/index.html`) e páginas públicas (Thymeleaf) | [ ] |
-| Narrativa da solução | 20 | Seções "Narrativa" e "Decisões de design" do README | [ ] |
-| Integração multidisciplinar | 20 | Tabela do README + `documentos/arquitetura.md`, `script_bd.sql`, pipeline, Postman | [ ] |
+| Narrativa da solução | 20 | Seções "Narrativa" e "Decisões de design" do README | [x] |
+| Integração multidisciplinar | 20 | Tabela do README + `documentos/arquitetura.md`, `script_bd.sql`, pipeline, Postman | [x] |
 | Apresentação oral e comunicação em equipe | 10 | Todos os membros falam no vídeo | [ ] |
-| Organização da entrega e da documentação | 10 | README completo, `documentos/`, histórico de commits dos 3 membros | [ ] |
+| Organização da entrega e da documentação | 10 | README completo, `documentos/`, histórico de commits dos 3 membros | [x] |
 
 ## Artefatos de entrega
 
-- [ ] Repositório no GitHub (público) com README completo
-- [ ] Link de acesso à aplicação (App Service)
+- [x] Repositório no GitHub (público) com README completo
+- [x] Link de acesso à aplicação (App Service)
 - [ ] Vídeo de até 15 minutos publicado e linkado no README
 - [ ] Entrega feita **no portal e dentro do prazo** (fora do prazo ou do portal = -100)
 
