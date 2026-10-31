@@ -134,10 +134,10 @@ public class AgendaService {
 
     public Disponibilidade adicionarDisponibilidade(Long idVeterinario, Integer nrDiaSemana, String hrInicio, String hrFim) {
         if (nrDiaSemana == null || nrDiaSemana < 1 || nrDiaSemana > 7) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Dia da semana deve ser entre 1 (segunda) e 7 (domingo)");
+            throw Erros.diaSemanaInvalido();
         }
         if (hrInicio == null || hrFim == null || hrInicio.compareTo(hrFim) >= 0) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Horário de início deve ser antes do horário de fim");
+            throw Erros.horarioInicioDepoisDoFim();
         }
         Veterinario vet = veterinarioService.buscarPorId(idVeterinario);
         Disponibilidade disponibilidade = Disponibilidade.builder()
@@ -164,7 +164,7 @@ public class AgendaService {
 
     public BloqueioAgenda adicionarBloqueio(Long idVeterinario, LocalDate dtInicio, LocalDate dtFim, String dsMotivo) {
         if (dtInicio == null || dtFim == null || dtFim.isBefore(dtInicio)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Data de fim deve ser igual ou depois da data de início");
+            throw Erros.dataFimAnteriorAoInicio();
         }
         Veterinario vet = veterinarioService.buscarPorId(idVeterinario);
         BloqueioAgenda bloqueio = BloqueioAgenda.builder()

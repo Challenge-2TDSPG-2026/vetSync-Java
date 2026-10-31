@@ -1,16 +1,15 @@
 package br.com.fiap.VetSync.controller;
 
+import br.com.fiap.VetSync.exception.Erros;
+
 import br.com.fiap.VetSync.entity.EventoSaude;
 import br.com.fiap.VetSync.entity.StatusEvento;
-import br.com.fiap.VetSync.entity.EventoHistorico;
-import br.com.fiap.VetSync.entity.EventoAnexo;
 import br.com.fiap.VetSync.security.PerfilUtils;
 import br.com.fiap.VetSync.security.PetAccessSecurity;
 import br.com.fiap.VetSync.service.EventoService;
 import br.com.fiap.VetSync.service.EventoConsultaService;
 import br.com.fiap.VetSync.service.EventoConclusaoService;
 import br.com.fiap.VetSync.service.EventoCancelamentoService;
-import br.com.fiap.VetSync.service.EventoAnexoService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -44,7 +43,6 @@ public class EventoController {
     private final EventoConsultaService eventoConsultaService;
     private final EventoCancelamentoService eventoCancelamentoService;
     private final EventoConclusaoService eventoConclusaoService;
-    private final EventoAnexoService eventoAnexoService;
     private final PetAccessSecurity petAccessSecurity;
 
     public record EventoAgendarRequest(
@@ -91,13 +89,6 @@ public class EventoController {
 
     public record EventoCancelarResponse(EventoResponse eventoCancelado, EventoResponse novoEvento) {}
     public record ReagendarRequest(@NotNull LocalDate data, @NotBlank String hora) {}
-    public record HistoricoResponse(Long id, String acao, String statusAnterior, String statusNovo,
-                                    LocalDate dataAnterior, LocalDate dataNova, String horaAnterior, String horaNova,
-                                    String observacaoAnterior, String observacaoNova, BigDecimal custoAnterior,
-                                    BigDecimal custoNovo, String ator, java.time.LocalDateTime ocorridoEm) {}
-    public record AnexoResponse(Long id, String nome, String mimeType, Long tamanho, String ator,
-                                java.time.LocalDateTime criadoEm) {}
-
     public record ServicoResumoResponse(Long idServico, String nmServico) {}
 
     public record EventoResponse(
@@ -171,8 +162,7 @@ public class EventoController {
     @Operation(summary = "Tutor agenda um evento de saúde para um pet dele, escolhendo veterinário e horário livre na agenda dele")
     public EventoResponse agendar(Authentication authentication, @Valid @RequestBody EventoAgendarRequest request) {
         if (!petAccessSecurity.canEdit(request.idPet(), authentication)) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
-                    "Você não tem permissão para agendar eventos para esse pet");
+            throw Erros.semPermissaoParaAgendarNoPet();
         }
         EventoSaude evento = EventoSaude.builder()
                 .dtEvento(request.dtEvento())
@@ -194,8 +184,7 @@ public class EventoController {
             description = "Só aceita tipos de evento de estética (nome contendo \"banho\"). idsServico deve conter pelo menos o serviço base escolhido (banho, banho e tosa na tesoura ou banho e tosa na máquina); serviços extras são opcionais. Para consultas com veterinário use POST /eventos.")
     public EventoResponse agendarEstetica(Authentication authentication, @Valid @RequestBody EventoAgendarEsteticaRequest request) {
         if (!petAccessSecurity.canEdit(request.idPet(), authentication)) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
-                    "Você não tem permissão para agendar eventos para esse pet");
+            throw Erros.semPermissaoParaAgendarNoPet();
         }
         EventoSaude evento = EventoSaude.builder()
                 .dtEvento(request.dtEvento())
@@ -235,58 +224,10 @@ public class EventoController {
         return toResponse(eventoService.buscarPorId(id));
     }
 
-    @GetMapping("/{id}/historico")
-    @PreAuthorize("@eventoSecurity.isRelacionado(#id, authentication)")
-    public List<HistoricoResponse> historico(@PathVariable Long id) {
-        return eventoConsultaService.historico(id).stream().map(this::toHistoricoResponse).toList();
-    }
-
     @PatchMapping("/{id}/reagendar")
     @PreAuthorize("hasRole('TUTOR') and @eventoSecurity.isTutorComEdicao(#id, authentication)")
     public EventoResponse reagendar(@PathVariable Long id, @Valid @RequestBody ReagendarRequest request) {
         return toResponse(eventoCancelamentoService.reagendar(id, request.data(), request.hora()));
-    }
-
-    @PostMapping(value = "/{id}/anexos", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    @PreAuthorize("@eventoSecurity.isTutorComEdicao(#id, authentication) or @eventoSecurity.isVeterinarioResponsavel(#id, authentication)")
-    @ResponseStatus(HttpStatus.CREATED)
-    public AnexoResponse adicionarAnexo(@PathVariable Long id, @RequestPart("arquivo") MultipartFile arquivo,
-                                        Authentication authentication) {
-        return toAnexoResponse(eventoAnexoService.adicionar(id, arquivo, authentication.getName()));
-    }
-
-    @GetMapping("/{id}/anexos")
-    @PreAuthorize("@eventoSecurity.isRelacionado(#id, authentication)")
-    public List<AnexoResponse> anexos(@PathVariable Long id) {
-        return eventoAnexoService.listar(id).stream().map(this::toAnexoResponse).toList();
-    }
-
-    @GetMapping("/{id}/anexos/{idAnexo}")
-    @PreAuthorize("@eventoSecurity.isRelacionado(#id, authentication)")
-    public ResponseEntity<byte[]> baixarAnexo(@PathVariable Long id, @PathVariable Long idAnexo) {
-        EventoAnexo anexo = eventoAnexoService.buscar(id, idAnexo);
-        return ResponseEntity.ok().contentType(MediaType.parseMediaType(anexo.getDsMimeType()))
-                .header("Content-Disposition", "attachment; filename=\"" + anexo.getNmArquivo() + "\"")
-                .body(anexo.getDsConteudo());
-    }
-
-    @DeleteMapping("/{id}/anexos/{idAnexo}")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    @PreAuthorize("@eventoSecurity.isTutorComEdicao(#id, authentication) or @eventoSecurity.isVeterinarioResponsavel(#id, authentication)")
-    public void removerAnexo(@PathVariable Long id, @PathVariable Long idAnexo) {
-        eventoAnexoService.remover(id, idAnexo);
-    }
-
-    private HistoricoResponse toHistoricoResponse(EventoHistorico h) {
-        return new HistoricoResponse(h.getIdHistorico(), h.getDsAcao(), h.getDsStatusAnterior(), h.getDsStatusNovo(),
-                h.getDtEventoAnterior(), h.getDtEventoNovo(), h.getHrEventoAnterior(), h.getHrEventoNovo(),
-                h.getDsObservacaoAnterior(), h.getDsObservacaoNova(), h.getVlCustoAnterior(), h.getVlCustoNovo(),
-                h.getDsAtor(), h.getDtOcorrencia());
-    }
-
-    private AnexoResponse toAnexoResponse(EventoAnexo a) {
-        return new AnexoResponse(a.getIdAnexo(), a.getNmArquivo(), a.getDsMimeType(), a.getNrTamanho(),
-                a.getDsAtor(), a.getDtCriacao());
     }
 
     @PatchMapping("/{id}/concluir")

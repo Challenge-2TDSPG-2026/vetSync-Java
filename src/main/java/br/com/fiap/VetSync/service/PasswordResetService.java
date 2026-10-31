@@ -1,5 +1,7 @@
 package br.com.fiap.VetSync.service;
 
+import br.com.fiap.VetSync.exception.Erros;
+
 import br.com.fiap.VetSync.security.RegrasSenha;
 
 import br.com.fiap.VetSync.security.TokenUtils;
@@ -50,7 +52,7 @@ public class PasswordResetService {
     /** Passo 1: se o e-mail existir, gera e envia o código de verificação. */
     public void solicitarCodigo(String email) {
         if (email == null || email.isBlank()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "E-mail é obrigatório");
+            throw Erros.emailObrigatorio();
         }
         String emailNormalizado = email.trim().toLowerCase(Locale.ROOT);
 
@@ -127,7 +129,7 @@ public class PasswordResetService {
         }
 
         if (!atualizado) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuário não encontrado");
+            throw Erros.usuarioNaoEncontrado();
         }
 
         tokenBlacklist.revogarSessoesDoUsuario(emailNormalizado);
@@ -150,11 +152,11 @@ public class PasswordResetService {
         CodigoRedefinicaoStore.Registro registro = codigoStore.buscar(emailNormalizado);
         if (registro == null || registro.expiraEm().isBefore(LocalDateTime.now())) {
             codigoStore.remover(emailNormalizado);
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Código inválido ou expirado");
+            throw Erros.codigoInvalidoOuExpirado();
         }
         if (!registro.codigo().equals(codigo.trim())) {
             codigoStore.registrarTentativaFalha(emailNormalizado);
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Código inválido ou expirado");
+            throw Erros.codigoInvalidoOuExpirado();
         }
         return emailNormalizado;
     }

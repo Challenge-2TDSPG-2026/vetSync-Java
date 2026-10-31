@@ -36,7 +36,7 @@ public class VeterinarioService {
         crmv = crmv.trim().toUpperCase(Locale.ROOT);
         if (veterinarioRepository.existsByDsEmail(email) || tutorRepository.existsByDsEmail(email)
                 || esteticaRepository.existsByDsEmail(email) || adminRepository.findByDsEmail(email).isPresent()) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "E-mail já cadastrado");
+            throw Erros.emailJaCadastrado();
         }
         if (veterinarioRepository.existsByNrCrmv(crmv)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "CRMV já cadastrado");

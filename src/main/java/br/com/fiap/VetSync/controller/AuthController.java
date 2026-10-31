@@ -1,17 +1,14 @@
 package br.com.fiap.VetSync.controller;
 
+import br.com.fiap.VetSync.exception.Erros;
+
 import br.com.fiap.VetSync.security.RegrasSenha;
 
 import br.com.fiap.VetSync.entity.Tutor;
-import br.com.fiap.VetSync.repository.AdminRepository;
-import br.com.fiap.VetSync.repository.IdentidadeSocialRepository;
-import br.com.fiap.VetSync.repository.ProfissionalEsteticaRepository;
-import br.com.fiap.VetSync.repository.TutorRepository;
-import br.com.fiap.VetSync.repository.VeterinarioRepository;
 import br.com.fiap.VetSync.security.TokenBlacklist;
+import br.com.fiap.VetSync.service.ContaUsuarioService;
 import br.com.fiap.VetSync.service.JwtService;
 import br.com.fiap.VetSync.service.VinculoClinicaService;
-import br.com.fiap.VetSync.social.SocialProvider;
 import br.com.fiap.VetSync.service.PasswordResetService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -32,7 +29,6 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.util.Locale;
 import java.util.Map;
-import java.time.LocalDateTime;
 
 @RestController
 @RequestMapping("/auth")
@@ -42,15 +38,11 @@ public class AuthController {
 
     private final AuthenticationManager authManager;
     private final JwtService jwtService;
-    private final TutorRepository tutorRepository;
-    private final VeterinarioRepository veterinarioRepository;
-    private final AdminRepository adminRepository;
     private final PasswordEncoder passwordEncoder;
     private final TokenBlacklist tokenBlacklist;
-    private final ProfissionalEsteticaRepository profissionalEsteticaRepository;
     private final PasswordResetService passwordResetService;
     private final VinculoClinicaService vinculoClinicaService;
-    private final IdentidadeSocialRepository identidadeSocialRepository;
+    private final ContaUsuarioService contaUsuarioService;
 
     public record LoginRequest(String email, String senha) {}
 
@@ -178,15 +170,14 @@ public class AuthController {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "E-mail ou CRMV e senha são obrigatórios");
         }
 
-        String login = veterinarioRepository.findByNrCrmv(identificador.toUpperCase(Locale.ROOT))
-                .map(v -> v.getDsEmail()).orElse(identificador.toLowerCase(Locale.ROOT));
+        String login = contaUsuarioService.resolverLogin(identificador);
 
         try {
             authManager.authenticate(
                     new UsernamePasswordAuthenticationToken(login, senha)
             );
         } catch (BadCredentialsException e) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "E-mail ou senha inválidos");
+            throw Erros.emailOuSenhaInvalidos();
         } catch (AuthenticationException e) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Não foi possível autenticar o usuário");
         }
@@ -205,12 +196,10 @@ public class AuthController {
 
         String emailNormalizado = req.email() == null ? null : req.email().trim().toLowerCase(Locale.ROOT);
         if (emailNormalizado == null || emailNormalizado.isBlank()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "E-mail é obrigatório");
+            throw Erros.emailObrigatorio();
         }
-        if (tutorRepository.existsByDsEmail(emailNormalizado) || veterinarioRepository.existsByDsEmail(emailNormalizado)
-                || profissionalEsteticaRepository.existsByDsEmail(emailNormalizado)
-                || adminRepository.findByDsEmail(emailNormalizado).isPresent()) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "E-mail já cadastrado");
+        if (contaUsuarioService.emailJaCadastrado(emailNormalizado)) {
+            throw Erros.emailJaCadastrado();
         }
         var tutor = Tutor.builder()
                 .nmTutor(req.nome())
@@ -272,82 +261,24 @@ public class AuthController {
     @Operation(summary = "Trocar a senha temporária da conta de clínica no primeiro acesso")
     public void trocarSenhaInicial(@Valid @RequestBody TrocarSenhaInicialRequest req, Authentication authentication) {
         if (authentication == null) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Autenticação necessária");
+            throw Erros.autenticacaoNecessaria();
         }
-        var admin = adminRepository.findByDsEmail(authentication.getName()).orElseThrow(
-                () -> new ResponseStatusException(HttpStatus.FORBIDDEN, "Conta de administrador necessária"));
-        if (admin.ehGlobal() || !Boolean.TRUE.equals(admin.getTrocaSenhaObrigatoria())) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Não há troca inicial pendente");
-        }
-        if (!passwordEncoder.matches(req.senhaAtual(), admin.getDsSenha())) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Senha atual inválida");
-        }
-        if (RegrasSenha.invalida(req.novaSenha()) || req.novaSenha().equals(req.senhaAtual())) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Informe uma senha nova com pelo menos 6 caracteres");
-        }
-        admin.setDsSenha(passwordEncoder.encode(req.novaSenha()));
-        admin.setTrocaSenhaObrigatoria(false);
-        admin.setDtSenhaAlteradaEm(LocalDateTime.now(java.time.ZoneOffset.UTC));
-        adminRepository.save(admin);
+        contaUsuarioService.trocarSenhaInicial(authentication.getName(), req.senhaAtual(), req.novaSenha());
     }
 
     @GetMapping("/me")
     @Operation(summary = "Dados do usuário autenticado (para restaurar a sessão no app)")
     public MeResponse me(Authentication authentication) {
         String email = authentication.getName();
-
-        var tutor = tutorRepository.findByDsEmail(email);
-        if (tutor.isPresent()) {
-            Long idTutor = tutor.get().getIdTutor();
-            return new MeResponse(tutor.get().getIdTutor(), email, tutor.get().getNmTutor(), "TUTOR",
-                    vinculoClinicaService.temVinculoAtivo(idTutor), null, null, java.util.Set.of(), false,
-                    identidadeSocialRepository.existsByTutor_IdTutorAndProvedor(idTutor, SocialProvider.GOOGLE));
-        }
-        var vet = veterinarioRepository.findByDsEmail(email);
-        if (vet.isPresent()) {
-            return new MeResponse(vet.get().getIdVeterinario(), email, vet.get().getNmVeterinario(), "VETERINARIO", true);
-        }
-        var profissional = profissionalEsteticaRepository.findByDsEmail(email);
-        if (profissional.isPresent()) {
-            return new MeResponse(profissional.get().getIdProfissionalEstetica(), email,
-                    profissional.get().getNmProfissionalEstetica(), "PROFISSIONAL_ESTETICA", true);
-        }
-        var admin = adminRepository.findByDsEmail(email);
-        if (admin.isPresent()) {
-            var a = admin.get();
-            return new MeResponse(a.getIdAdmin(), email, a.getNmAdmin(), a.ehGlobal() ? "ADMIN" : "ADMIN_CLINICA", true,
-                    a.ehGlobal() ? null : a.getClinica().getIdClinica(),
-                    a.getCargo() == null ? (Boolean.TRUE.equals(a.getDono()) ? "Dono" : null) : a.getCargo().getNmCargo(),
-                    a.getCargo() == null ? java.util.Set.of() : a.getCargo().getPermissoes(),
-                    Boolean.TRUE.equals(a.getTrocaSenhaObrigatoria()));
-        }
-        throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuário não encontrado");
+        var p = contaUsuarioService.buscarPerfil(email);
+        boolean googleVinculado = "TUTOR".equals(p.perfil()) && contaUsuarioService.googleVinculado(p.id());
+        return new MeResponse(p.id(), email, p.nome(), p.perfil(), p.temVinculoAtivo(), p.idClinica(), p.cargo(),
+                p.permissoes(), p.trocaSenhaObrigatoria(), googleVinculado);
     }
 
     private AuthResponse montarAuthResponse(String email, String token) {
-        var tutor = tutorRepository.findByDsEmail(email);
-        if (tutor.isPresent()) {
-            return new AuthResponse(token, tutor.get().getIdTutor(), email, tutor.get().getNmTutor(), "TUTOR",
-                    vinculoClinicaService.temVinculoAtivo(tutor.get().getIdTutor()));
-        }
-        var vet = veterinarioRepository.findByDsEmail(email);
-        if (vet.isPresent()) {
-            return new AuthResponse(token, vet.get().getIdVeterinario(), email, vet.get().getNmVeterinario(), "VETERINARIO", true);
-        }
-        var profissional = profissionalEsteticaRepository.findByDsEmail(email);
-        if (profissional.isPresent()) {
-            return new AuthResponse(token, profissional.get().getIdProfissionalEstetica(), email,
-                    profissional.get().getNmProfissionalEstetica(), "PROFISSIONAL_ESTETICA", true);
-        }
-        var admin = adminRepository.findByDsEmail(email);
-        if (admin.isPresent()) {
-            var a = admin.get();
-            return new AuthResponse(token, a.getIdAdmin(), email, a.getNmAdmin(), a.ehGlobal() ? "ADMIN" : "ADMIN_CLINICA", true,
-                    a.ehGlobal() ? null : a.getClinica().getIdClinica(),
-                    a.getCargo() == null ? (Boolean.TRUE.equals(a.getDono()) ? "Dono" : null) : a.getCargo().getNmCargo(),
-                    a.getCargo() == null ? java.util.Set.of() : a.getCargo().getPermissoes(),
-                    Boolean.TRUE.equals(a.getTrocaSenhaObrigatoria()));
-        }
-        throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuário não encontrado");
+        var p = contaUsuarioService.buscarPerfil(email);
+        return new AuthResponse(token, p.id(), email, p.nome(), p.perfil(), p.temVinculoAtivo(), p.idClinica(),
+                p.cargo(), p.permissoes(), p.trocaSenhaObrigatoria());
     }
 }

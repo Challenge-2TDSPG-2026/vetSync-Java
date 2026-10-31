@@ -4,7 +4,7 @@ package br.com.fiap.VetSync.controller;
 import br.com.fiap.VetSync.exception.Erros;
 import br.com.fiap.VetSync.entity.Admin;
 import br.com.fiap.VetSync.entity.Prescricao;
-import br.com.fiap.VetSync.repository.AdminRepository;
+import br.com.fiap.VetSync.service.AdminService;
 import br.com.fiap.VetSync.security.PerfilUtils;
 import br.com.fiap.VetSync.security.PetAccessSecurity;
 import br.com.fiap.VetSync.service.PrescricaoService;
@@ -35,7 +35,7 @@ public class PrescricaoController {
 
     private final PrescricaoService prescricaoService;
     private final VeterinarioService veterinarioService;
-    private final AdminRepository adminRepository;
+    private final AdminService adminService;
     private final PetAccessSecurity petAccessSecurity;
 
     public record PrescricaoRequest(
@@ -83,12 +83,6 @@ public class PrescricaoController {
                 evento != null && evento.getClinica() != null ? evento.getClinica().getIdClinica() : null,
                 evento != null && evento.getClinica() != null ? evento.getClinica().getNmClinica() : null
         );
-    }
-
-    private Long idAdminAutenticado(Authentication authentication) {
-        return adminRepository.findByDsEmail(authentication.getName())
-                .map(Admin::getIdAdmin)
-                .orElseThrow(Erros::adminAutenticadoNaoEncontrado);
     }
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -143,7 +137,7 @@ public class PrescricaoController {
             description = "Se aprovado=true, dispara e-mail real avisando o tutor que o medicamento foi liberado, com o PDF da prescrição anexado (quando enviado na solicitação).")
     public PrescricaoResponse liberar(@PathVariable Long id, Authentication authentication,
                                       @RequestBody PrescricaoLiberarRequest request) {
-        Prescricao prescricao = prescricaoService.liberar(id, idAdminAutenticado(authentication), request.aprovado());
+        Prescricao prescricao = prescricaoService.liberar(id, adminService.idPorEmail(authentication.getName()), request.aprovado());
         return toResponse(prescricao);
     }
 }

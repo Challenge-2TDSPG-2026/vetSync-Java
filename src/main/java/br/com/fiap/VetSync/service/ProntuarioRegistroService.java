@@ -118,10 +118,10 @@ public class ProntuarioRegistroService {
         ResultadoExame exame = buscarExame(idPet, idExame);
         exigirAutor(exame, emailVeterinario);
         if (arquivo == null || arquivo.isEmpty()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Arquivo é obrigatório");
+            throw Erros.arquivoObrigatorio();
         }
         if (arquivo.getSize() > TAMANHO_MAXIMO_ARQUIVO) {
-            throw new ResponseStatusException(HttpStatus.PAYLOAD_TOO_LARGE, "Arquivo excede o limite de 10 MB");
+            throw Erros.arquivoExcedeLimite();
         }
         String tipo = arquivo.getContentType() == null ? "" : arquivo.getContentType().toLowerCase();
         if (!TIPOS_ARQUIVO_PERMITIDOS.contains(tipo)) {

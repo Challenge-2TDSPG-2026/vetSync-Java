@@ -1,5 +1,7 @@
 package br.com.fiap.VetSync.security;
 
+import br.com.fiap.VetSync.exception.Erros;
+
 import br.com.fiap.VetSync.entity.Admin;
 import br.com.fiap.VetSync.repository.AdminRepository;
 import lombok.RequiredArgsConstructor;
@@ -15,7 +17,7 @@ public class ClinicaAdminAccess {
 
     public Admin atual(Authentication authentication) {
         if (authentication == null || !authentication.isAuthenticated()) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Autenticação necessária");
+            throw Erros.autenticacaoNecessaria();
         }
         Admin admin = adminRepository.findByDsEmail(authentication.getName()).orElseThrow(
                 () -> new ResponseStatusException(HttpStatus.FORBIDDEN, "Conta de equipe necessária"));
@@ -33,7 +35,7 @@ public class ClinicaAdminAccess {
         Admin admin = atual(authentication);
         if (!Boolean.TRUE.equals(admin.getDono()) &&
                 (admin.getCargo() == null || !admin.getCargo().getPermissoes().contains(permissao.name()))) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Seu cargo não permite esta ação");
+            throw Erros.cargoSemPermissao();
         }
         return admin;
     }
@@ -45,7 +47,7 @@ public class ClinicaAdminAccess {
                         || admin.getCargo().getPermissoes().contains(segunda.name()))) {
             return admin;
         }
-        throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Seu cargo não permite esta ação");
+        throw Erros.cargoSemPermissao();
     }
 
     public Admin exigirDono(Authentication authentication) {

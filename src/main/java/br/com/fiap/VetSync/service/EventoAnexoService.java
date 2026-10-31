@@ -32,10 +32,10 @@ public class EventoAnexoService {
     public EventoAnexo adicionar(Long idEvento, MultipartFile file, String ator) {
         EventoSaude evento = eventoService.buscarPorId(idEvento);
         if (file == null || file.isEmpty()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Arquivo é obrigatório");
+            throw Erros.arquivoObrigatorio();
         }
         if (file.getSize() > LIMITE_TAMANHO_BYTES) {
-            throw new ResponseStatusException(HttpStatus.PAYLOAD_TOO_LARGE, "Arquivo excede o limite de 10 MB");
+            throw Erros.arquivoExcedeLimite();
         }
         String tipo = file.getContentType() == null ? "application/octet-stream" : file.getContentType();
         if (!tipo.startsWith("image/") && !tipo.equals("application/pdf")) {

@@ -85,7 +85,7 @@ public class CatalogoClinicaService {
         ServicoClinica servico;
         if (idServico == null) {
             if (servicoRepository.existsByClinica_IdClinicaAndNmServicoIgnoreCase(clinica.getIdClinica(), nome.trim())) {
-                throw new ResponseStatusException(HttpStatus.CONFLICT, "Serviço já cadastrado nesta clínica");
+                throw Erros.servicoJaCadastradoNaClinica();
             }
             TipoEvento tipo = modelo == null ? null : tipoEventoRepository.findFirstByNmTipoEventoIgnoreCaseAndClinicaIsNull(modelo.nomeTipoEvento())
                     .orElse(null);
@@ -104,7 +104,7 @@ public class CatalogoClinicaService {
             }
             if (!servico.getNmServico().equalsIgnoreCase(nome.trim()) &&
                     servicoRepository.existsByClinica_IdClinicaAndNmServicoIgnoreCase(clinica.getIdClinica(), nome.trim())) {
-                throw new ResponseStatusException(HttpStatus.CONFLICT, "Serviço já cadastrado nesta clínica");
+                throw Erros.servicoJaCadastradoNaClinica();
             }
             if (servico.getTipoEvento().getClinica() != null) {
                 servico.getTipoEvento().setNmTipoEvento(nome.trim());

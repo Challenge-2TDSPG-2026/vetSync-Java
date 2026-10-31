@@ -61,7 +61,7 @@ public class RecompensaService {
                 builder.dsImagem(imagem.getBytes())
                         .dsImagemTipo(imagem.getContentType());
             } catch (IOException e) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Não foi possível ler o arquivo de imagem enviado");
+                throw Erros.imagemIlegivel();
             }
         }
 
@@ -103,7 +103,7 @@ public class RecompensaService {
                 recompensa.setDsImagem(imagem.getBytes());
                 recompensa.setDsImagemTipo(imagem.getContentType());
             } catch (IOException e) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Não foi possível ler o arquivo de imagem enviado");
+                throw Erros.imagemIlegivel();
             }
         } else if (removerImagem) {
             recompensa.setDsImagem(null);
@@ -159,8 +159,7 @@ public class RecompensaService {
         }
         String contentType = imagem.getContentType();
         if (contentType == null || !TIPOS_IMAGEM_PERMITIDOS.contains(contentType.toLowerCase())) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "Formato de imagem inválido. Envie um arquivo JPEG, PNG ou WEBP");
+            throw Erros.formatoImagemInvalido();
         }
     }
 

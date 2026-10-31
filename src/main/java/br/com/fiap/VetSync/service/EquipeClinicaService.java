@@ -59,7 +59,7 @@ public class EquipeClinicaService {
         CargoClinica cargo = cargoRepository.findById(idCargo).orElseThrow(
                 Erros::cargoNaoEncontrado);
         if (!cargo.getClinica().getIdClinica().equals(solicitante.getClinica().getIdClinica())) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Cargo de outra clínica");
+            throw Erros.cargoOutraClinica();
         }
         validarEmailLivre(email);
         String senha = senhaTemporaria ? senhaAleatoria() : senhaInformada;
@@ -117,7 +117,7 @@ public class EquipeClinicaService {
             cargo = cargoRepository.findById(idCargo).orElseThrow(
                     Erros::cargoNaoEncontrado);
             if (!cargo.getClinica().getIdClinica().equals(dono.getClinica().getIdClinica())) {
-                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Cargo de outra clínica");
+                throw Erros.cargoOutraClinica();
             }
         }
         cargo.setNmCargo(nome.trim());
@@ -137,7 +137,7 @@ public class EquipeClinicaService {
         CargoClinica cargo = cargoRepository.findById(idCargo).orElseThrow(
                 Erros::cargoNaoEncontrado);
         if (!cargo.getClinica().getIdClinica().equals(dono.getClinica().getIdClinica())) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Cargo de outra clínica");
+            throw Erros.cargoOutraClinica();
         }
         membro.setCargo(cargo);
         membro.setAtivo(ativo);

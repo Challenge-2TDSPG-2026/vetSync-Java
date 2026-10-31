@@ -1,5 +1,7 @@
 package br.com.fiap.VetSync.service;
 
+import br.com.fiap.VetSync.exception.Erros;
+
 import br.com.fiap.VetSync.security.TokenUtils;
 import br.com.fiap.VetSync.controller.AuthController.AuthResponse;
 import br.com.fiap.VetSync.controller.SocialAuthController.SocialRegistrarRequest;
@@ -118,7 +120,7 @@ public class SocialAuthService {
         try {
             authManager.authenticate(new UsernamePasswordAuthenticationToken(email, req.senha()));
         } catch (AuthenticationException e) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "E-mail ou senha inválidos");
+            throw Erros.emailOuSenhaInvalidos();
         }
         Tutor tutor = tutorRepository.findByDsEmail(email).orElseThrow(() ->
                 new ResponseStatusException(HttpStatus.FORBIDDEN, "Somente contas de tutor podem usar login social"));

@@ -1,5 +1,7 @@
 package br.com.fiap.VetSync.service;
 
+import br.com.fiap.VetSync.exception.Erros;
+
 import br.com.fiap.VetSync.entity.*;
 import br.com.fiap.VetSync.repository.PetRepository;
 import br.com.fiap.VetSync.repository.TutorResponsavelRepository;
@@ -75,12 +77,11 @@ public class ResponsavelService {
     @Transactional
     public void revogar(Long idTutorProprietario, Long idResponsavel) {
         TutorResponsavel vinculo = tutorResponsavelRepository.findById(idResponsavel)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
-                        "Responsável não encontrado"));
+                .orElseThrow(() -> Erros.responsavelNaoEncontrado());
 
         if (vinculo.getTutorProprietario() == null
                 || !idTutorProprietario.equals(vinculo.getTutorProprietario().getIdTutor())) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Responsável não encontrado");
+            throw Erros.responsavelNaoEncontrado();
         }
         if (vinculo.getDsStatus() == StatusAcessoPet.REVOGADO) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Esse responsável já foi removido");

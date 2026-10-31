@@ -1,10 +1,9 @@
 package br.com.fiap.VetSync.controller;
 
 import br.com.fiap.VetSync.entity.*;
-import br.com.fiap.VetSync.repository.EventoSaudeRepository;
-import br.com.fiap.VetSync.repository.ServicoClinicaRepository;
 import br.com.fiap.VetSync.security.ClinicaAdminAccess;
 import br.com.fiap.VetSync.security.PermissaoClinica;
+import br.com.fiap.VetSync.service.ClinicaAgendaConsultaService;
 import br.com.fiap.VetSync.service.EventoCancelamentoService;
 import br.com.fiap.VetSync.service.EventoService;
 import br.com.fiap.VetSync.service.PontosService;
@@ -26,8 +25,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class ClinicaOperacaoController {
     private final ClinicaAdminAccess access;
-    private final EventoSaudeRepository eventoRepository;
-    private final ServicoClinicaRepository servicoRepository;
+    private final ClinicaAgendaConsultaService agendaConsultaService;
     private final EventoService eventoService;
     private final EventoCancelamentoService eventoCancelamentoService;
     private final PontosService pontosService;
@@ -45,7 +43,7 @@ public class ClinicaOperacaoController {
     @GetMapping("/agenda/dia")
     public List<EventoDia> agenda(Authentication auth, @RequestParam LocalDate data) {
         Admin admin = access.exigir(auth, PermissaoClinica.AGENDA_VER);
-        return eventoRepository.findByClinica_IdClinicaAndDtEvento(admin.getClinica().getIdClinica(), data)
+        return agendaConsultaService.listarEventosDoDia(admin.getClinica().getIdClinica(), data)
                 .stream().map(e -> new EventoDia(e.getIdEvento(), e.getPet().getIdPet(), e.getPet().getNmPet(),
                         e.getPet().getTutor().getNmTutor(), e.getServicoClinica() == null
                                 ? e.getTipoEvento().getNmTipoEvento() : e.getServicoClinica().getNmServico(),
@@ -60,9 +58,7 @@ public class ClinicaOperacaoController {
     @ResponseStatus(HttpStatus.CREATED)
     public EventoDia agendar(Authentication auth, @Valid @RequestBody AgendarRequest req) {
         Admin admin = access.exigir(auth, PermissaoClinica.AGENDA_CRIAR);
-        servicoRepository.findByIdServicoClinicaAndClinica_IdClinica(
-                req.idServico(), admin.getClinica().getIdClinica()).orElseThrow(
-                () -> new ResponseStatusException(HttpStatus.FORBIDDEN, "Serviço de outra clínica"));
+        agendaConsultaService.exigirServicoDaClinica(req.idServico(), admin.getClinica().getIdClinica());
         EventoSaude evento = EventoSaude.builder().dtEvento(req.data()).hrEvento(req.hora())
                 .dsObservacao(req.observacao()).dsObservacaoClinica(req.observacao()).build();
         EventoSaude salvo = eventoService.agendarServico(evento, req.idPet(), req.idServico(),

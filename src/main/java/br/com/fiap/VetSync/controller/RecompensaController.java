@@ -6,10 +6,10 @@ import br.com.fiap.VetSync.entity.Recompensa;
 import br.com.fiap.VetSync.entity.Resgate;
 import br.com.fiap.VetSync.entity.TipoRecompensa;
 import br.com.fiap.VetSync.entity.VinculoTutorClinica;
-import br.com.fiap.VetSync.repository.VeterinarioRepository;
 import br.com.fiap.VetSync.security.PerfilUtils;
 import br.com.fiap.VetSync.service.RecompensaService;
 import br.com.fiap.VetSync.service.TutorService;
+import br.com.fiap.VetSync.service.VeterinarioService;
 import br.com.fiap.VetSync.service.VinculoClinicaService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -38,7 +38,7 @@ public class RecompensaController {
 
     private final RecompensaService recompensaService;
     private final TutorService tutorService;
-    private final VeterinarioRepository veterinarioRepository;
+    private final VeterinarioService veterinarioService;
     private final VinculoClinicaService vinculoClinicaService;
 
     // Usado com multipart/form-data: os campos chegam como @RequestParam, não como JSON no corpo.
@@ -154,15 +154,11 @@ public class RecompensaController {
     }
 
     private Long idClinicaDoVeterinario(Authentication authentication) {
-        return veterinarioRepository.findByDsEmail(authentication.getName())
-                .orElseThrow(Erros::veterinarioAutenticadoNaoEncontrado)
-                .getClinica().getIdClinica();
+        return veterinarioService.buscarAutenticado(authentication).getClinica().getIdClinica();
     }
 
     private Long idVeterinarioAutenticado(Authentication authentication) {
-        return veterinarioRepository.findByDsEmail(authentication.getName())
-                .orElseThrow(Erros::veterinarioAutenticadoNaoEncontrado)
-                .getIdVeterinario();
+        return veterinarioService.buscarAutenticado(authentication).getIdVeterinario();
     }
 
     @GetMapping
