@@ -1,11 +1,13 @@
 package br.com.fiap.VetSync.service;
 
 import br.com.fiap.VetSync.entity.Tutor;
+import br.com.fiap.VetSync.exception.Erros;
 import br.com.fiap.VetSync.repository.TutorRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -28,6 +30,10 @@ public class TutorService {
 
     public Optional<Tutor> buscarPorEmail(String email) {
         return tutorRepository.findByDsEmail(email);
+    }
+
+    public Tutor buscarAutenticado(Authentication authentication) {
+        return buscarPorEmail(authentication.getName()).orElseThrow(Erros::tutorAutenticadoNaoEncontrado);
     }
 
     @Cacheable(value = "tutores", key = "#id")

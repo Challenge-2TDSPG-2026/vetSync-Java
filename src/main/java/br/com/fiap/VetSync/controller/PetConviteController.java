@@ -6,12 +6,10 @@ import br.com.fiap.VetSync.entity.PetAcesso;
 import br.com.fiap.VetSync.entity.PetConvite;
 import br.com.fiap.VetSync.entity.RelacaoPet;
 import br.com.fiap.VetSync.entity.Tutor;
-import br.com.fiap.VetSync.entity.TutorResponsavel;
 import br.com.fiap.VetSync.service.JwtService;
 import br.com.fiap.VetSync.service.PetAcessoService;
 import br.com.fiap.VetSync.service.PetConviteService;
 import br.com.fiap.VetSync.service.TutorService;
-import br.com.fiap.VetSync.service.ResponsavelService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -40,7 +38,6 @@ public class PetConviteController {
     private final PetConviteService petConviteService;
     private final PetAcessoService petAcessoService;
     private final TutorService tutorService;
-    private final ResponsavelService responsavelService;
     private final JwtService jwtService;
 
     // ---------------------------------------------------------------
@@ -104,32 +101,12 @@ public class PetConviteController {
     ) {}
     public record AtualizarAcessoRequest(RelacaoPet relacao, PermissaoPet permissao) {}
 
-    public record ConviteResponsavelRequest(
-            @NotBlank(message = "E-mail é obrigatório")
-            @Email(message = "E-mail deve ter formato válido")
-            String email,
-
-            @NotNull(message = "Permissão é obrigatória")
-            PermissaoPet permissao
-    ) {}
-
-    public record ConviteResponsavelResponse(
-            Long idConvite, String email, String permissao, String status, LocalDateTime expiraEm
-    ) {}
-
-    public record ResponsavelResponse(
-            Long idResponsavel, Long idTutor, String nome, String email,
-            String permissao, String status, LocalDateTime concedidoEm
-    ) {}
-
     // ---------------------------------------------------------------
     // Helpers
     // ---------------------------------------------------------------
 
     private Long idTutorAutenticado(Authentication authentication) {
-        Tutor tutor = tutorService.buscarPorEmail(authentication.getName())
-                .orElseThrow(Erros::tutorAutenticadoNaoEncontrado);
-        return tutor.getIdTutor();
+        return tutorService.buscarAutenticado(authentication).getIdTutor();
     }
 
     private ConviteResponse toResponse(PetConvite convite) {
@@ -156,54 +133,6 @@ public class PetConviteController {
                 acesso.getDsStatus().name(),
                 acesso.getDtConcedido()
         );
-    }
-
-    private ResponsavelResponse toResponse(TutorResponsavel vinculo) {
-        Tutor responsavel = vinculo.getTutorResponsavel();
-        return new ResponsavelResponse(
-                vinculo.getIdResponsavel(),
-                responsavel.getIdTutor(),
-                responsavel.getNmTutor(),
-                responsavel.getDsEmail(),
-                vinculo.getDsPermissao().name(),
-                vinculo.getDsStatus().name(),
-                vinculo.getDtConcedido()
-        );
-    }
-
-    @PostMapping("/responsaveis/convites")
-    @ResponseStatus(HttpStatus.CREATED)
-    @PreAuthorize("hasRole('TUTOR')")
-    @Operation(summary = "Convidar responsável para todos os pets do tutor")
-    public ConviteResponsavelResponse criarConviteResponsavel(
-            Authentication authentication,
-            @Valid @RequestBody ConviteResponsavelRequest request) {
-        PetConvite convite = petConviteService.criarResponsavel(
-                idTutorAutenticado(authentication), request.email(), request.permissao());
-        return new ConviteResponsavelResponse(
-                convite.getIdConvite(),
-                convite.getDsEmailDestino(),
-                convite.getDsPermissao().name(),
-                convite.getDsStatus().name(),
-                convite.getDtExpiracao()
-        );
-    }
-
-    @GetMapping("/responsaveis")
-    @PreAuthorize("hasRole('TUTOR')")
-    @Operation(summary = "Listar responsáveis ativos do tutor autenticado")
-    public List<ResponsavelResponse> listarResponsaveis(Authentication authentication) {
-        return responsavelService.listarAtivos(idTutorAutenticado(authentication))
-                .stream().map(this::toResponse).toList();
-    }
-
-    @DeleteMapping("/responsaveis/{idResponsavel}")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    @PreAuthorize("hasRole('TUTOR')")
-    @Operation(summary = "Remover responsável de todos os pets do tutor autenticado")
-    public void revogarResponsavel(@PathVariable Long idResponsavel,
-                                   Authentication authentication) {
-        responsavelService.revogar(idTutorAutenticado(authentication), idResponsavel);
     }
 
     // ---------------------------------------------------------------
@@ -347,16 +276,5 @@ public class PetConviteController {
     @Operation(summary = "Cancelar um convite pendente")
     public void cancelarConvite(@PathVariable Long idPet, @PathVariable Long idConvite) {
         petConviteService.cancelar(idPet, idConvite);
-    }
-
-    // ---------------------------------------------------------------
-    // Erros do fluxo público de convite, no formato {"message": "..."}
-    // ---------------------------------------------------------------
-
-    @ExceptionHandler(PetConviteService.ConviteException.class)
-    public ResponseEntity<Map<String, String>> handleConviteException(PetConviteService.ConviteException ex) {
-        Map<String, String> body = new LinkedHashMap<>();
-        body.put("message", ex.getMessage());
-        return ResponseEntity.status(ex.getStatus()).body(body);
     }
 }
