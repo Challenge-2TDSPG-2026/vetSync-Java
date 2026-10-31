@@ -39,13 +39,10 @@ public class PetConviteService {
     private final TutorRepository tutorRepository;
     private final PetAcessoService petAcessoService;
     private final ResponsavelService responsavelService;
-    private final EmailService emailService;
+    private final ConviteEmailService conviteEmailService;
     private final PasswordEncoder passwordEncoder;
     @Autowired(required = false)
     private AuditoriaService auditoriaService;
-
-    @Value("${app.convite.web-invite-url}")
-    private String webInviteUrl;
 
     @Value("${app.convite.expiracao-horas:72}")
     private int expiracaoHoras;
@@ -148,7 +145,7 @@ public class PetConviteService {
         if (!todosPets) {
             auditarConvite(pet, "CONVITE_ENVIADO", null, emailNormalizado + " (" + permissao.name() + ")");
         }
-        enviarEmailConvite(convite, tokenPuro);
+        conviteEmailService.enviar(convite, tokenPuro, expiracaoHoras);
 
         return convite;
     }
@@ -169,36 +166,6 @@ public class PetConviteService {
         if (jaTemAcesso) {
             throw new ConviteException(HttpStatus.CONFLICT, "Essa pessoa já tem acesso a este pet");
         }
-    }
-
-    private void enviarEmailConvite(PetConvite convite, String tokenPuro) {
-        String link = webInviteUrl + "?token=" + tokenPuro;
-        boolean contaExistente = tutorRepository.existsByDsEmail(convite.getDsEmailDestino());
-        String escopo = convite.isTodosPets()
-                ? "todos os pets de " + convite.getTutorOrigem().getNmTutor()
-                : convite.getPet().getNmPet();
-        String assunto = convite.isTodosPets()
-                ? "Você foi convidado como responsável no VetSync"
-                : "Você foi convidado para cuidar de " + convite.getPet().getNmPet() + " no VetSync";
-        String corpo = "Olá!\n\n"
-                + convite.getTutorOrigem().getNmTutor() + " convidou você para acompanhar "
-                + escopo + " no VetSync"
-                + (convite.isTodosPets() ? ".\n\n" : ", como " + rotuloRelacao(convite.getDsRelacao()) + ".\n\n")
-                + (contaExistente
-                    ? "Você já tem conta no VetSync com este e-mail. Abra o app (ou o link abaixo), entre na sua conta e aceite o convite:\n"
-                    : "Para aceitar o convite, acesse o link abaixo e finalize seu cadastro:\n")
-                + link + "\n\n"
-                + "Este link expira em " + expiracaoHoras + " horas.\n"
-                + "Se você não esperava este convite, pode ignorar este e-mail.";
-        emailService.enviarObrigatorio(convite.getDsEmailDestino(), assunto, corpo);
-    }
-
-    private String rotuloRelacao(RelacaoPet relacao) {
-        return switch (relacao) {
-            case CUIDADOR -> "cuidador(a)";
-            case CONJUGE -> "cônjuge";
-            case OUTRO -> "pessoa de confiança";
-        };
     }
 
     // ---------------------------------------------------------------

@@ -55,17 +55,12 @@ public class RecompensaService {
                 .dsTipo(tipo)
                 .flAtivo(true);
 
-        if (imagem != null && !imagem.isEmpty()) {
-            validarImagem(imagem);
-            try {
-                builder.dsImagem(imagem.getBytes())
-                        .dsImagemTipo(imagem.getContentType());
-            } catch (IOException e) {
-                throw Erros.imagemIlegivel();
-            }
+        Recompensa nova = builder.build();
+        if (temArquivo(imagem)) {
+            aplicarImagem(nova, imagem);
         }
 
-        Recompensa salva = recompensaRepository.save(builder.build());
+        Recompensa salva = recompensaRepository.save(nova);
         auditarCatalogo(salva, "CATALOGO_ITEM_CRIADO", null, resumo(salva));
         return salva;
     }
@@ -97,14 +92,8 @@ public class RecompensaService {
             recompensa.setFlAtivo(ativo);
         }
 
-        if (imagem != null && !imagem.isEmpty()) {
-            validarImagem(imagem);
-            try {
-                recompensa.setDsImagem(imagem.getBytes());
-                recompensa.setDsImagemTipo(imagem.getContentType());
-            } catch (IOException e) {
-                throw Erros.imagemIlegivel();
-            }
+        if (temArquivo(imagem)) {
+            aplicarImagem(recompensa, imagem);
         } else if (removerImagem) {
             recompensa.setDsImagem(null);
             recompensa.setDsImagemTipo(null);
@@ -112,8 +101,8 @@ public class RecompensaService {
 
         Recompensa salva = recompensaRepository.save(recompensa);
         String depois = resumo(salva);
-        if (!antes.equals(depois) || (imagem != null && !imagem.isEmpty()) || removerImagem) {
-            String sufixo = (imagem != null && !imagem.isEmpty()) ? "; imagem=substituída" : removerImagem ? "; imagem=removida" : "";
+        if (!antes.equals(depois) || temArquivo(imagem) || removerImagem) {
+            String sufixo = temArquivo(imagem) ? "; imagem=substituída" : removerImagem ? "; imagem=removida" : "";
             auditarCatalogo(salva, "CATALOGO_ITEM_ATUALIZADO", antes, depois + sufixo);
         }
         return salva;
@@ -151,6 +140,21 @@ public class RecompensaService {
                     "Recompensa " + id + " não pertence à clínica " + idClinica);
         }
         return recompensa;
+    }
+
+    private static boolean temArquivo(MultipartFile imagem) {
+        return imagem != null && !imagem.isEmpty();
+    }
+
+    /** Valida (tamanho e tipo) e grava a foto na recompensa. */
+    private void aplicarImagem(Recompensa recompensa, MultipartFile imagem) {
+        validarImagem(imagem);
+        try {
+            recompensa.setDsImagem(imagem.getBytes());
+            recompensa.setDsImagemTipo(imagem.getContentType());
+        } catch (IOException e) {
+            throw Erros.imagemIlegivel();
+        }
     }
 
     private void validarImagem(MultipartFile imagem) {

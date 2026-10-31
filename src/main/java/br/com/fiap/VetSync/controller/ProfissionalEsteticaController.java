@@ -164,24 +164,14 @@ public class ProfissionalEsteticaController {
 
 
 
-    public record BloqueioRequest(
-            @NotNull(message = "Data de início é obrigatória")
-            LocalDate dtInicio,
 
-            @NotNull(message = "Data de fim é obrigatória")
-            LocalDate dtFim,
-
-            String motivo
-    ) {}
-    public record BloqueioResponse(Long idBloqueio, LocalDate dtInicio, LocalDate dtFim, String motivo) {}
-
-    private BloqueioResponse toResponse(BloqueioAgendaEstetica b) {
-        return new BloqueioResponse(b.getIdBloqueio(), b.getDtInicio(), b.getDtFim(), b.getDsMotivo());
+    private BloqueioAgendaResponse toResponse(BloqueioAgendaEstetica b) {
+        return new BloqueioAgendaResponse(b.getIdBloqueio(), b.getDtInicio(), b.getDtFim(), b.getDsMotivo());
     }
 
     @GetMapping("/{id}/bloqueios")
     @Operation(summary = "Listar bloqueios de agenda (férias, compromissos, etc.)")
-    public List<BloqueioResponse> listarBloqueios(@PathVariable Long id) {
+    public List<BloqueioAgendaResponse> listarBloqueios(@PathVariable Long id) {
         return agendaEsteticaService.listarBloqueios(id).stream().map(this::toResponse).toList();
     }
 
@@ -189,7 +179,7 @@ public class ProfissionalEsteticaController {
     @ResponseStatus(HttpStatus.CREATED)
     @PreAuthorize("@profissionalEsteticaSecurity.isSelf(#id, authentication)")
     @Operation(summary = "Adicionar bloqueio de agenda (um dia ou um período)")
-    public BloqueioResponse adicionarBloqueio(@PathVariable Long id, @Valid @RequestBody BloqueioRequest request) {
+    public BloqueioAgendaResponse adicionarBloqueio(@PathVariable Long id, @Valid @RequestBody BloqueioAgendaRequest request) {
         return toResponse(agendaEsteticaService.adicionarBloqueio(id, request.dtInicio(), request.dtFim(), request.motivo()));
     }
 

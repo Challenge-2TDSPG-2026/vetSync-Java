@@ -61,7 +61,9 @@ class PetConviteServiceTest {
     @BeforeEach
     void setUp() {
         // @Value nao e resolvido em teste unitario com Mockito
-        ReflectionTestUtils.setField(petConviteService, "webInviteUrl", "https://app.vetsync.test/convite");
+        ConviteEmailService conviteEmailService = new ConviteEmailService(emailService, tutorRepository);
+        ReflectionTestUtils.setField(conviteEmailService, "webInviteUrl", "https://app.vetsync.test/convite");
+        ReflectionTestUtils.setField(petConviteService, "conviteEmailService", conviteEmailService);
         ReflectionTestUtils.setField(petConviteService, "expiracaoHoras", 72);
     }
 

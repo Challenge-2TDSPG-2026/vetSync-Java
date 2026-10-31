@@ -299,15 +299,7 @@ public class PontosService {
         return resgates != null ? resgates : List.of();
     }
 
-    /**
-     * Regra do saldo (lançamentos e resgates devem ser do MESMO tutor e da MESMA clínica):
-     * resgates VALIDADOS e PENDENTES (reservados) consomem os lotes liberados na data do resgate,
-     * do que vence primeiro para o que vence depois. Assim, pontos antigos já gastos não fazem o saldo
-     * ficar negativo quando vencem. O que sobra em lotes dentro da validade é o saldo disponível;
-     * o que sobra em lotes vencidos é "expirado".
-     * O custo de cada resgate é o congelado no momento em que ele foi feito, então editar o preço
-     * da recompensa depois não altera o saldo.
-     */
+    /** Regra do saldo: ver {@link CalculoSaldoPontos}. */
     static SaldoPontos calcular(List<LancamentoPontos> lancamentos, List<Resgate> resgates, LocalDate hoje) {
         return CalculoSaldoPontos.calcular(lancamentos, resgates, hoje);
     }

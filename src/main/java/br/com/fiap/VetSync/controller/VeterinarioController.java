@@ -161,24 +161,14 @@ public class VeterinarioController {
 
 
 
-    public record BloqueioRequest(
-            @NotNull(message = "Data de início é obrigatória")
-            LocalDate dtInicio,
 
-            @NotNull(message = "Data de fim é obrigatória")
-            LocalDate dtFim,
-
-            String motivo
-    ) {}
-    public record BloqueioResponse(Long idBloqueio, LocalDate dtInicio, LocalDate dtFim, String motivo) {}
-
-    private BloqueioResponse toResponse(BloqueioAgenda b) {
-        return new BloqueioResponse(b.getIdBloqueio(), b.getDtInicio(), b.getDtFim(), b.getDsMotivo());
+    private BloqueioAgendaResponse toResponse(BloqueioAgenda b) {
+        return new BloqueioAgendaResponse(b.getIdBloqueio(), b.getDtInicio(), b.getDtFim(), b.getDsMotivo());
     }
 
     @GetMapping("/{id}/bloqueios")
     @Operation(summary = "Listar bloqueios de agenda (férias, compromissos, etc.)")
-    public List<BloqueioResponse> listarBloqueios(@PathVariable Long id) {
+    public List<BloqueioAgendaResponse> listarBloqueios(@PathVariable Long id) {
         return agendaService.listarBloqueios(id).stream().map(this::toResponse).toList();
     }
 
@@ -186,7 +176,7 @@ public class VeterinarioController {
     @ResponseStatus(HttpStatus.CREATED)
     @PreAuthorize("@veterinarioSecurity.isSelf(#id, authentication)")
     @Operation(summary = "Adicionar bloqueio de agenda (um dia ou um período)")
-    public BloqueioResponse adicionarBloqueio(@PathVariable Long id, @Valid @RequestBody BloqueioRequest request) {
+    public BloqueioAgendaResponse adicionarBloqueio(@PathVariable Long id, @Valid @RequestBody BloqueioAgendaRequest request) {
         return toResponse(agendaService.adicionarBloqueio(id, request.dtInicio(), request.dtFim(), request.motivo()));
     }
 

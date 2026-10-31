@@ -133,7 +133,7 @@ class VeterinarioControllerTest {
 
         when(agendaService.adicionarBloqueio(1L, inicio, fim, "Congresso")).thenReturn(bloqueio);
 
-        var req = new VeterinarioController.BloqueioRequest(inicio, fim, "Congresso");
+        var req = new BloqueioAgendaRequest(inicio, fim, "Congresso");
 
         mockMvc.perform(post("/veterinarios/1/bloqueios")
                         .contentType(MediaType.APPLICATION_JSON)
