@@ -26,7 +26,7 @@
 | 🌐 Aplicação online (Azure App Service) | https://app-vetsync-rm563197.azurewebsites.net |
 | 📘 Swagger UI | https://app-vetsync-rm563197.azurewebsites.net/swagger-ui.html |
 | ❤️ Health check | https://app-vetsync-rm563197.azurewebsites.net/actuator/health |
-| 🎥 Vídeo de apresentação (máx. 15 min) | _PREENCHER: link do vídeo_ |
+| 🎥 Vídeo de apresentação (máx. 15 min) | https://youtu.be/s2oClyacqQI |
 | 📬 Coleção Postman | [`documentos/JornadaPet_Postman_Collection.json`](documentos/JornadaPet_Postman_Collection.json) |
 | 📱 Aplicativo mobile (React Native / Expo) | [Repositorio mobile](https://github.com/Challenge-2TDSPG-2026/vetSync-Mobile.git) |
 | 🖥 Site web | https://vetsync-76c0e.web.app/login |
@@ -497,9 +497,9 @@ Scripts de infraestrutura (Azure CLI) na pasta [`scripts/`](scripts):
 
 | Nome | RM |
 |------|----|
-| Arthur Brito da Silva | 562085 |
-| Luiz Felipe Flosi dos Santos | 563197 |
-| Pedro Henrique Brum Lopes | 561780 |
+| Arthur Brito da Silva | RM562085 |
+| Luiz Felipe Flosi dos Santos | RM563197 |
+| Pedro Henrique Brum Lopes | RM561780 |
 
 **Instituição:** FIAP · **Disciplina:** Java Advanced · **Empresa parceira:** Clyvo Vet
 
